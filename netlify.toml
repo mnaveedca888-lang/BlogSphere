@@ -1,0 +1,30 @@
+[build]
+  functions = "netlify/functions"
+
+[[redirects]]
+  from = "/blogsphere.db"
+  to = "/404.html"
+  status = 404
+  force = true
+
+[[redirects]]
+  from = "/.env"
+  to = "/404.html"
+  status = 404
+  force = true
+
+[[redirects]]
+  from = "/phase1-backup/*"
+  to = "/404.html"
+  status = 404
+  force = true
+
+[[redirects]]
+  from = "/api/health"
+  to = "/.netlify/functions/api-health"
+  status = 200
+
+[[redirects]]
+  from = "/api/public-data"
+  to = "/.netlify/functions/api-public-data"
+  status = 200

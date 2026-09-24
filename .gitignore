@@ -1,0 +1,8 @@
+node_modules/
+.env
+.env.*
+!.env.example
+npm-debug.log*
+blogsphere.db
+uploads/
+phase1-backup/
