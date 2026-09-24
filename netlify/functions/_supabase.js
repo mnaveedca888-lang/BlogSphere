@@ -1,10 +1,15 @@
+const crypto = require('crypto');
+
 const allowedTags = new Set(['a', 'b', 'blockquote', 'br', 'div', 'em', 'font', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'hr', 'i', 'li', 'ol', 'p', 's', 'span', 'strike', 'strong', 'u', 'ul']);
+const sessionCookieName = 'blogsphere_admin_session';
+const sessionMaxAge = 60 * 60 * 24 * 7;
 
 function getConfig() {
   const url = String(process.env.SUPABASE_URL || '').trim();
+  const anonKey = String(process.env.SUPABASE_ANON_KEY || '').trim();
   const serviceRoleKey = String(process.env.SUPABASE_SERVICE_ROLE_KEY || '').trim();
-  if (!url || !serviceRoleKey) throw new Error('Supabase server configuration is missing.');
-  return { url, serviceRoleKey };
+  if (!url || !anonKey || !serviceRoleKey) throw new Error('Supabase server configuration is missing.');
+  return { url, anonKey, serviceRoleKey };
 }
 
 async function supabaseGet(path) {
@@ -19,12 +24,140 @@ async function supabaseGet(path) {
   return response.json();
 }
 
+async function supabaseRequest(path, options = {}) {
+  const { url, serviceRoleKey } = getConfig();
+  const response = await fetch(`${url}${path}`, {
+    ...options,
+    headers: {
+      apikey: serviceRoleKey,
+      Authorization: `Bearer ${serviceRoleKey}`,
+      ...(options.headers || {})
+    }
+  });
+  const text = await response.text();
+  let body = null;
+  try { body = text ? JSON.parse(text) : null; } catch {}
+  if (!response.ok) {
+    const error = new Error(`Supabase request failed with status ${response.status}.`);
+    error.status = response.status;
+    throw error;
+  }
+  return { response, body };
+}
+
 function jsonResponse(statusCode, body) {
   return {
     statusCode,
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body)
   };
+}
+
+function responseWithHeaders(statusCode, body, headers = {}) {
+  const response = jsonResponse(statusCode, body);
+  response.headers = { ...response.headers, ...headers };
+  return response;
+}
+
+async function authRequest(grantType, body) {
+  const { url, anonKey } = getConfig();
+  const response = await fetch(`${url}/auth/v1/token?grant_type=${grantType}`, {
+    method: 'POST',
+    headers: { apikey: anonKey, 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  });
+  const data = await response.json().catch(() => ({}));
+  return { response, data };
+}
+
+async function getAuthUser(accessToken) {
+  const { url, anonKey } = getConfig();
+  const response = await fetch(`${url}/auth/v1/user`, {
+    headers: { apikey: anonKey, Authorization: `Bearer ${accessToken}` }
+  });
+  if (!response.ok) return null;
+  return response.json();
+}
+
+async function getAdminProfile(authUserId) {
+  const rows = await supabaseGet(`/rest/v1/users?select=id,name,email,role,auth_user_id&auth_user_id=eq.${encodeURIComponent(authUserId)}`);
+  const profile = rows[0];
+  if (!profile || profile.email?.toLowerCase() !== 'admin@blogsphere.com' || profile.role !== 'administrator') return null;
+  return profile;
+}
+
+function sessionKey() {
+  const secret = String(process.env.SESSION_SECRET || '').trim() || getConfig().serviceRoleKey;
+  return crypto.createHash('sha256').update(secret).digest();
+}
+
+function encodeSession(session) {
+  const iv = crypto.randomBytes(12);
+  const cipher = crypto.createCipheriv('aes-256-gcm', sessionKey(), iv);
+  const encrypted = Buffer.concat([cipher.update(JSON.stringify(session), 'utf8'), cipher.final()]);
+  return [iv, cipher.getAuthTag(), encrypted].map(part => part.toString('base64url')).join('.');
+}
+
+function decodeSession(value) {
+  try {
+    const [ivValue, tagValue, encryptedValue] = String(value || '').split('.');
+    if (!ivValue || !tagValue || !encryptedValue) return null;
+    const decipher = crypto.createDecipheriv('aes-256-gcm', sessionKey(), Buffer.from(ivValue, 'base64url'));
+    decipher.setAuthTag(Buffer.from(tagValue, 'base64url'));
+    return JSON.parse(Buffer.concat([decipher.update(Buffer.from(encryptedValue, 'base64url')), decipher.final()]).toString('utf8'));
+  } catch {
+    return null;
+  }
+}
+
+function readCookie(event, name) {
+  const cookieHeader = event.headers?.cookie || event.headers?.Cookie || '';
+  const item = cookieHeader.split(';').map(value => value.trim()).find(value => value.startsWith(`${name}=`));
+  return item ? decodeURIComponent(item.slice(name.length + 1)) : null;
+}
+
+function sessionCookie(session) {
+  return `${sessionCookieName}=${encodeURIComponent(encodeSession(session))}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${sessionMaxAge}`;
+}
+
+function clearSessionCookie() {
+  return `${sessionCookieName}=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0`;
+}
+
+function publicAdminUser(profile) {
+  return { id: profile.id, name: profile.name, email: profile.email, role: profile.role };
+}
+
+async function getAdminSession(event) {
+  const session = decodeSession(readCookie(event, sessionCookieName));
+  if (!session?.accessToken) return null;
+  let authUser = await getAuthUser(session.accessToken);
+  let refreshed = null;
+  if (!authUser && session.refreshToken) {
+    const result = await authRequest('refresh_token', { refresh_token: session.refreshToken });
+    if (result.response.ok) {
+      refreshed = result.data;
+      authUser = await getAuthUser(refreshed.access_token);
+    }
+  }
+  if (!authUser) return null;
+  const profile = await getAdminProfile(authUser.id);
+  if (!profile) return null;
+  return {
+    user: publicAdminUser(profile),
+    setCookie: refreshed ? sessionCookie({ accessToken: refreshed.access_token, refreshToken: refreshed.refresh_token || session.refreshToken }) : null
+  };
+}
+
+async function requireAdmin(event) {
+  const session = await getAdminSession(event);
+  if (!session) return { response: jsonResponse(401, { error: 'Unauthorized' }) };
+  return { session };
+}
+
+function parseBody(event) {
+  if (!event.body) return {};
+  return JSON.parse(event.isBase64Encoded ? Buffer.from(event.body, 'base64').toString('utf8') : event.body);
 }
 
 function toJson(value, fallback = []) {
@@ -114,9 +247,23 @@ async function getPublicData() {
 }
 
 module.exports = {
+  authRequest,
+  clearSessionCookie,
+  getConfig,
+  getAdminProfile,
+  getAdminSession,
   getCategories,
   getPublishedPosts,
   getPublicData,
   jsonResponse,
-  mapPublicPost
+  mapPublicPost,
+  parseBody,
+  publicAdminUser,
+  requireAdmin,
+  responseWithHeaders,
+  sessionCookie,
+  supabaseGet,
+  supabaseRequest,
+  toJson,
+  sanitizeRichText
 };

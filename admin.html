@@ -376,6 +376,19 @@
       const loginError = document.getElementById('loginError');
       const logoutBtn = document.getElementById('logoutBtn');
       const adminName = document.getElementById('adminName');
+      const useNetlifyAdminApi = /\.netlify\.app$/i.test(window.location.hostname);
+      const adminEndpoint = name => useNetlifyAdminApi ? `/.netlify/functions/api-admin-${name}` : `/api/${name}`;
+      const adminPostEndpoint = (id, action = '') => `${adminEndpoint('posts')}?id=${encodeURIComponent(id)}${action ? `&action=${encodeURIComponent(action)}` : ''}`;
+
+      function arrayBufferToBase64(buffer) {
+        const bytes = new Uint8Array(buffer);
+        let binary = '';
+        const chunkSize = 0x8000;
+        for (let index = 0; index < bytes.length; index += chunkSize) {
+          binary += String.fromCharCode(...bytes.subarray(index, index + chunkSize));
+        }
+        return btoa(binary);
+      }
 
       function escapeHtml(value = '') {
         return String(value).replace(/[&<>"']/g, (ch) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[ch]));
@@ -627,9 +640,9 @@
 
           try {
             if (state.currentEditPostId) {
-              await api(`/api/posts/${state.currentEditPostId}`, { method: 'PUT', body: JSON.stringify(payload) });
+              await api(useNetlifyAdminApi ? adminPostEndpoint(state.currentEditPostId) : `/api/posts/${state.currentEditPostId}`, { method: 'PUT', body: JSON.stringify(payload) });
             } else {
-              await api('/api/posts', { method: 'POST', body: JSON.stringify(payload) });
+              await api(adminEndpoint('posts'), { method: 'POST', body: JSON.stringify(payload) });
             }
             await loadDashboard();
             setSection('posts');
@@ -650,11 +663,19 @@
         if (featuredImageInput) featuredImageInput.addEventListener('change', async (event) => {
           const file = event.target.files[0];
           if (!file) return;
-          const formData = new FormData();
-          formData.append('file', file);
-          const response = await fetch('/api/upload', { method: 'POST', body: formData });
-          const data = await response.json();
-          if (!response.ok) throw new Error(data.error || 'Upload failed');
+          let data;
+          if (useNetlifyAdminApi) {
+            data = await api(adminEndpoint('upload'), {
+              method: 'POST',
+              body: JSON.stringify({ filename: file.name, contentType: file.type, data: arrayBufferToBase64(await file.arrayBuffer()) })
+            });
+          } else {
+            const formData = new FormData();
+            formData.append('file', file);
+            const response = await fetch('/api/upload', { method: 'POST', body: formData });
+            data = await response.json();
+            if (!response.ok) throw new Error(data.error || 'Upload failed');
+          }
           state.selectedImage = data.url;
           const thumbnailBox = document.getElementById('thumbnailBox');
           if (thumbnailBox) thumbnailBox.innerHTML = `<img src="${data.url}" alt="Selected" />`;
@@ -711,7 +732,7 @@
           const confirmModal = document.getElementById('confirmModal');
           if (confirmModal) confirmModal.classList.remove('active');
           if (!action || !id) return;
-          if (action === 'delete-post') { await api(`/api/posts/${id}`, { method: 'DELETE' }); }
+          if (action === 'delete-post') { await api(useNetlifyAdminApi ? adminPostEndpoint(id) : `/api/posts/${id}`, { method: 'DELETE' }); }
           await loadDashboard();
         });
 
@@ -731,17 +752,17 @@
             }
           }
           if (action === 'duplicate-post') {
-            await api(`/api/posts/${id}/duplicate`, { method: 'POST' });
+            await api(useNetlifyAdminApi ? adminPostEndpoint(id, 'duplicate') : `/api/posts/${id}/duplicate`, { method: 'POST' });
             await loadDashboard();
           }
           if (action === 'toggle-status-post') {
             const post = state.posts.find(p => String(p.id) === String(id));
             if (!post) return;
             if (post.status === 'trash') {
-              await api(`/api/posts/${id}/restore`, { method: 'POST' });
+              await api(useNetlifyAdminApi ? adminPostEndpoint(id, 'restore') : `/api/posts/${id}/restore`, { method: 'POST' });
             } else {
               const target = post.status === 'published' ? 'draft' : 'publish';
-              await api(`/api/posts/${id}/${target}`, { method: 'POST' });
+              await api(useNetlifyAdminApi ? adminPostEndpoint(id, target) : `/api/posts/${id}/${target}`, { method: 'POST' });
             }
             await loadDashboard();
           }
@@ -759,7 +780,7 @@
                 confirmDeleteBtn.dataset.id = id;
               }
             } else {
-              await api(`/api/posts/${id}/trash`, { method: 'POST' });
+              await api(useNetlifyAdminApi ? adminPostEndpoint(id, 'trash') : `/api/posts/${id}/trash`, { method: 'POST' });
               await loadDashboard();
             }
           }
@@ -768,8 +789,8 @@
 
       async function loadDashboard() {
         const [posts, categories] = await Promise.all([
-          api('/api/posts'),
-          api('/api/categories')
+          api(adminEndpoint('posts')),
+          api(adminEndpoint('categories'))
         ]);
         state.posts = posts;
         state.categories = categories;
@@ -780,7 +801,7 @@
 
       async function checkSession() {
         try {
-          const data = await api('/api/session');
+          const data = await api(adminEndpoint('session'));
           if (data.user) {
             state.user = data.user;
             loginShell.classList.add('hidden');
@@ -802,7 +823,7 @@
         const email = document.getElementById('email').value.trim();
         const password = document.getElementById('password').value;
         try {
-          const result = await api('/api/login', { method: 'POST', body: JSON.stringify({ email, password }) });
+          const result = await api(adminEndpoint('login'), { method: 'POST', body: JSON.stringify({ email, password }) });
           state.user = result.user;
           loginError.textContent = '';
           loginShell.classList.add('hidden');
@@ -815,7 +836,7 @@
       }
 
       async function logout() {
-        try { await fetch('/api/logout', { method: 'POST' }); } catch (error) {}
+        try { await fetch(adminEndpoint('logout'), { method: 'POST' }); } catch (error) {}
         state.user = null;
         loginShell.classList.remove('hidden');
         adminApp.classList.add('hidden');
