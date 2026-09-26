@@ -41,6 +41,9 @@ async function supabaseRequest(path, options = {}) {
   if (!response.ok) {
     const error = new Error(`Supabase request failed with status ${response.status}.`);
     error.status = response.status;
+    error.supabaseError = body && typeof body === 'object'
+      ? { code: body.code || null, message: body.message || null, details: body.details || null, hint: body.hint || null }
+      : { code: null, message: text || null, details: null, hint: null };
     throw error;
   }
   return { response, body };

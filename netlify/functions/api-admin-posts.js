@@ -142,7 +142,10 @@ exports.handler = async event => {
     });
     return responseWithHeaders(200, { ok: true }, setCookie);
   } catch (error) {
-    console.error('Admin posts operation failed:', error.message);
+    console.error('Admin posts operation failed:', JSON.stringify({
+      status: error.status || null,
+      ...(error.supabaseError || { message: error.message })
+    }));
     return jsonResponse(error.status === 404 ? 404 : 500, { error: error.status === 404 ? 'Post not found.' : 'Unable to complete post operation.' });
   }
 };
