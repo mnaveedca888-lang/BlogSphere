@@ -3,6 +3,7 @@ const crypto = require('crypto');
 const allowedTags = new Set(['a', 'b', 'blockquote', 'br', 'div', 'em', 'font', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'hr', 'i', 'li', 'ol', 'p', 's', 'span', 'strike', 'strong', 'u', 'ul']);
 const sessionCookieName = 'blogsphere_admin_session';
 const sessionMaxAge = 60 * 60 * 24 * 7;
+const adminEmail = 'mnaveedca888@gmail.com';
 
 function getConfig() {
   const url = String(process.env.SUPABASE_URL || '').trim();
@@ -82,7 +83,7 @@ async function getAuthUser(accessToken) {
 async function getAdminProfile(authUserId) {
   const rows = await supabaseGet(`/rest/v1/users?select=id,name,email,role,auth_user_id&auth_user_id=eq.${encodeURIComponent(authUserId)}`);
   const profile = rows[0];
-  if (!profile || profile.email?.toLowerCase() !== 'mnaveedca888@gmail.com' || profile.role !== 'administrator') return null;
+  if (!profile || profile.email?.toLowerCase() !== adminEmail || profile.role !== 'administrator') return null;
   return profile;
 }
 
@@ -247,6 +248,7 @@ async function getPublicData() {
 }
 
 module.exports = {
+  adminEmail,
   authRequest,
   clearSessionCookie,
   getConfig,

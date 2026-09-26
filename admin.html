@@ -78,6 +78,7 @@
       .toggle-pass {
         position: absolute; right: 12px; top: 50%; transform: translateY(-50%); border: none; background: transparent; color: var(--muted); cursor: pointer; font-weight: 700;
       }
+      .forgot-password-link { display: block; margin: -6px 0 16px; text-align: right; color: var(--primary); font-weight: 700; }
       .login-btn, .primary-btn, .secondary-btn, .danger-btn, .small-btn {
         border: none; border-radius: 10px; padding: 12px 16px; font-weight: 700; cursor: pointer;
       }
@@ -195,6 +196,17 @@
             </div>
             <div id="loginError" class="muted" style="min-height:20px; margin-bottom:10px; color:var(--danger);"></div>
             <button class="login-btn" type="submit" style="width:100%;">Login</button>
+            <a id="forgotPasswordLink" class="forgot-password-link hidden" href="#forgot-password">Forgot Password?</a>
+          </form>
+          <form id="passwordRecoveryRequestForm" class="hidden">
+            <p>Enter your administrator email and we’ll send a password recovery link if it matches the BlogSphere Admin account.</p>
+            <div class="field">
+              <label for="recoveryEmail">Administrator email</label>
+              <input id="recoveryEmail" type="email" autocomplete="email" required />
+            </div>
+            <div id="recoveryRequestStatus" class="muted" role="status" style="min-height:20px; margin-bottom:10px;"></div>
+            <button class="login-btn" type="submit" style="width:100%;">Send Recovery Link</button>
+            <button id="cancelRecoveryRequest" class="secondary-btn" type="button" style="width:100%; margin-top:10px;">Back to Admin login</button>
           </form>
           <form id="passwordRecoveryForm" class="hidden">
             <p>Set a new password for your BlogSphere Admin account.</p>
@@ -396,9 +408,14 @@
       const passwordRecoveryForm = document.getElementById('passwordRecoveryForm');
       const passwordRecoveryError = document.getElementById('passwordRecoveryError');
       const passwordRecoverySuccess = document.getElementById('passwordRecoverySuccess');
+      const forgotPasswordLink = document.getElementById('forgotPasswordLink');
+      const passwordRecoveryRequestForm = document.getElementById('passwordRecoveryRequestForm');
+      const recoveryRequestStatus = document.getElementById('recoveryRequestStatus');
+      const recoveryEmail = document.getElementById('recoveryEmail');
       const useNetlifyAdminApi = /\.netlify\.app$/i.test(window.location.hostname);
       const adminEndpoint = name => useNetlifyAdminApi ? `/.netlify/functions/api-admin-${name}` : `/api/${name}`;
       const adminPostEndpoint = (id, action = '') => `${adminEndpoint('posts')}?id=${encodeURIComponent(id)}${action ? `&action=${encodeURIComponent(action)}` : ''}`;
+      if (useNetlifyAdminApi) forgotPasswordLink.classList.remove('hidden');
       const recoveryParams = new URLSearchParams(window.location.hash.slice(1));
       let recoveryAccessToken = useNetlifyAdminApi && recoveryParams.get('type') === 'recovery' ? recoveryParams.get('access_token') : null;
       const isPasswordRecovery = Boolean(recoveryAccessToken);
@@ -869,6 +886,33 @@
         loginShell.classList.remove('hidden');
         adminApp.classList.add('hidden');
       }
+
+      forgotPasswordLink.addEventListener('click', (event) => {
+        event.preventDefault();
+        recoveryEmail.value = document.getElementById('email').value.trim() || 'mnaveedca888@gmail.com';
+        recoveryRequestStatus.textContent = '';
+        loginForm.classList.add('hidden');
+        passwordRecoveryRequestForm.classList.remove('hidden');
+      });
+
+      document.getElementById('cancelRecoveryRequest').addEventListener('click', () => {
+        passwordRecoveryRequestForm.classList.add('hidden');
+        loginForm.classList.remove('hidden');
+      });
+
+      passwordRecoveryRequestForm.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        recoveryRequestStatus.textContent = '';
+        try {
+          await api(adminEndpoint('password-recovery-request'), {
+            method: 'POST',
+            body: JSON.stringify({ email: recoveryEmail.value.trim() })
+          });
+          recoveryRequestStatus.textContent = 'If the address matches the BlogSphere Admin account, a recovery link will be sent.';
+        } catch (error) {
+          recoveryRequestStatus.textContent = error.message;
+        }
+      });
 
       passwordRecoveryForm.addEventListener('submit', async (event) => {
         event.preventDefault();
