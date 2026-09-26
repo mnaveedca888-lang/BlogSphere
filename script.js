@@ -61,6 +61,24 @@ const buildStoryCard = (post) => {
   `;
 };
 
+const buildMiniFeature = (post) => {
+  const categoryClass = post.category === 'Business' ? 'business-pill' : post.category === 'Home Decor' ? 'decor-pill' : post.category === 'Make Money Online' ? 'money-pill' : '';
+  return `
+    <article class="mini-feature" data-post-id="${post.id}" data-post-url="${getArticleHref(post)}" role="link" tabindex="0">
+      <div class="mini-image" style="background-image:url('${post.thumb}')"></div>
+      <div class="mini-copy">
+        <span class="pill ${categoryClass}">${post.category}</span>
+        <h3>${post.title}</h3>
+        <div class="meta-row compact">
+          <span>${formatPostDate(post)}</span>
+          <span class="meta-divider">•</span>
+          <span>${post.readTime}</span>
+        </div>
+      </div>
+    </article>
+  `;
+};
+
 const buildTechArticleCard = (post) => `
   <a class="tech-article" href="${getArticleHref(post)}" data-post-id="${post.id}" data-post-url="${getArticleHref(post)}">
     <div class="article-thumb" style="background-image:url('${post.thumb}')"></div>
@@ -158,7 +176,7 @@ const renderFeaturedPosts = () => {
   const heroGrid = document.querySelector('.hero-grid');
   const emptyState = document.querySelector('.hero-grid + .empty-state');
   const featureCard = document.querySelector('.hero-grid .feature-card');
-  const miniFeatures = document.querySelectorAll('.hero-grid .mini-feature');
+  const miniFeatureList = document.querySelector('.hero-grid .stacked-feature-list');
   const featuredPosts = sortPublishedPosts(POSTS).slice(0, 4);
 
   if (!heroGrid || !featureCard) return;
@@ -168,9 +186,7 @@ const renderFeaturedPosts = () => {
   if (emptyState) emptyState.hidden = hasPosts;
 
   setFeaturedPostContent(featureCard, featuredPosts[0]);
-  miniFeatures.forEach((element, index) => {
-    setFeaturedPostContent(element, featuredPosts[index + 1]);
-  });
+  if (miniFeatureList) miniFeatureList.innerHTML = featuredPosts.slice(1).map(buildMiniFeature).join('');
 };
 
 const updateCategoryCounts = () => {
