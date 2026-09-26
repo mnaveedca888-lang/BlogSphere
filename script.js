@@ -305,7 +305,7 @@ const buildStoryCard = (post) => {
         <span class="pill ${categoryClass}">${post.category}</span>
         <h3>${post.title}</h3>
         <div class="meta-row compact">
-          <span>${post.date}</span>
+          <span>${formatPostDate(post)}</span>
           <span class="meta-divider">•</span>
           <span>${post.readTime}</span>
         </div>
@@ -323,7 +323,7 @@ const buildTechArticleCard = (post) => `
       <p>${post.summary}</p>
       <div class="article-meta">
         <span class="calendar" aria-hidden="true"></span>
-        <span>${post.date}</span>
+        <span>${formatPostDate(post)}</span>
         <span class="meta-dot" aria-hidden="true"></span>
         <span>${post.readTime}</span>
       </div>
@@ -337,7 +337,7 @@ const buildPopularCard = (post) => `
       <span class="mini-thumb" style="background-image:url('${post.thumb}')"></span>
       <span class="popular-copy">
         <strong>${post.title}</strong>
-        <small>${post.date}</small>
+        <small>${formatPostDate(post)}</small>
       </span>
     </a>
   </li>
@@ -359,10 +359,16 @@ const sortPublishedPosts = (posts) => [...posts]
   .sort((first, second) => getPostTimestamp(second) - getPostTimestamp(first) || Number(second.id) - Number(first.id));
 
 const formatPostDate = (post) => {
-  const value = post.published_at || post.date || post.created_at;
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return post.date || '';
-  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  const value = post?.published_at || post?.created_at || post?.date;
+  if (!value) return '';
+  const text = String(value).trim();
+  const dateParts = text.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  const hasTimezone = /(?:Z|[+-]\d{2}:?\d{2})$/i.test(text);
+  const date = dateParts && !hasTimezone
+    ? new Date(Date.UTC(Number(dateParts[1]), Number(dateParts[2]) - 1, Number(dateParts[3])))
+    : new Date(text);
+  if (Number.isNaN(date.getTime())) return '';
+  return new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' }).format(date);
 };
 
 const setFeaturedPostContent = (element, post) => {
@@ -604,7 +610,12 @@ const buildArticleContent = (post) => {
 
 const renderArticlePage = () => {
   const articleId = getUrlParams().get('id') || 'best-laptops-for-developers-2025';
-  const post = POSTS.find((item) => item.id === articleId) || POSTS[0];
+  const post = POSTS.find((item) => item.id === articleId || item.slug === articleId);
+  if (!post) {
+    const article = document.querySelector('.article-card');
+    if (article) article.innerHTML = '<div class="empty-state">This post is unavailable.</div>';
+    return;
+  }
 
   const featureImage = document.querySelector('.article-feature-image');
   const titleNode = document.getElementById('article-title');
@@ -621,7 +632,7 @@ const renderArticlePage = () => {
   if (titleNode) titleNode.textContent = post.title;
   if (summaryNode) summaryNode.textContent = post.summary;
   if (categoryNode) categoryNode.textContent = post.category;
-  if (dateNode) dateNode.textContent = post.date;
+  if (dateNode) dateNode.textContent = formatPostDate(post);
   if (contentNode) contentNode.innerHTML = buildArticleContent(post);
   if (breadcrumbs) {
     breadcrumbs.innerHTML = `

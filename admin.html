@@ -454,8 +454,15 @@
 
       function formatDate(value) {
         if (!value) return '—';
-        const d = new Date(value);
-        return Number.isNaN(d.getTime()) ? value : d.toLocaleDateString();
+        const text = String(value).trim();
+        const dateParts = text.match(/^(\d{4})-(\d{2})-(\d{2})/);
+        const hasTimezone = /(?:Z|[+-]\d{2}:?\d{2})$/i.test(text);
+        const date = dateParts && !hasTimezone
+          ? new Date(Date.UTC(Number(dateParts[1]), Number(dateParts[2]) - 1, Number(dateParts[3])))
+          : new Date(text);
+        return Number.isNaN(date.getTime())
+          ? '—'
+          : new Intl.DateTimeFormat(undefined, { year: 'numeric', month: 'short', day: 'numeric', timeZone: 'UTC' }).format(date);
       }
 
       function renderPostCategorySelect() {
@@ -464,11 +471,17 @@
         select.innerHTML = '<option value="" disabled>Select a category</option>' + state.categories.map(cat => `<option value="${cat.id}">${escapeHtml(cat.name)}</option>`).join('');
       }
 
+      function filterDashboardPosts(statusFilter) {
+        const isTrashed = post => post.status === 'trash' || Boolean(post.deleted_at);
+        if (statusFilter === 'trash') return state.posts.filter(isTrashed);
+        const activePosts = state.posts.filter(post => !isTrashed(post));
+        return statusFilter === 'all' ? activePosts : activePosts.filter(post => post.status === statusFilter);
+      }
+
       function renderPostsTable() {
         const statusFilter = document.getElementById('postStatusFilter').value;
         const query = document.getElementById('postFilterSearch').value.trim().toLowerCase();
-        let posts = [...state.posts];
-        if (statusFilter !== 'all') posts = posts.filter(post => post.status === statusFilter || (statusFilter === 'trash' && post.deleted_at));
+        let posts = filterDashboardPosts(statusFilter);
         if (query) posts = posts.filter(post => `${post.title} ${post.excerpt || ''} ${post.category || ''} ${post.content || ''}`.toLowerCase().includes(query));
 
         document.getElementById('postsTableBody').innerHTML = (posts || []).map(post => `
@@ -632,7 +645,8 @@
         if (globalSearch) globalSearch.addEventListener('input', () => {
           const q = document.getElementById('globalSearch').value.trim().toLowerCase();
           if (!q) { renderPostsTable(); return; }
-          const matches = state.posts.filter(post => `${post.title} ${post.content || ''} ${post.category || ''}`.toLowerCase().includes(q));
+          const statusFilter = document.getElementById('postStatusFilter').value;
+          const matches = filterDashboardPosts(statusFilter).filter(post => `${post.title} ${post.content || ''} ${post.category || ''}`.toLowerCase().includes(q));
           document.getElementById('postsTableBody').innerHTML = matches.map(post => `
           <tr>
             <td>${post.featured_image ? `<img src="${post.featured_image}" alt="" style="width:58px;height:58px;object-fit:cover;border-radius:8px;" />` : '—'}</td>
