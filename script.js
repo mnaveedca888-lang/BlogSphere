@@ -19,7 +19,18 @@ const PAGE_CATEGORY = {
 const normalize = (value = '') => value.toLowerCase().trim();
 const normalizeForLookup = (value = '') => value.toLowerCase().replace(/[^a-z0-9\s]/g, '').replace(/\s+/g, ' ').trim();
 
-const getPageName = () => window.location.pathname.split('/').pop() || 'index.html';
+const getPageName = () => {
+  const pageName = window.location.pathname.split('/').pop() || 'index.html';
+  const cleanRoutes = {
+    index: 'index.html',
+    technology: 'Technology.html',
+    business: 'Business.html',
+    'home-decor': 'Home-Decor.html',
+    'make-money-online': 'Make-Money-Online.html',
+    article: 'article.html'
+  };
+  return cleanRoutes[pageName.toLowerCase()] || pageName;
+};
 
 const findPostByTitle = (title = '') => {
   const normalizedTitle = normalizeForLookup(title);
