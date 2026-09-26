@@ -82,7 +82,7 @@ async function getAuthUser(accessToken) {
 async function getAdminProfile(authUserId) {
   const rows = await supabaseGet(`/rest/v1/users?select=id,name,email,role,auth_user_id&auth_user_id=eq.${encodeURIComponent(authUserId)}`);
   const profile = rows[0];
-  if (!profile || profile.email?.toLowerCase() !== 'admin@blogsphere.com' || profile.role !== 'administrator') return null;
+  if (!profile || profile.email?.toLowerCase() !== 'mnaveedca888@gmail.com' || profile.role !== 'administrator') return null;
   return profile;
 }
 
