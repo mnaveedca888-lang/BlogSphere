@@ -6,3 +6,5 @@ npm-debug.log*
 blogsphere.db
 uploads/
 phase1-backup/
+# Local Netlify folder
+.netlify

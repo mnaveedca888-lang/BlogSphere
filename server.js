@@ -8,6 +8,7 @@ const bcrypt = require('bcryptjs');
 const nodemailer = require('nodemailer');
 const fs = require('fs');
 const path = require('path');
+const { getPublicData } = require('./netlify/functions/_supabase');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -155,9 +156,13 @@ async function ensureDatabase() {
 
   await createDefaultCategories();
   await ensureAdminUser();
-  await ensureSeedPosts();
-  await ensureMakeMoneyOnlinePosts();
-  await migrateLegacyArticleContent();
+
+  const shouldSeedDemoData = String(process.env.ALLOW_DEMO_SEED || '').toLowerCase() === 'true';
+  if (shouldSeedDemoData) {
+    await ensureSeedPosts();
+    await ensureMakeMoneyOnlinePosts();
+    await migrateLegacyArticleContent();
+  }
 }
 
 async function createDefaultCategories() {
@@ -460,9 +465,19 @@ app.post('/api/contact', async (req, res) => {
 });
 
 app.get('/api/public-data', async (_, res) => {
-  const posts = await getPublicPosts();
-  const categories = await allDb('SELECT * FROM categories ORDER BY name ASC');
-  res.json({ posts, categories });
+  const hasSupabaseConfig = ['SUPABASE_URL', 'SUPABASE_ANON_KEY', 'SUPABASE_SERVICE_ROLE_KEY']
+    .every((key) => String(process.env[key] || '').trim());
+
+  try {
+    if (hasSupabaseConfig) return res.json(await getPublicData());
+
+    const posts = await getPublicPosts();
+    const categories = await allDb('SELECT * FROM categories ORDER BY name ASC');
+    return res.json({ posts, categories });
+  } catch (error) {
+    console.error('Public data read failed:', error.message);
+    return res.status(503).json({ error: 'Unable to load public data.' });
+  }
 });
 
 app.get('/api/posts', requireAuth, async (_, res) => {
@@ -545,7 +560,8 @@ app.post('/api/posts/:id/trash', requireAuth, async (req, res) => {
 });
 
 app.post('/api/posts/:id/restore', requireAuth, async (req, res) => {
-  await runDb('UPDATE posts SET status = ?, deleted_at = NULL, updated_at = ? WHERE id = ?', ['draft', new Date().toISOString(), req.params.id]);
+  const now = new Date().toISOString();
+  await runDb('UPDATE posts SET status = ?, deleted_at = NULL, published_at = COALESCE(published_at, ?), updated_at = ? WHERE id = ?', ['published', now, now, req.params.id]);
   res.json({ ok: true });
 });
 

@@ -73,7 +73,7 @@ exports.handler = async event => {
       } else if (action === 'trash') {
         await updatePost(id, { status: 'trash', deleted_at: now, updated_at: now });
       } else if (action === 'restore') {
-        await updatePost(id, { status: 'draft', deleted_at: null, updated_at: now });
+        await updatePost(id, { status: 'published', deleted_at: null, updated_at: now });
       } else {
         return jsonResponse(400, { error: 'Unsupported post action.' });
       }

@@ -56,6 +56,10 @@ body.theme-dark {
   box-sizing: border-box;
 }
 
+[hidden] {
+  display: none !important;
+}
+
 html {
   scroll-behavior: smooth;
 }
@@ -918,6 +922,7 @@ body.home-page .site-footer {
   border-radius: 12px;
   overflow: hidden;
   box-shadow: 0 10px 18px rgba(18, 38, 63, 0.04);
+  cursor: pointer;
 }
 
 .story-image {
@@ -1461,6 +1466,7 @@ body.home-page .site-footer {
   border-radius: 12px;
   padding: 12px 14px 12px 12px;
   box-shadow: 0 8px 18px rgba(14, 32, 45, 0.03);
+  cursor: pointer;
 }
 
 .article-thumb {
@@ -2843,6 +2849,22 @@ body.theme-dark .article-page .comment-form textarea,
 body.theme-dark .tech-page .newsletter-box input {
   background: var(--panel);
   border-color: var(--line);
+}
+
+body.theme-dark .article-page .article-content,
+body.theme-dark .article-page .article-content p,
+body.theme-dark .article-page .article-content li,
+body.theme-dark .article-page .article-content h2,
+body.theme-dark .article-page .article-content h3,
+body.theme-dark .article-page .article-summary,
+body.theme-dark .article-page .article-meta-line,
+body.theme-dark .article-page .related-list a,
+body.theme-dark .article-page .article-tags,
+body.theme-dark .article-page .article-tags a,
+body.theme-dark .article-page .author-copy p,
+body.theme-dark .article-page .quote-box p,
+body.theme-dark .article-page .rank-list span {
+  color: var(--text);
 }
 
 body.theme-dark .tech-page .sort-select,
