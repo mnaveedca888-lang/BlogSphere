@@ -40,6 +40,26 @@ async function updatePost(id, values) {
   if (!Array.isArray(result.body) || result.body.length !== 1) throw new Error('Post update affected an unexpected number of rows.');
 }
 
+async function insertPost(values) {
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    const rows = await supabaseGet('/rest/v1/posts?select=id&order=id.desc.nullslast&limit=1');
+    const id = (BigInt(rows[0]?.id || '0') + 1n).toString();
+    try {
+      await supabaseRequest('/rest/v1/posts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+        body: JSON.stringify({ ...values, id })
+      });
+      return;
+    } catch (error) {
+      const primaryKeyConflict = error.supabaseError?.code === '23505'
+        && error.supabaseError.message?.includes('posts_pkey')
+        && /Key \(id\)=/.test(error.supabaseError.details || '');
+      if (!primaryKeyConflict || attempt === 2) throw error;
+    }
+  }
+}
+
 exports.handler = async event => {
   if (!['GET', 'POST', 'PUT', 'DELETE'].includes(event.httpMethod)) return jsonResponse(405, { error: 'Method not allowed.' });
   try {
@@ -86,26 +106,22 @@ exports.handler = async event => {
       if (!title) return jsonResponse(400, { error: 'Title is required.' });
       const categoryId = Number(payload.category_id || 0) || null;
       const now = new Date().toISOString();
-      await supabaseRequest('/rest/v1/posts', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Prefer: 'return=minimal' },
-        body: JSON.stringify({
-          title,
-          slug: payload.slug || title.toLowerCase().replace(/[^a-z0-9\s-]/g, '').trim().replace(/\s+/g, '-').replace(/-+/g, '-'),
-          excerpt: payload.excerpt || '',
-          content: sanitizeRichText(payload.content || ''),
-          featured_image: payload.featured_image || '',
-          category: await categoryValue(categoryId, payload.category),
-          category_id: categoryId,
-          tags: Array.isArray(payload.tags) ? payload.tags : [],
-          author: payload.author || access.session.user.name || 'Admin',
-          status: payload.status || 'draft',
-          meta_title: payload.meta_title || title,
-          meta_description: payload.meta_description || payload.excerpt || '',
-          published_at: payload.published_at || now,
-          created_at: now,
-          updated_at: now
-        })
+      await insertPost({
+        title,
+        slug: payload.slug || title.toLowerCase().replace(/[^a-z0-9\s-]/g, '').trim().replace(/\s+/g, '-').replace(/-+/g, '-'),
+        excerpt: payload.excerpt || '',
+        content: sanitizeRichText(payload.content || ''),
+        featured_image: payload.featured_image || '',
+        category: await categoryValue(categoryId, payload.category),
+        category_id: categoryId,
+        tags: Array.isArray(payload.tags) ? payload.tags : [],
+        author: payload.author || access.session.user.name || 'Admin',
+        status: payload.status || 'draft',
+        meta_title: payload.meta_title || title,
+        meta_description: payload.meta_description || payload.excerpt || '',
+        published_at: payload.published_at || now,
+        created_at: now,
+        updated_at: now
       });
       return responseWithHeaders(201, { ok: true }, setCookie);
     }
