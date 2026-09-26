@@ -196,6 +196,23 @@
             <div id="loginError" class="muted" style="min-height:20px; margin-bottom:10px; color:var(--danger);"></div>
             <button class="login-btn" type="submit" style="width:100%;">Login</button>
           </form>
+          <form id="passwordRecoveryForm" class="hidden">
+            <p>Set a new password for your BlogSphere Admin account.</p>
+            <div class="field">
+              <label for="newAdminPassword">New password</label>
+              <input id="newAdminPassword" type="password" autocomplete="new-password" required />
+            </div>
+            <div class="field">
+              <label for="confirmAdminPassword">Confirm new password</label>
+              <input id="confirmAdminPassword" type="password" autocomplete="new-password" required />
+            </div>
+            <div id="passwordRecoveryError" class="muted" role="alert" style="min-height:20px; margin-bottom:10px; color:var(--danger);"></div>
+            <button class="login-btn" type="submit" style="width:100%;">Set New Password</button>
+          </form>
+          <div id="passwordRecoverySuccess" class="hidden" role="status">
+            <p>Your password has been updated.</p>
+            <button id="returnToAdminLogin" class="login-btn" type="button" style="width:100%;">Return to Admin login</button>
+          </div>
         </div>
       </div>
     </div>
@@ -376,9 +393,20 @@
       const loginError = document.getElementById('loginError');
       const logoutBtn = document.getElementById('logoutBtn');
       const adminName = document.getElementById('adminName');
+      const passwordRecoveryForm = document.getElementById('passwordRecoveryForm');
+      const passwordRecoveryError = document.getElementById('passwordRecoveryError');
+      const passwordRecoverySuccess = document.getElementById('passwordRecoverySuccess');
       const useNetlifyAdminApi = /\.netlify\.app$/i.test(window.location.hostname);
       const adminEndpoint = name => useNetlifyAdminApi ? `/.netlify/functions/api-admin-${name}` : `/api/${name}`;
       const adminPostEndpoint = (id, action = '') => `${adminEndpoint('posts')}?id=${encodeURIComponent(id)}${action ? `&action=${encodeURIComponent(action)}` : ''}`;
+      const recoveryParams = new URLSearchParams(window.location.hash.slice(1));
+      let recoveryAccessToken = useNetlifyAdminApi && recoveryParams.get('type') === 'recovery' ? recoveryParams.get('access_token') : null;
+      const isPasswordRecovery = Boolean(recoveryAccessToken);
+      if (isPasswordRecovery) {
+        window.history.replaceState(null, '', `${window.location.pathname}${window.location.search}`);
+        loginForm.classList.add('hidden');
+        passwordRecoveryForm.classList.remove('hidden');
+      }
 
       function arrayBufferToBase64(buffer) {
         const bytes = new Uint8Array(buffer);
@@ -842,6 +870,37 @@
         adminApp.classList.add('hidden');
       }
 
+      passwordRecoveryForm.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        passwordRecoveryError.textContent = '';
+        const password = document.getElementById('newAdminPassword').value;
+        const confirmation = document.getElementById('confirmAdminPassword').value;
+        if (password !== confirmation) {
+          passwordRecoveryError.textContent = 'The passwords do not match.';
+          return;
+        }
+        if (!recoveryAccessToken) {
+          passwordRecoveryError.textContent = 'This recovery link is invalid or expired. Request a new recovery email.';
+          return;
+        }
+        try {
+          await api('/.netlify/functions/api-admin-password-recovery', {
+            method: 'POST',
+            body: JSON.stringify({ accessToken: recoveryAccessToken, password })
+          });
+          recoveryAccessToken = null;
+          passwordRecoveryForm.classList.add('hidden');
+          passwordRecoverySuccess.classList.remove('hidden');
+        } catch (error) {
+          passwordRecoveryError.textContent = error.message;
+        }
+      });
+
+      document.getElementById('returnToAdminLogin').addEventListener('click', () => {
+        passwordRecoverySuccess.classList.add('hidden');
+        loginForm.classList.remove('hidden');
+      });
+
       document.querySelector('.toggle-pass').addEventListener('click', () => {
         const passwordField = document.getElementById('password');
         const button = document.querySelector('.toggle-pass');
@@ -852,7 +911,7 @@
       loginForm.addEventListener('submit', login);
       bindGlobalHandlers();
       clearPostForm();
-      checkSession();
+      if (!isPasswordRecovery) checkSession();
     </script>
   </body>
 </html>

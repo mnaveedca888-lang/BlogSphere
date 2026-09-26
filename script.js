@@ -2,6 +2,11 @@
 const menuButton = document.querySelector('.menu-button');
 const themeToggle = document.querySelector('.theme-toggle');
 
+const authRecoveryParams = new URLSearchParams(window.location.hash.slice(1));
+if (window.location.hostname.endsWith('.netlify.app') && authRecoveryParams.get('type') === 'recovery' && authRecoveryParams.has('access_token') && !window.location.pathname.endsWith('/admin.html')) {
+  window.location.replace(`${window.location.origin}/admin.html${window.location.search}${window.location.hash}`);
+}
+
 let POSTS = [];
 const STATIC_POSTS = [
   {

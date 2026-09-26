@@ -252,6 +252,7 @@ module.exports = {
   getConfig,
   getAdminProfile,
   getAdminSession,
+  getAuthUser,
   getCategories,
   getPublishedPosts,
   getPublicData,
