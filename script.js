@@ -144,7 +144,8 @@ const matchesQuery = (post, query) => {
 };
 
 const getPostTimestamp = (post) => {
-  const timestamp = Date.parse(post.published_at || post.date || post.created_at || '');
+  const rawValue = post?.published_at ?? post?.created_at ?? post?.date ?? '';
+  const timestamp = Date.parse(rawValue);
   return Number.isNaN(timestamp) ? 0 : timestamp;
 };
 
@@ -660,6 +661,15 @@ const bindFooterLinks = () => {
   });
 };
 
+let relativeTimeRefreshTimer = null;
+
+const clearRelativeTimeRefreshTimer = () => {
+  if (relativeTimeRefreshTimer) {
+    clearInterval(relativeTimeRefreshTimer);
+    relativeTimeRefreshTimer = null;
+  }
+};
+
 const loadPublicPosts = async () => {
   const localHost = ['localhost', '127.0.0.1'].includes(window.location.hostname);
   const endpoints = localHost
@@ -667,7 +677,15 @@ const loadPublicPosts = async () => {
     : ['/.netlify/functions/api-public-data', '/api/public-data'];
   for (const endpoint of endpoints) {
     try {
-      const response = await fetch(endpoint);
+      const url = `${endpoint}${endpoint.includes('?') ? '&' : '?'}_=${Date.now()}`;
+      const response = await fetch(url, {
+        cache: 'no-store',
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          Pragma: 'no-cache',
+          Expires: '0'
+        }
+      });
       if (!response.ok) continue;
       const data = await response.json();
       POSTS = Array.isArray(data.posts) ? data.posts.filter(isPubliclyVisiblePost) : [];
@@ -703,13 +721,11 @@ const initializePage = async () => {
     renderArticlePage();
   }
 
-  if (window.__blogsphereRelativeRefresh) {
-    clearInterval(window.__blogsphereRelativeRefresh);
-  }
-  window.__blogsphereRelativeRefresh = setInterval(() => {
+  clearRelativeTimeRefreshTimer();
+  relativeTimeRefreshTimer = setInterval(() => {
     if (document.hidden) return;
     refreshRelativeTimeRender();
-  }, 30000);
+  }, 15000);
 };
 
 bindTheme();
@@ -727,3 +743,5 @@ document.addEventListener('visibilitychange', () => {
     refreshRelativeTimeRender();
   }
 });
+
+window.addEventListener('beforeunload', clearRelativeTimeRefreshTimer);
