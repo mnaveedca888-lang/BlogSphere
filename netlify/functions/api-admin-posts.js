@@ -19,6 +19,44 @@ async function findPost(id) {
   return rows[0] || null;
 }
 
+function normalizeSlug(value = '') {
+  return String(value || '')
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, '')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '') || 'post';
+}
+
+async function slugExists(slug, excludeId = null) {
+  const query = excludeId
+    ? `/rest/v1/posts?select=id,slug&slug=eq.${encodeURIComponent(slug)}&id=not.eq.${encodeURIComponent(excludeId)}`
+    : `/rest/v1/posts?select=id,slug&slug=eq.${encodeURIComponent(slug)}`;
+  const rows = await supabaseGet(query);
+  return Array.isArray(rows) && rows.length > 0;
+}
+
+async function resolveUniqueSlug(rawSlug, excludeId = null) {
+  const baseSlug = normalizeSlug(rawSlug || `post-${Date.now()}`);
+  let slug = baseSlug;
+  let suffix = 1;
+
+  while (await slugExists(slug, excludeId)) {
+    slug = `${baseSlug}-${suffix}`;
+    suffix += 1;
+  }
+
+  return slug;
+}
+
+function toUtcIso(value, fallback = new Date().toISOString()) {
+  if (value === null || value === undefined || value === '') return fallback;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return fallback;
+  return date.toISOString();
+}
+
 async function withCategoryNames(posts) {
   const categories = await getCategories();
   const names = new Map(categories.map(category => [String(category.id), category.name]));
@@ -41,23 +79,17 @@ async function updatePost(id, values) {
 }
 
 async function insertPost(values) {
-  for (let attempt = 0; attempt < 3; attempt += 1) {
-    const rows = await supabaseGet('/rest/v1/posts?select=id&order=id.desc.nullslast&limit=1');
-    const id = (BigInt(rows[0]?.id || '0') + 1n).toString();
-    try {
-      await supabaseRequest('/rest/v1/posts', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Prefer: 'return=minimal' },
-        body: JSON.stringify({ ...values, id })
-      });
-      return;
-    } catch (error) {
-      const primaryKeyConflict = error.supabaseError?.code === '23505'
-        && error.supabaseError.message?.includes('posts_pkey')
-        && /Key \(id\)=/.test(error.supabaseError.details || '');
-      if (!primaryKeyConflict || attempt === 2) throw error;
-    }
+  const result = await supabaseRequest('/rest/v1/posts', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Prefer: 'return=representation' },
+    body: JSON.stringify(values)
+  });
+
+  if (Array.isArray(result.body) && result.body.length > 0) {
+    return result.body[0];
   }
+
+  return null;
 }
 
 exports.handler = async event => {
@@ -87,13 +119,13 @@ exports.handler = async event => {
           body: JSON.stringify({ title: `${post.title} Copy`, slug, excerpt: post.excerpt, content: post.content, featured_image: post.featured_image, category: post.category, category_id: post.category_id, tags: toJson(post.tags, []), author: post.author, status: 'draft', meta_title: post.meta_title, meta_description: post.meta_description, published_at: now })
         });
       } else if (action === 'publish') {
-        await updatePost(id, { status: 'published', updated_at: now });
+        await updatePost(id, { status: 'published', published_at: now, updated_at: now });
       } else if (action === 'draft') {
         await updatePost(id, { status: 'draft', updated_at: now });
       } else if (action === 'trash') {
         await updatePost(id, { status: 'trash', deleted_at: now, updated_at: now });
       } else if (action === 'restore') {
-        await updatePost(id, { status: 'published', deleted_at: null, updated_at: now });
+        await updatePost(id, { status: 'published', published_at: now, deleted_at: null, updated_at: now });
       } else {
         return jsonResponse(400, { error: 'Unsupported post action.' });
       }
@@ -106,9 +138,12 @@ exports.handler = async event => {
       if (!title) return jsonResponse(400, { error: 'Title is required.' });
       const categoryId = Number(payload.category_id || 0) || null;
       const now = new Date().toISOString();
+      const status = (payload.status || 'draft').toLowerCase();
+      const nextPublishedAt = status === 'published' ? toUtcIso(payload.published_at, now) : toUtcIso(payload.published_at, null);
+      const uniqueSlug = await resolveUniqueSlug(payload.slug || title);
       await insertPost({
         title,
-        slug: payload.slug || title.toLowerCase().replace(/[^a-z0-9\s-]/g, '').trim().replace(/\s+/g, '-').replace(/-+/g, '-'),
+        slug: uniqueSlug,
         excerpt: payload.excerpt || '',
         content: sanitizeRichText(payload.content || ''),
         featured_image: payload.featured_image || '',
@@ -116,10 +151,10 @@ exports.handler = async event => {
         category_id: categoryId,
         tags: Array.isArray(payload.tags) ? payload.tags : [],
         author: payload.author || access.session.user.name || 'Admin',
-        status: payload.status || 'draft',
+        status,
         meta_title: payload.meta_title || title,
         meta_description: payload.meta_description || payload.excerpt || '',
-        published_at: payload.published_at || now,
+        published_at: nextPublishedAt,
         created_at: now,
         updated_at: now
       });
@@ -138,10 +173,15 @@ exports.handler = async event => {
     const payload = parseBody(event);
     const categoryId = Number(payload.category_id || 0) || null;
     const now = new Date().toISOString();
-    const status = payload.status ?? existing.status ?? 'draft';
+    const status = (payload.status ?? existing.status ?? 'draft').toLowerCase();
+    const nextSlug = payload.slug ?? existing.slug ?? existing.title;
+    const uniqueSlug = await resolveUniqueSlug(nextSlug, id);
+    const nextPublishedAt = status === 'published'
+      ? toUtcIso(payload.published_at ?? existing.published_at, now)
+      : toUtcIso(payload.published_at ?? existing.published_at, existing.published_at || null);
     await updatePost(id, {
       title: payload.title ?? existing.title,
-      slug: payload.slug ?? existing.slug,
+      slug: uniqueSlug,
       excerpt: payload.excerpt ?? existing.excerpt ?? '',
       content: sanitizeRichText(payload.content ?? existing.content ?? ''),
       featured_image: payload.featured_image ?? existing.featured_image ?? '',
@@ -152,16 +192,27 @@ exports.handler = async event => {
       status,
       meta_title: payload.meta_title ?? existing.meta_title ?? existing.title,
       meta_description: payload.meta_description ?? existing.meta_description ?? existing.excerpt ?? '',
-      published_at: payload.published_at ?? existing.published_at ?? now,
+      published_at: nextPublishedAt,
       updated_at: now,
       deleted_at: status === 'published' ? null : (payload.deleted_at ?? existing.deleted_at)
     });
     return responseWithHeaders(200, { ok: true }, setCookie);
   } catch (error) {
+    const supabaseError = error.supabaseError || { message: error.message || 'Unknown error' };
     console.error('Admin posts operation failed:', JSON.stringify({
       status: error.status || null,
-      ...(error.supabaseError || { message: error.message })
+      code: supabaseError.code || null,
+      message: supabaseError.message || null,
+      details: supabaseError.details || null,
+      hint: supabaseError.hint || null
     }));
-    return jsonResponse(error.status === 404 ? 404 : 500, { error: error.status === 404 ? 'Post not found.' : 'Unable to complete post operation.' });
+    return jsonResponse(error.status === 404 ? 404 : 500, {
+      error: error.status === 404 ? 'Post not found.' : 'Unable to complete post operation.',
+      status: error.status || 500,
+      code: supabaseError.code || null,
+      message: supabaseError.message || null,
+      details: supabaseError.details || null,
+      hint: supabaseError.hint || null
+    });
   }
 };

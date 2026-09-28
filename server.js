@@ -500,13 +500,14 @@ app.post('/api/posts', requireAuth, async (req, res) => {
   const category = categoryId ? (await getDb('SELECT name FROM categories WHERE id = ?', [categoryId]))?.name || payload.category || 'Technology' : payload.category || 'Technology';
 
   const tags = Array.isArray(payload.tags) ? JSON.stringify(payload.tags) : JSON.stringify([]);
-  const publishedAt = payload.published_at || new Date().toISOString();
+  const status = (payload.status || 'draft').toLowerCase();
   const now = new Date().toISOString();
+  const publishedAt = status === 'published' ? new Date(payload.published_at || now).toISOString() : payload.published_at ? new Date(payload.published_at).toISOString() : null;
 
   await runDb(
     `INSERT INTO posts (title, slug, excerpt, content, featured_image, category, category_id, tags, author, status, meta_title, meta_description, published_at, created_at, updated_at)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    [title, slug, payload.excerpt || '', sanitizeRichText(payload.content || ''), payload.featured_image || '', category, categoryId, tags, payload.author || req.session.user.name || 'Admin', payload.status || 'draft', payload.meta_title || title, payload.meta_description || payload.excerpt || '', publishedAt, now, now]
+    [title, slug, payload.excerpt || '', sanitizeRichText(payload.content || ''), payload.featured_image || '', category, categoryId, tags, payload.author || req.session.user.name || 'Admin', status, payload.meta_title || title, payload.meta_description || payload.excerpt || '', publishedAt, now, now]
   );
 
   res.status(201).json({ ok: true });
@@ -521,12 +522,15 @@ app.put('/api/posts/:id', requireAuth, async (req, res) => {
   const category = categoryId ? (await getDb('SELECT name FROM categories WHERE id = ?', [categoryId]))?.name || payload.category || 'Technology' : payload.category || post.category || 'Technology';
   const tags = Array.isArray(payload.tags) ? JSON.stringify(payload.tags) : JSON.stringify(toJson(post.tags, []));
   const now = new Date().toISOString();
-  const status = payload.status ?? post.status ?? 'draft';
+  const status = (payload.status ?? post.status ?? 'draft').toLowerCase();
   const deletedAt = status === 'published' ? null : post.deleted_at;
+  const publishedAt = status === 'published'
+    ? new Date(payload.published_at ?? post.published_at ?? now).toISOString()
+    : payload.published_at ? new Date(payload.published_at).toISOString() : post.published_at;
 
   await runDb(
     `UPDATE posts SET title = ?, slug = ?, excerpt = ?, content = ?, featured_image = ?, category = ?, category_id = ?, tags = ?, author = ?, status = ?, meta_title = ?, meta_description = ?, published_at = ?, updated_at = ?, deleted_at = ? WHERE id = ?`,
-    [payload.title ?? post.title, payload.slug ?? post.slug ?? normalizeSlug(payload.title ?? post.title), payload.excerpt ?? post.excerpt ?? '', sanitizeRichText(payload.content ?? post.content ?? ''), payload.featured_image ?? post.featured_image ?? '', category, categoryId, tags, payload.author ?? post.author ?? 'Admin', status, payload.meta_title ?? post.meta_title ?? payload.title ?? post.title, payload.meta_description ?? post.meta_description ?? payload.excerpt ?? post.excerpt ?? '', payload.published_at ?? post.published_at ?? new Date().toISOString(), now, deletedAt, req.params.id]
+    [payload.title ?? post.title, payload.slug ?? post.slug ?? normalizeSlug(payload.title ?? post.title), payload.excerpt ?? post.excerpt ?? '', sanitizeRichText(payload.content ?? post.content ?? ''), payload.featured_image ?? post.featured_image ?? '', category, categoryId, tags, payload.author ?? post.author ?? 'Admin', status, payload.meta_title ?? post.meta_title ?? payload.title ?? post.title, payload.meta_description ?? post.meta_description ?? payload.excerpt ?? post.excerpt ?? '', publishedAt, now, deletedAt, req.params.id]
   );
 
   res.json({ ok: true });
@@ -545,7 +549,8 @@ app.post('/api/posts/:id/duplicate', requireAuth, async (req, res) => {
 });
 
 app.post('/api/posts/:id/publish', requireAuth, async (req, res) => {
-  await runDb('UPDATE posts SET status = ?, updated_at = ? WHERE id = ?', ['published', new Date().toISOString(), req.params.id]);
+  const now = new Date().toISOString();
+  await runDb('UPDATE posts SET status = ?, published_at = COALESCE(published_at, ?), updated_at = ? WHERE id = ?', ['published', now, now, req.params.id]);
   res.json({ ok: true });
 });
 

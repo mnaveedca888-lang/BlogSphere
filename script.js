@@ -41,7 +41,27 @@ const findPostByTitle = (title = '') => {
 
 const getUrlParams = () => new URLSearchParams(window.location.search);
 
-const getArticleHref = (post) => `article.html?id=${encodeURIComponent(post.slug || post.id)}`;
+const getArticleRequestValue = () => {
+  const params = getUrlParams();
+  const rawValue = params.get('id') ?? params.get('slug') ?? '';
+  return decodeURIComponent(String(rawValue || '')).trim();
+};
+
+const findArticlePost = (articleId) => {
+  if (!articleId) return null;
+  const lookup = articleId.trim();
+  const normalizedLookup = normalizeForLookup(lookup);
+
+  return POSTS.find((item) => {
+    if (!isPubliclyVisiblePost(item)) return false;
+    const itemId = String(item.id || '');
+    const itemSlug = String(item.slug || '');
+    const itemTitle = String(item.title || '');
+    return itemId === lookup || itemSlug === lookup || normalizeForLookup(itemSlug) === normalizedLookup || normalizeForLookup(itemTitle) === normalizedLookup;
+  }) || null;
+};
+
+const getArticleHref = (post) => `article.html?id=${encodeURIComponent(String(post.id))}`;
 
 const buildStoryCard = (post) => {
   const categoryClass = post.category === 'Business' ? 'business-pill' : post.category === 'Home Decor' ? 'decor-pill' : post.category === 'Make Money Online' ? 'money-pill' : '';
@@ -143,7 +163,43 @@ const formatDisplayDate = (value) => {
   }).format(date);
 };
 
-const formatPostDate = (post) => formatDisplayDate(post?.published_at || post?.created_at || post?.date);
+const formatRelativeTime = (value) => {
+  if (!value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+
+  const diffMs = Date.now() - date.getTime();
+  const totalSeconds = Math.max(0, Math.floor(diffMs / 1000));
+  const totalMinutes = Math.floor(totalSeconds / 60);
+  const totalHours = Math.floor(totalMinutes / 60);
+  const totalDays = Math.floor(totalHours / 24);
+
+  if (totalMinutes < 1) return 'just now';
+  if (totalMinutes === 1) return '1 min ago';
+  if (totalMinutes < 60) return `${totalMinutes} mins ago`;
+  if (totalHours === 1) return '1 hr ago';
+  if (totalHours < 24) return `${totalHours} hrs ago`;
+  if (totalDays === 1) return '1 day ago';
+  return `${totalDays} days ago`;
+};
+
+const formatPostDate = (post) => formatRelativeTime(post?.published_at || post?.created_at || post?.date);
+
+const refreshRelativeTimeRender = () => {
+  const pageName = getPageName();
+  if (pageName === 'index.html') {
+    renderHomePage();
+    return;
+  }
+  if (['Technology.html', 'Business.html', 'Home-Decor.html', 'Make-Money-Online.html'].includes(pageName)) {
+    const category = pageName === 'Technology.html' ? 'Technology' : pageName === 'Business.html' ? 'Business' : pageName === 'Home-Decor.html' ? 'Home Decor' : 'Make Money Online';
+    renderCategoryPage(category);
+    return;
+  }
+  if (pageName === 'article.html') {
+    renderArticlePage();
+  }
+};
 
 const setFeaturedPostContent = (element, post) => {
   const label = element.querySelector('.pill');
@@ -342,13 +398,11 @@ const buildArticleContent = (post) => {
 };
 
 const renderArticlePage = () => {
-  const articleId = (getUrlParams().get('id') || '').trim();
-  const post = articleId
-    ? POSTS.find((item) => isPubliclyVisiblePost(item) && (String(item.id) === String(articleId) || String(item.slug) === String(articleId)))
-    : null;
+  const articleId = getArticleRequestValue();
+  const post = articleId ? findArticlePost(articleId) : null;
 
+  const article = document.querySelector('.article-card');
   if (!post) {
-    const article = document.querySelector('.article-card');
     if (article) {
       article.innerHTML = '<div class="empty-state" style="padding: 32px 20px;">This post is unavailable.</div>';
     }
@@ -649,6 +703,13 @@ const initializePage = async () => {
     renderArticlePage();
   }
 
+  if (window.__blogsphereRelativeRefresh) {
+    clearInterval(window.__blogsphereRelativeRefresh);
+  }
+  window.__blogsphereRelativeRefresh = setInterval(() => {
+    if (document.hidden) return;
+    refreshRelativeTimeRender();
+  }, 30000);
 };
 
 bindTheme();
@@ -661,5 +722,8 @@ bindContactForm();
 initializePage();
 
 document.addEventListener('visibilitychange', () => {
-  if (!document.hidden) refreshPublicPosts();
+  if (!document.hidden) {
+    refreshPublicPosts();
+    refreshRelativeTimeRender();
+  }
 });
