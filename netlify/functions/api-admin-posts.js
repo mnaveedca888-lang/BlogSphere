@@ -50,11 +50,35 @@ async function resolveUniqueSlug(rawSlug, excludeId = null) {
   return slug;
 }
 
+function normalizePublishedAt(value, fallback = new Date().toISOString()) {
+  if (value === null || value === undefined || value === '') return fallback;
+  const trimmed = String(value).trim();
+  if (!trimmed) return fallback;
+
+  let parsedDate = null;
+  const localMatch = trimmed.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/);
+  if (localMatch) {
+    const [, year, month, day, hours, minutes] = localMatch;
+    const localDate = new Date(Number(year), Number(month) - 1, Number(day), Number(hours), Number(minutes));
+    if (!Number.isNaN(localDate.getTime())) parsedDate = localDate;
+  }
+
+  if (!parsedDate) {
+    parsedDate = new Date(value);
+  }
+
+  if (!Number.isNaN(parsedDate.getTime())) {
+    const normalized = new Date(parsedDate.getTime());
+    const now = Date.now();
+    return normalized.getTime() > now ? new Date(now).toISOString() : normalized.toISOString();
+  }
+
+  return fallback;
+}
+
 function toUtcIso(value, fallback = new Date().toISOString()) {
   if (value === null || value === undefined || value === '') return fallback;
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return fallback;
-  return date.toISOString();
+  return normalizePublishedAt(value, fallback);
 }
 
 async function withCategoryNames(posts) {

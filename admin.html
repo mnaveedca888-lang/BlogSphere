@@ -525,6 +525,25 @@
         document.getElementById('postCategory').value = '';
       }
 
+      function toIsoFromLocalDateTime(value) {
+        if (!value || typeof value !== 'string') return '';
+        const trimmed = value.trim();
+        if (!trimmed) return '';
+        const localMatch = trimmed.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/);
+        let parsedDate = null;
+        if (localMatch) {
+          const [, year, month, day, hours, minutes] = localMatch;
+          const localDate = new Date(Number(year), Number(month) - 1, Number(day), Number(hours), Number(minutes));
+          if (!Number.isNaN(localDate.getTime())) parsedDate = localDate;
+        }
+        if (!parsedDate) {
+          parsedDate = new Date(value);
+        }
+        if (!parsedDate || Number.isNaN(parsedDate.getTime())) return '';
+        const now = Date.now();
+        return parsedDate.getTime() > now ? new Date(now).toISOString() : parsedDate.toISOString();
+      }
+
       function toDateTimeLocal(value) {
         if (!value) return '';
         const date = new Date(value);
@@ -682,6 +701,7 @@
         if (postFormEl) postFormEl.addEventListener('submit', async (event) => {
           event.preventDefault();
           const isPublishAction = event.submitter?.id === 'publishPostBtn';
+          const rawPublishedAt = document.getElementById('postPublishedAt').value;
           const payload = {
             title: document.getElementById('postTitle').value.trim(),
             slug: document.getElementById('postSlug').value.trim() || document.getElementById('postTitle').value.trim().toLowerCase().replace(/[^a-z0-9]+/g,'-'),
@@ -691,7 +711,7 @@
             tags: (document.getElementById('postTags').value || '').split(',').map(tag => tag.trim()).filter(Boolean),
             author: document.getElementById('postAuthor').value.trim() || 'Admin',
             status: isPublishAction && !state.currentEditPostId ? 'published' : document.getElementById('postStatus').value,
-            published_at: document.getElementById('postPublishedAt').value || new Date().toISOString(),
+            published_at: rawPublishedAt ? toIsoFromLocalDateTime(rawPublishedAt) : new Date().toISOString(),
             meta_title: document.getElementById('postMetaTitle').value.trim(),
             meta_description: document.getElementById('postMetaDescription').value.trim(),
             featured_image: state.selectedImage || ''

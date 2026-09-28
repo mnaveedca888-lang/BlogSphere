@@ -34,3 +34,8 @@
   from = "/api/public-data"
   to = "/.netlify/functions/api-public-data"
   status = 200
+
+[[redirects]]
+  from = "/api/contact"
+  to = "/.netlify/functions/api-contact"
+  status = 200

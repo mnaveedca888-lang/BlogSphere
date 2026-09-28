@@ -633,13 +633,35 @@ const bindContactForm = () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(Object.fromEntries(new FormData(form)))
       });
-      const result = await response.json();
-      if (!response.ok) throw new Error(result.error || 'We could not send your message.');
+
+      const contentType = response.headers.get('content-type') || '';
+      const rawText = await response.text();
+      let result = {};
+      if (rawText) {
+        const trimmed = rawText.trim();
+        if (trimmed) {
+          try {
+            result = JSON.parse(trimmed);
+          } catch {
+            throw new Error(trimmed.length > 180 ? 'Unable to send your message.' : trimmed);
+          }
+        }
+      }
+
+      if (!response.ok || result.ok === false) {
+        const message = result && typeof result.message === 'string' && result.message.trim() ? result.message : 'Unable to send your message.';
+        throw new Error(message);
+      }
+
+      if (!contentType.includes('application/json') && !result.ok) {
+        throw new Error('Unable to send your message.');
+      }
+
       form.reset();
-      status.textContent = 'Thank you! Your message has been sent successfully.';
+      status.textContent = result.message || 'Thank you! Your message has been sent successfully.';
       status.classList.add('is-success');
     } catch (error) {
-      status.textContent = error.message;
+      status.textContent = error.message || 'Unable to send your message.';
       status.classList.add('is-error');
     } finally {
       button.disabled = false;

@@ -61,6 +61,32 @@ function normalizeSlug(value = '') {
     .replace(/^-|-$/g, '');
 }
 
+function normalizePublishedAt(value, fallback = new Date().toISOString()) {
+  if (value === null || value === undefined || value === '') return fallback;
+  const trimmed = String(value).trim();
+  if (!trimmed) return fallback;
+
+  let parsedDate = null;
+  const localMatch = trimmed.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/);
+  if (localMatch) {
+    const [, year, month, day, hours, minutes] = localMatch;
+    const localDate = new Date(Number(year), Number(month) - 1, Number(day), Number(hours), Number(minutes));
+    if (!Number.isNaN(localDate.getTime())) parsedDate = localDate;
+  }
+
+  if (!parsedDate) {
+    parsedDate = new Date(value);
+  }
+
+  if (!Number.isNaN(parsedDate.getTime())) {
+    const normalized = new Date(parsedDate.getTime());
+    const now = Date.now();
+    return normalized.getTime() > now ? new Date(now).toISOString() : normalized.toISOString();
+  }
+
+  return fallback;
+}
+
 function toJson(value, fallback = []) {
   try {
     const parsed = JSON.parse(value || 'null');
@@ -431,15 +457,15 @@ app.post('/api/contact', async (req, res) => {
   const message = String(req.body?.message || '').trim();
 
   if (!name || !email || !subject || !message) {
-    return res.status(400).json({ error: 'Name, email, subject, and message are required.' });
+    return res.status(400).json({ ok: false, message: 'Name, email, subject, and message are required.' });
   }
   if (name.length > 120 || subject.length > 200 || message.length > 5000 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    return res.status(400).json({ error: 'Please provide valid contact information.' });
+    return res.status(400).json({ ok: false, message: 'Please provide valid contact information.' });
   }
   const gmailUser = String(process.env.GMAIL_USER || '').trim();
   const gmailAppPassword = String(process.env.GMAIL_APP_PASSWORD || '').trim();
   if (!gmailUser || !gmailAppPassword) {
-    return res.status(503).json({ error: 'Contact email is not configured. Please try again later.' });
+    return res.status(503).json({ ok: false, message: 'Contact email is not configured. Please try again later.' });
   }
 
   try {
@@ -457,10 +483,10 @@ app.post('/api/contact', async (req, res) => {
       subject: `[BlogSphere Contact] ${subject.replace(/[\r\n]+/g, ' ')}`,
       text: `Visitor name: ${name}\nVisitor email: ${email}\nSubject: ${subject}\nSubmitted: ${new Date().toISOString()}\n\nMessage:\n${message}`
     });
-    return res.json({ ok: true });
+    return res.json({ ok: true, message: 'Your message has been sent successfully.' });
   } catch (error) {
     console.error('Contact email delivery failed:', error.message);
-    return res.status(502).json({ error: 'We could not send your message. Please try again later.' });
+    return res.status(502).json({ ok: false, message: 'Unable to send your message.' });
   }
 });
 
@@ -502,7 +528,7 @@ app.post('/api/posts', requireAuth, async (req, res) => {
   const tags = Array.isArray(payload.tags) ? JSON.stringify(payload.tags) : JSON.stringify([]);
   const status = (payload.status || 'draft').toLowerCase();
   const now = new Date().toISOString();
-  const publishedAt = status === 'published' ? new Date(payload.published_at || now).toISOString() : payload.published_at ? new Date(payload.published_at).toISOString() : null;
+  const publishedAt = status === 'published' ? normalizePublishedAt(payload.published_at || now, now) : payload.published_at ? normalizePublishedAt(payload.published_at, null) : null;
 
   await runDb(
     `INSERT INTO posts (title, slug, excerpt, content, featured_image, category, category_id, tags, author, status, meta_title, meta_description, published_at, created_at, updated_at)
@@ -525,8 +551,8 @@ app.put('/api/posts/:id', requireAuth, async (req, res) => {
   const status = (payload.status ?? post.status ?? 'draft').toLowerCase();
   const deletedAt = status === 'published' ? null : post.deleted_at;
   const publishedAt = status === 'published'
-    ? new Date(payload.published_at ?? post.published_at ?? now).toISOString()
-    : payload.published_at ? new Date(payload.published_at).toISOString() : post.published_at;
+    ? normalizePublishedAt(payload.published_at ?? post.published_at ?? now, now)
+    : payload.published_at ? normalizePublishedAt(payload.published_at, post.published_at || null) : post.published_at;
 
   await runDb(
     `UPDATE posts SET title = ?, slug = ?, excerpt = ?, content = ?, featured_image = ?, category = ?, category_id = ?, tags = ?, author = ?, status = ?, meta_title = ?, meta_description = ?, published_at = ?, updated_at = ?, deleted_at = ? WHERE id = ?`,
