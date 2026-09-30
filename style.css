@@ -456,9 +456,17 @@ body.home-page .site-footer {
 
 .logo img {
   display: block;
-  height: 46px;
+  height: 58px;
   width: auto;
-  max-width: 180px;
+  max-width: 220px;
+  object-fit: contain;
+}
+
+.footer-logo img {
+  display: block;
+  height: 42px;
+  width: auto;
+  max-width: 170px;
   object-fit: contain;
 }
 
