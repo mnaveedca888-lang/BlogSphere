@@ -96,16 +96,23 @@
 
           <div class="comment-box">
             <a href="index.html" class="prev-post">← Previous Post</a>
+            <h3>Comments</h3>
+            <div id="article-comments" aria-live="polite"></div>
             <h3>Leave a Comment</h3>
-            <div class="comment-form">
+            <form class="comment-form" id="comment-form">
               <div class="form-row">
-                <input type="text" placeholder="Name *" />
-                <input type="email" placeholder="Email *" />
-                <input type="text" placeholder="Website" />
+                <input id="comment-name" name="name" type="text" placeholder="Name *" maxlength="120" required />
+                <input id="comment-email" name="email" type="email" placeholder="Email * (not published)" maxlength="254" required />
+                <input id="comment-website" name="website_url" type="url" placeholder="Website (optional)" maxlength="500" />
               </div>
-              <textarea placeholder="Write your comment..."></textarea>
-              <button type="button">Post Comment</button>
-            </div>
+              <div aria-hidden="true" style="position:absolute;left:-10000px;top:auto;width:1px;height:1px;overflow:hidden">
+                <label for="comment-website-check">Leave this field empty</label>
+                <input id="comment-website-check" name="website" type="text" tabindex="-1" autocomplete="off" />
+              </div>
+              <textarea id="comment-body" name="body" placeholder="Write your comment..." maxlength="5000" required></textarea>
+              <button type="submit">Post Comment</button>
+              <p id="comment-status" role="status" aria-live="polite">Comments are reviewed before they appear.</p>
+            </form>
           </div>
         </article>
 

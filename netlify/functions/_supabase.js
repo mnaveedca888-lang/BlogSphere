@@ -84,14 +84,15 @@ async function getAuthUser(accessToken) {
 }
 
 async function getAdminProfile(authUserId) {
-  const rows = await supabaseGet(`/rest/v1/users?select=id,name,email,role,auth_user_id&auth_user_id=eq.${encodeURIComponent(authUserId)}`);
+  const rows = await supabaseGet(`/rest/v1/users?select=id,name,email,role,auth_user_id,is_active,must_change_password&auth_user_id=eq.${encodeURIComponent(authUserId)}`);
   const profile = rows[0];
-  if (!profile || profile.email?.toLowerCase() !== adminEmail || profile.role !== 'administrator') return null;
+  if (!profile || profile.is_active !== true) return null;
   return profile;
 }
 
 function sessionKey() {
-  const secret = String(process.env.SESSION_SECRET || '').trim() || getConfig().serviceRoleKey;
+  const secret = String(process.env.SESSION_SECRET || '').trim();
+  if (secret.length < 32) throw new Error('SESSION_SECRET must contain at least 32 characters.');
   return crypto.createHash('sha256').update(secret).digest();
 }
 
@@ -129,7 +130,15 @@ function clearSessionCookie() {
 }
 
 function publicAdminUser(profile) {
-  return { id: profile.id, name: profile.name, email: profile.email, role: profile.role };
+  return {
+    id: profile.id,
+    name: profile.name,
+    email: profile.email,
+    role: profile.role,
+    is_active: profile.is_active,
+    must_change_password: profile.must_change_password === true,
+    is_main_admin: profile.email?.toLowerCase() === adminEmail
+  };
 }
 
 async function getAdminSession(event) {
@@ -149,6 +158,8 @@ async function getAdminSession(event) {
   if (!profile) return null;
   return {
     user: publicAdminUser(profile),
+    profile,
+    accessToken: refreshed?.access_token || session.accessToken,
     setCookie: refreshed ? sessionCookie({ accessToken: refreshed.access_token, refreshToken: refreshed.refresh_token || session.refreshToken }) : null
   };
 }
@@ -156,7 +167,18 @@ async function getAdminSession(event) {
 async function requireAdmin(event) {
   const session = await getAdminSession(event);
   if (!session) return { response: jsonResponse(401, { error: 'Unauthorized' }) };
+  if (session.user.must_change_password) {
+    return { response: jsonResponse(403, { error: 'Change your temporary password before continuing.', code: 'PASSWORD_CHANGE_REQUIRED' }) };
+  }
   return { session };
+}
+
+function isMainAdmin(user) {
+  return user?.email?.toLowerCase() === adminEmail;
+}
+
+function hasRole(user, roles) {
+  return roles.includes(user?.role);
 }
 
 function parseBody(event) {
@@ -261,6 +283,8 @@ module.exports = {
   getCategories,
   getPublishedPosts,
   getPublicData,
+  hasRole,
+  isMainAdmin,
   jsonResponse,
   mapPublicPost,
   parseBody,

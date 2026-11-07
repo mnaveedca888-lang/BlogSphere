@@ -1,995 +1,402 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>BlogSphere Admin</title>
-    <style>
-      :root {
-        --bg: #f3f6fb;
-        --panel: #ffffff;
-        --panel-alt: #eef4ff;
-        --sidebar: #111827;
-        --sidebar-soft: #1f2937;
-        --text: #18212f;
-        --muted: #5f6f86;
-        --line: #e4eaf3;
-        --primary: #2563eb;
-        --button-text: #ffffff;
-        --primary-soft: #dfeafe;
-        --success: #0f9f6e;
-        --danger: #dc2626;
-        --warning: #d97706;
-        --shadow: 0 16px 32px rgba(15, 23, 42, 0.1);
-      }
-      body.dark {
-        --bg: #0b1220;
-        --panel: #121d2d;
-        --panel-alt: #16283d;
-        --sidebar: #0a1119;
-        --sidebar-soft: #162132;
-        --text: #edf5ff;
-        --muted: #afbdd4;
-        --line: #243247;
-        --primary: #2563eb;
-        --button-text: #ffffff;
-        --primary-soft: #132a52;
-        --success: #53d39a;
-        --danger: #dc2626;
-        --warning: #fbbf24;
-        --shadow: 0 20px 42px rgba(0,0,0,0.3);
-      }
-      * { box-sizing: border-box; }
-      body {
-        margin: 0; font-family: Arial, sans-serif; background: var(--bg); color: var(--text);
-      }
-      a { color: inherit; text-decoration: none; }
-      button, input, select, textarea { font: inherit; }
-      .hidden { display: none !important; }
-      .login-shell {
-        min-height: 100vh; display: grid; place-items: center; background: linear-gradient(135deg, #edf4ff, #f5f7fa 45%, #eefaf4);
-        padding: 24px;
-      }
-      body.dark .login-shell {
-        background: linear-gradient(135deg, #07111e, #0d1728 45%, #08191f);
-      }
-      .login-card {
-        width: min(100%, 420px); background: var(--panel); border: 1px solid var(--line); border-radius: 22px; box-shadow: var(--shadow); overflow: hidden;
-      }
-      .login-header {
-        padding: 24px 22px; background: var(--panel-alt); border-bottom: 1px solid var(--line);
-      }
-      .brand { display: flex; align-items: center; gap: 12px; font-weight: 700; font-size: 1.6rem; }
-      .brand-mark {
-        width: 42px; height: 42px; border-radius: 14px; background: linear-gradient(135deg, var(--primary), #0ea5e9); position: relative;
-      }
-      .brand-mark::before {
-        content: ""; position: absolute; inset: 9px; border-radius: 50%; border: 2px solid white;
-      }
-      .login-body { padding: 22px; }
-      .field { margin-bottom: 18px; }
-      .field label { display: block; margin-bottom: 8px; font-weight: 700; }
-      input, select, textarea {
-        width: 100%; border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; background: var(--panel); color: var(--text);
-      }
-      input:focus, select:focus, textarea:focus { outline: 2px solid rgba(37,99,235,0.12); border-color: var(--primary); }
-      .password-wrap { position: relative; }
-      .password-wrap input { padding-right: 50px; }
-      .toggle-pass {
-        position: absolute; right: 12px; top: 50%; transform: translateY(-50%); border: none; background: transparent; color: var(--muted); cursor: pointer; font-weight: 700;
-      }
-      .forgot-password-link { display: block; margin: -6px 0 16px; text-align: right; color: var(--primary); font-weight: 700; }
-      .login-btn, .primary-btn, .secondary-btn, .danger-btn, .small-btn {
-        border: none; border-radius: 10px; padding: 12px 16px; font-weight: 700; cursor: pointer;
-      }
-      .login-btn, .primary-btn { background: var(--primary); color: var(--button-text); }
-      .secondary-btn { background: var(--panel-alt); color: var(--text); border: 1px solid var(--line); }
-      .danger-btn { background: var(--danger); color: var(--button-text); }
-      .app-shell { display: grid; grid-template-columns: 250px 1fr; min-height: 100vh; min-width: 0; }
-      .sidebar {
-        background: var(--sidebar); color: var(--button-text); padding: 18px 14px; position: sticky; top: 0; height: 100vh;
-      }
-      .sidebar .brand { margin-bottom: 20px; padding: 6px 8px; }
-      .nav-item {
-        border-radius: 10px; padding: 12px 12px; margin: 6px 0; cursor: pointer; color: #dfe8f8; display: flex; justify-content: space-between; align-items: center;
-      }
-      .nav-item.active, .nav-item:hover { background: var(--sidebar-soft); }
-      .main-panel { padding: 18px; min-width: 0; }
-      .topbar {
-        background: var(--panel); border: 1px solid var(--line); border-radius: 16px; margin-bottom: 24px; padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; gap: 14px; box-shadow: var(--shadow);
-      }
-      .topbar-search { flex: 1; }
-      .topbar-actions { display: flex; align-items: center; gap: 10px; }
-      .avatar-pill {
-        display: inline-flex; align-items: center; gap: 8px; padding: 7px 10px; background: var(--panel-alt); border-radius: 999px; border: 1px solid var(--line);
-      }
-      .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 18px; margin-bottom: 20px; }
-      .stat-card {
-        background: var(--panel); border: 1px solid var(--line); border-radius: 16px; box-shadow: var(--shadow); padding: 18px;
-      }
-      .stat-label { color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; font-size: 0.74rem; }
-      .stat-value { font-size: 2rem; font-weight: 700; margin-top: 8px; }
-      .panel {
-        background: var(--panel); border: 1px solid var(--line); border-radius: 16px; box-shadow: var(--shadow); padding: 18px; margin-bottom: 18px;
-      }
-      .panel-header { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 14px; }
-      .table-wrap { overflow-x: auto; min-width: 0; max-width: 100%; }
-      table { width: 100%; border-collapse: collapse; min-width: 760px; }
-      th, td { border-bottom: 1px solid var(--line); padding: 12px 10px; text-align: left; }
-      th { color: var(--muted); font-size: 0.74rem; text-transform: uppercase; letter-spacing: 0.06em; }
-      .status-badge {
-        display: inline-block; border-radius: 999px; padding: 5px 9px; font-size: 0.74rem; font-weight: 700; text-transform: uppercase;
-      }
-      .status-published { background: rgba(15,159,110,0.12); color: var(--success); }
-      .status-draft { background: rgba(217,119,6,0.12); color: var(--warning); }
-      .status-trash { background: rgba(220,38,38,0.12); color: var(--danger); }
-      .actions { display: flex; gap: 8px; flex-wrap: wrap; }
-      .small-btn {
-        background: var(--panel-alt); color: var(--text); border: 1px solid var(--line); padding: 7px 10px; font-size: 0.8rem;
-      }
-      .small-btn.danger { background: rgba(220,38,38,0.08); color: var(--danger); border-color: rgba(220,38,38,0.12); }
-      .content-section { display: none; }
-      .content-section.active { display: block; }
-      .editor-grid { display: grid; grid-template-columns: 1.3fr 0.7fr; gap: 18px; }
-      .field-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
-      .toolbar {
-        padding: 10px; background: var(--panel-alt); border: 1px solid var(--line); border-bottom: none; display: flex; flex-wrap: wrap; gap: 6px; border-radius: 10px 10px 0 0;
-      }
-      .toolbar button, .toolbar select, .toolbar input[type="color"] {
-        width: auto; min-height: 32px; border: 1px solid var(--line); background: var(--panel); color: var(--text); border-radius: 7px; padding: 5px 8px; cursor: pointer;
-      }
-      .toolbar button.active { background: var(--primary); color: var(--button-text); border-color: var(--primary); }
-      .toolbar input[type="color"] { padding: 3px; width: 36px; }
-      .toolbar-separator { width: 1px; background: var(--line); margin: 0 2px; }
-      .toolbar-label { display: inline-flex; align-items: center; color: var(--muted); font-size: 0.78rem; padding: 0 2px;
-      }
-      .editor-area {
-        min-height: 520px; max-height: 70vh; overflow-y: auto; line-height: 1.65; border: 1px solid var(--line); border-radius: 0 0 10px 10px; background: var(--panel); padding: 16px; outline: none;
-      }
-      .thumbnail-box {
-        min-height: 160px; border: 1px dashed var(--line); border-radius: 12px; background: var(--panel-alt); display: grid; place-items: center; overflow: hidden;
-      }
-      .thumbnail-box img { max-width: 100%; max-height: 160px; object-fit: cover; }
-      .tag-list { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
-      .chip { display: inline-flex; align-items: center; gap: 6px; padding: 5px 9px; border-radius: 999px; background: var(--panel-alt); border: 1px solid var(--line); font-size: 0.78rem; }
-      .modal {
-        position: fixed; inset: 0; background: rgba(15,23,42,0.55); display: none; place-items: center; padding: 20px; z-index: 40;
-      }
-      .modal.active { display: grid; }
-      .modal-card {
-        width: min(100%, 500px); background: var(--panel); border: 1px solid var(--line); border-radius: 18px; padding: 20px; box-shadow: var(--shadow);
-      }
-      .modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 18px; }
-      .muted { color: var(--muted); }
-      @media (max-width: 980px) {
-        .app-shell { grid-template-columns: 1fr; }
-        .sidebar { position: relative; height: auto; }
-        .nav-item { display: inline-flex; margin-right: 8px; }
-        .nav-list { display: flex; flex-wrap: wrap; }
-        .editor-grid { grid-template-columns: 1fr; }
-      }
-      @media (max-width: 640px) {
-        .main-panel { padding: 12px; }
-        .topbar { flex-direction: column; align-items: stretch; }
-        .field-row { grid-template-columns: 1fr; }
-      }
-    </style>
-  </head>
-  <body>
-    <div id="loginShell" class="login-shell">
-      <div class="login-card">
-        <div class="login-header">
-          <div class="brand"><span class="brand-mark" aria-hidden="true"></span><span>BlogSphere Admin</span></div>
-        </div>
-        <div class="login-body">
-          <form id="loginForm">
-            <div class="field">
-              <label for="email">Gmail / Email</label>
-              <input id="email" type="email" placeholder="admin@blogsphere.com" required />
-            </div>
-            <div class="field">
-              <label for="password">Password</label>
-              <div class="password-wrap">
-                <input id="password" type="password" placeholder="Enter password" required />
-                <button type="button" class="toggle-pass" aria-label="Show password">Show</button>
-              </div>
-            </div>
-            <div id="loginError" class="muted" style="min-height:20px; margin-bottom:10px; color:var(--danger);"></div>
-            <button class="login-btn" type="submit" style="width:100%;">Login</button>
-            <a id="forgotPasswordLink" class="forgot-password-link hidden" href="#forgot-password">Forgot Password?</a>
-          </form>
-          <form id="passwordRecoveryRequestForm" class="hidden">
-            <p>Enter your administrator email and we’ll send a password recovery link if it matches the BlogSphere Admin account.</p>
-            <div class="field">
-              <label for="recoveryEmail">Administrator email</label>
-              <input id="recoveryEmail" type="email" autocomplete="email" required />
-            </div>
-            <div id="recoveryRequestStatus" class="muted" role="status" style="min-height:20px; margin-bottom:10px;"></div>
-            <button class="login-btn" type="submit" style="width:100%;">Send Recovery Link</button>
-            <button id="cancelRecoveryRequest" class="secondary-btn" type="button" style="width:100%; margin-top:10px;">Back to Admin login</button>
-          </form>
-          <form id="passwordRecoveryForm" class="hidden">
-            <p>Set a new password for your BlogSphere Admin account.</p>
-            <div class="field">
-              <label for="newAdminPassword">New password</label>
-              <input id="newAdminPassword" type="password" autocomplete="new-password" required />
-            </div>
-            <div class="field">
-              <label for="confirmAdminPassword">Confirm new password</label>
-              <input id="confirmAdminPassword" type="password" autocomplete="new-password" required />
-            </div>
-            <div id="passwordRecoveryError" class="muted" role="alert" style="min-height:20px; margin-bottom:10px; color:var(--danger);"></div>
-            <button class="login-btn" type="submit" style="width:100%;">Set New Password</button>
-          </form>
-          <div id="passwordRecoverySuccess" class="hidden" role="status">
-            <p>Your password has been updated.</p>
-            <button id="returnToAdminLogin" class="login-btn" type="button" style="width:100%;">Return to Admin login</button>
-          </div>
-        </div>
-      </div>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BlogSphere Admin — Full Admin</title>
+<style>
+:root{--navy:#0f172a;--navy2:#1e293b;--blue:#2563eb;--blue2:#1d4ed8;--bg:#f1f5f9;--card:#fff;--text:#0f172a;--muted:#64748b;--border:#e2e8f0;--green:#dcfce7;--green-t:#166534;--amber:#fef3c7;--amber-t:#92400e;--red:#fee2e2;--red-t:#991b1b;--grey:#f1f5f9}
+*{box-sizing:border-box}
+body{margin:0;font-family:Arial,Helvetica,sans-serif;background:var(--bg);color:var(--text)}
+body.dark{--bg:#0f172a;--card:#1e293b;--text:#f1f5f9;--muted:#94a3b8;--border:#334155;--grey:#334155}
+a{color:var(--blue)}
+button{cursor:pointer;font-family:inherit}
+.btn{background:var(--blue);color:#fff;border:0;padding:9px 16px;border-radius:8px;font-size:14px}
+.btn:hover{background:var(--blue2)}
+.btn.ghost{background:#fff;color:var(--text);border:1px solid var(--border)}
+body.dark .btn.ghost{background:var(--navy2);color:#f1f5f9}
+.btn.danger{background:#dc2626}.btn.danger:hover{background:#b91c1c}
+.btn.small{padding:5px 10px;font-size:13px;border-radius:6px}
+.btn:disabled{opacity:.55;cursor:not-allowed}
+input,select,textarea{width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-size:14px;background:var(--card);color:var(--text)}
+label{display:block;font-size:13px;font-weight:bold;margin:14px 0 6px}
+textarea{min-height:120px;resize:vertical}
+.hidden{display:none!important}
+/* login */
+.login-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;background:linear-gradient(135deg,#0f172a,#2563eb)}
+.login-card{background:#fff;color:#0f172a;width:100%;max-width:420px;padding:32px;border-radius:16px;box-shadow:0 20px 50px rgba(0,0,0,.3)}
+.login-card h1{margin:0 0 4px;font-size:26px}
+.login-card p{color:#64748b;margin:0 0 10px}
+.badge{display:inline-block;background:#f1f5f9;color:#334155;padding:4px 10px;border-radius:999px;font-size:12px;font-weight:bold}
+.badge.admin{background:#dbeafe;color:#1d4ed8}
+.login-note{font-size:13px;background:#fef3c7;color:#92400e;padding:10px;border-radius:8px;margin-top:14px}
+.error{font-size:13px;background:#fee2e2;color:#991b1b;padding:10px;border-radius:8px;margin-top:12px}
+/* app layout */
+#app{display:flex;min-height:100vh}
+.sidebar{width:250px;background:var(--navy);color:#fff;position:fixed;top:0;left:0;bottom:0;padding:20px 14px;overflow-y:auto;z-index:20}
+.sidebar h1{font-size:22px;margin:4px 0 20px;display:flex;align-items:center;gap:10px}
+.logo{width:32px;height:32px;border-radius:50%;background:var(--blue);display:inline-flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
+.side-label{font-size:11px;letter-spacing:1.5px;color:#94a3b8;margin:18px 10px 8px;text-transform:uppercase}
+.side-item{display:flex;align-items:center;gap:10px;width:100%;text-align:left;background:transparent;color:#fff;border:0;padding:11px 12px;border-radius:10px;font-size:15px;margin-bottom:2px}
+.side-item:hover{background:#1e293b}
+.side-item.active{background:#334155;font-weight:bold}
+.side-item .ic{font-size:18px;width:24px;text-align:center}
+.side-footer{margin-top:28px;padding:10px;font-size:12px;color:#94a3b8;border-top:1px solid #1e293b}
+.main{flex:1;margin-left:250px;min-width:0}
+.topbar{background:var(--card);margin:14px;border-radius:14px;padding:12px 16px;display:flex;gap:12px;align-items:center;box-shadow:0 1px 4px rgba(0,0,0,.06);position:sticky;top:14px;z-index:10}
+.topbar input{max-width:420px}
+.topbar .spacer{flex:1}
+.menu-btn{display:none;background:var(--navy);color:#fff;border:0;border-radius:8px;padding:9px 12px;font-size:18px}
+.content{padding:6px 20px 40px}
+.section h2{margin:10px 0 4px;font-size:24px}
+.section .sub{color:var(--muted);margin:0 0 18px}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:14px;margin-bottom:18px}
+.stat{background:var(--card);border-radius:14px;padding:18px;box-shadow:0 1px 4px rgba(0,0,0,.06)}
+.stat .n{font-size:28px;font-weight:bold}
+.stat .l{color:var(--muted);font-size:13px;margin-top:4px}
+.card{background:var(--card);border-radius:14px;padding:18px;box-shadow:0 1px 4px rgba(0,0,0,.06);margin-bottom:18px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+@media(max-width:900px){.grid2{grid-template-columns:1fr}}
+.bar-row{display:flex;align-items:center;gap:10px;margin:10px 0;font-size:14px}
+.bar-row .nm{width:150px;flex-shrink:0}
+.bar-track{flex:1;background:var(--grey);border-radius:999px;height:12px;overflow:hidden}
+.bar-fill{height:100%;background:var(--blue);border-radius:999px}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th,td{text-align:left;padding:10px 8px;border-bottom:1px solid var(--border);vertical-align:middle}
+th{color:var(--muted);font-size:12px;letter-spacing:.5px;text-transform:uppercase}
+td img.thumb{width:56px;height:40px;object-fit:cover;border-radius:6px;background:#e2e8f0}
+.pill{display:inline-block;padding:4px 10px;border-radius:999px;font-size:12px;font-weight:bold}
+.pill.published,.pill.approved{background:var(--green);color:var(--green-t)}
+.pill.draft,.pill.pending{background:var(--amber);color:var(--amber-t)}
+.pill.trash,.pill.trashed{background:var(--red);color:var(--red-t)}
+.toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:14px}
+.toolbar input,.toolbar select{width:auto;flex:1;min-width:160px}
+.toolbar .btn{flex-shrink:0}
+.notice{background:#eff6ff;border:1px solid #bfdbfe;color:#1e40af;padding:12px 14px;border-radius:10px;font-size:13px;margin-bottom:16px}
+body.dark .notice{background:#1e3a5f;color:#bfdbfe;border-color:#334155}
+.notice.warn{background:#fef3c7;border-color:#fde68a;color:#92400e}
+body.dark .notice.warn{background:#451a03;color:#fde68a}
+.list-item{display:flex;gap:12px;align-items:flex-start;padding:12px 0;border-bottom:1px solid var(--border)}
+.list-item:last-child{border-bottom:0}
+.list-item img{width:64px;height:48px;object-fit:cover;border-radius:8px;background:#e2e8f0}
+.media-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:14px}
+.media-item{background:var(--card);border:1px solid var(--border);border-radius:12px;overflow:hidden}
+.media-item img{width:100%;height:130px;object-fit:cover;display:block;background:#e2e8f0}
+.media-item .pad{padding:10px;font-size:13px}
+.media-item .pad b{display:block;margin-bottom:4px}
+.media-item .pad code{word-break:break-all;font-size:11px;color:var(--muted)}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:0 18px}
+@media(max-width:700px){.form-grid{grid-template-columns:1fr}}
+.form-grid .full{grid-column:1/-1}
+#toast{position:fixed;bottom:20px;right:20px;background:#0f172a;color:#fff;padding:12px 18px;border-radius:10px;box-shadow:0 10px 30px rgba(0,0,0,.3);z-index:99;max-width:90vw;font-size:14px}
+.table-wrap{overflow-x:auto}
+.modal{position:fixed;inset:0;z-index:100;display:flex;align-items:center;justify-content:center;padding:20px;background:rgba(15,23,42,.65)}
+.modal-card{width:100%;max-width:680px;max-height:90vh;overflow:auto}
+@media(max-width:820px){
+  .sidebar{transform:translateX(-100%);transition:transform .2s}
+  .sidebar.open{transform:none}
+  .main{width:100%;max-width:100%;margin-left:0}
+  .topbar{min-width:0;margin:10px;padding:10px;gap:8px;flex-wrap:wrap}
+  .topbar input#topSearch{width:100%;min-width:0;max-width:none;flex:1 1 100%;order:2}
+  .topbar .spacer{display:none}
+  .menu-btn{display:block;flex:0 0 auto;order:0}
+  #themeBtn{order:1}
+  .topbar .badge{order:3}
+  #adminEmailLabel{min-width:0;overflow-wrap:anywhere;order:4;flex:1 1 auto}
+  #topLogout{flex:0 0 auto;margin-left:auto;order:5}
+  .content{min-width:0;padding:6px 12px 32px}
+  .section,.card,.toolbar{min-width:0}
+  .table-wrap{width:100%;max-width:100%;overflow-x:auto;overscroll-behavior-x:contain}
+}
+@media(max-width:480px){
+  body{overflow-x:hidden}
+  .topbar .badge{margin-left:auto}
+  #adminEmailLabel{flex:1 1 0}
+  .content{padding-right:10px;padding-left:10px}
+}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="loginScreen" class="login-wrap">
+  <div class="login-card">
+    <span class="badge admin">● Admin</span>
+    <h1>BlogSphere Admin</h1>
+    <p>Sign in to manage your blog.</p>
+    <form id="loginForm">
+      <label for="loginEmail">Gmail / Email</label>
+      <input id="loginEmail" type="email" placeholder="admin@blogsphere.com" required autocomplete="username">
+      <label for="loginPassword">Password</label>
+      <input id="loginPassword" type="password" placeholder="Enter password" required autocomplete="current-password">
+      <div style="margin-top:18px"><button class="btn" type="submit" style="width:100%;padding:12px">Login</button></div>
+      <div style="text-align:center;margin-top:12px"><a href="#" id="forgotLink">Forgot Password?</a></div>
+      <div id="loginError" class="error hidden"></div>
+    </form>
+    <form id="recoveryRequestForm" class="hidden">
+      <label for="recoveryEmail">Dashboard account email</label>
+      <input id="recoveryEmail" type="email" required autocomplete="email">
+      <div style="margin-top:18px"><button class="btn" type="submit" style="width:100%;padding:12px">Send reset link</button></div>
+      <div style="text-align:center;margin-top:12px"><a href="#" id="backToLogin">Back to login</a></div>
+      <div id="recoveryRequestMsg" class="error hidden"></div>
+    </form>
+    <form id="recoveryUpdateForm" class="hidden">
+      <label for="recoveryPassword">New password</label>
+      <input id="recoveryPassword" type="password" minlength="8" required autocomplete="new-password">
+      <label for="recoveryPasswordConfirm">Confirm new password</label>
+      <input id="recoveryPasswordConfirm" type="password" minlength="8" required autocomplete="new-password">
+      <div style="margin-top:18px"><button class="btn" type="submit" style="width:100%;padding:12px">Update password</button></div>
+      <div id="recoveryUpdateMsg" class="error hidden"></div>
+    </form>
+    <p style="font-size:12px;margin-top:16px">Powered by Netlify</p>
+  </div>
+</div>
+
+<div id="passwordChangeScreen" class="login-wrap hidden">
+  <div class="login-card">
+    <span class="badge admin">Password update required</span>
+    <h1>Set a new password</h1>
+    <p>Your temporary password can only be used to complete this step.</p>
+    <form id="forcePasswordForm">
+      <label for="forcePassword">New password</label>
+      <input id="forcePassword" type="password" minlength="12" maxlength="128" required autocomplete="new-password">
+      <label for="forcePasswordConfirm">Confirm new password</label>
+      <input id="forcePasswordConfirm" type="password" minlength="12" maxlength="128" required autocomplete="new-password">
+      <div style="margin-top:18px"><button class="btn" type="submit" style="width:100%;padding:12px">Change password</button></div>
+      <div id="forcePasswordMsg" class="error hidden"></div>
+    </form>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app" class="hidden">
+  <aside class="sidebar" id="sidebar">
+    <h1><span class="logo">B</span> BlogSphere</h1>
+    <div class="side-label">Main</div>
+    <button class="side-item active" data-nav="dashboard"><span class="ic">📊</span> Dashboard</button>
+    <button class="side-item" data-nav="posts"><span class="ic">📝</span> Posts</button>
+    <button class="side-item" data-nav="media"><span class="ic">🖼️</span> Media</button>
+    <div class="side-label">Manage</div>
+    <button class="side-item" data-nav="categories"><span class="ic">📁</span> Categories</button>
+    <button class="side-item" data-nav="comments"><span class="ic">💬</span> Comments</button>
+    <button class="side-item" data-nav="users"><span class="ic">👥</span> Users</button>
+    <div class="side-label">System</div>
+    <button class="side-item" data-nav="settings"><span class="ic">⚙️</span> Settings</button>
+    <button class="side-item" id="navLogout"><span class="ic">🚪</span> Logout</button>
+    <div class="side-footer">BlogSphere Full Admin<br>Authenticated administration</div>
+  </aside>
+
+  <div class="main">
+    <div class="topbar">
+      <button class="menu-btn" id="menuBtn" aria-label="Menu">☰</button>
+      <input id="topSearch" type="search" placeholder="Search posts...">
+      <div class="spacer"></div>
+      <button class="btn ghost small" id="themeBtn" title="Toggle light / dark theme">🌙 Theme</button>
+      <span class="badge admin">Admin</span>
+      <span id="adminEmailLabel" style="font-size:13px;color:var(--muted)"></span>
+      <button class="btn danger small" id="topLogout">Logout</button>
     </div>
 
-    <div id="adminApp" class="hidden">
-      <div class="app-shell">
-        <aside class="sidebar">
-          <div class="brand"><span class="brand-mark" aria-hidden="true" style="width:28px; height:28px;"></span><span>BlogSphere</span></div>
-          <nav class="nav-list">
-            <div class="nav-item active" data-section="posts">Posts</div>
-            <div class="nav-item" data-section="logout">Logout</div>
-          </nav>
-        </aside>
+    <div class="content">
+      <div id="globalNotice"></div>
 
-        <main class="main-panel">
-          <div class="topbar">
-            <div class="topbar-search">
-              <input id="globalSearch" type="search" placeholder="Search posts and categories..." />
-            </div>
-            <div class="topbar-actions">
-              <span class="avatar-pill"><strong id="adminName">Admin</strong></span>
-              <button class="danger-btn" id="logoutBtn" type="button">Logout</button>
-            </div>
-          </div>
+      <!-- DASHBOARD -->
+      <section id="section-dashboard" class="section">
+        <h2>Dashboard</h2>
+        <p class="sub">Overview from authenticated live posts and categories.</p>
+        <div class="cards" id="statCards"></div>
+        <div class="grid2">
+          <div class="card"><h3 style="margin-top:0">Posts per Category</h3><div id="catBars"></div></div>
+          <div class="card"><h3 style="margin-top:0">Latest Posts</h3><div id="latestPosts"></div></div>
+        </div>
+        <div class="card"><h3 style="margin-top:0">Recent Activity</h3><div id="recentActivity"></div></div>
+      </section>
 
-          <section class="content-section" data-section-content="posts">
-            <div class="panel">
-              <div class="panel-header">
-                <h3>Posts</h3>
-                <button class="primary-btn" type="button" data-go-section="add-post">Add New</button>
+      <!-- POSTS -->
+      <section id="section-posts" class="section hidden">
+        <h2>Posts</h2>
+        <p class="sub">Manage live posts using the authenticated admin API.</p>
+        <div class="toolbar">
+          <input id="postSearch" type="search" placeholder="Search posts...">
+          <select id="postFilter"><option value="all">All</option><option value="published">Published</option><option value="draft">Draft</option><option value="trash">Trash</option></select>
+          <button class="btn" id="addPostBtn">+ Add New</button>
+          <button class="btn ghost" id="refreshPostsBtn">↻ Refresh live data</button>
+        </div>
+        <div class="card"><div class="table-wrap"><table>
+          <thead><tr><th>Image</th><th>Title</th><th>Category</th><th>Author</th><th>Status</th><th>Date</th><th>Modified</th><th>Actions</th></tr></thead>
+          <tbody id="postsTable"></tbody>
+        </table></div></div>
+
+        <div class="card" id="postFormCard">
+          <h3 style="margin-top:0" id="postFormTitle">Add New Post</h3>
+          <form id="postForm">
+            <div class="form-grid">
+              <div class="full"><label for="pfTitle">Title</label><input id="pfTitle" required placeholder="Post title"></div>
+              <div><label for="pfSlug">Slug</label><input id="pfSlug" placeholder="post-slug"></div>
+              <div><label>&nbsp;</label><button type="button" class="btn ghost" id="genSlugBtn" style="width:100%">Generate slug</button></div>
+              <div class="full"><label for="pfExcerpt">Excerpt</label><textarea id="pfExcerpt" style="min-height:70px" placeholder="Short excerpt..."></textarea></div>
+              <div class="full"><label for="pfContent">Content</label><textarea id="pfContent" placeholder="Write the post content here..."></textarea></div>
+              <div><label for="pfCategory">Category</label><select id="pfCategory"></select></div>
+              <div><label for="pfAuthor">Author</label><input id="pfAuthor" value="Admin"></div>
+              <div><label for="pfTags">Tags (comma separated)</label><input id="pfTags" placeholder="tech, guide"></div>
+              <div><label for="pfDate">Publish Date</label><input id="pfDate" type="date"></div>
+              <div><label for="pfStatus">Status</label><select id="pfStatus"><option value="published">Published</option><option value="draft">Draft</option></select></div>
+              <div><label for="pfImage">Featured Image URL</label><input id="pfImage" placeholder="https://..."></div>
+              <div><label for="pfMetaTitle">Meta Title</label><input id="pfMetaTitle" placeholder="SEO title"></div>
+              <div class="full"><label for="pfMetaDesc">Meta Description</label><textarea id="pfMetaDesc" style="min-height:60px" placeholder="SEO description..."></textarea></div>
+            </div>
+            <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:18px">
+              <button class="btn" type="submit" data-save="published">Publish Post</button>
+              <button class="btn ghost" type="button" id="saveDraftBtn">Save as Draft</button>
+              <button class="btn ghost" type="button" id="cancelPostBtn">Cancel</button>
+            </div>
+            <div id="postSaveMsg" style="margin-top:12px;font-size:13px"></div>
+          </form>
+        </div>
+      </section>
+
+      <!-- MEDIA -->
+      <section id="section-media" class="section hidden">
+        <h2>Media</h2>
+        <p class="sub">Images used by live posts and uploads stored in Supabase Storage.</p>
+        <div class="notice"><b>Note:</b> file uploads are stored in Supabase Storage. Adding an image URL only saves a browser-local reference.</div>
+        <div class="toolbar">
+          <input id="mediaUrlInput" type="url" placeholder="Paste image URL...">
+          <button class="btn" id="addMediaUrlBtn">Add by URL</button>
+          <label class="btn ghost" style="padding:9px 16px;cursor:pointer">📁 Upload image<input id="mediaFileInput" type="file" accept="image/jpeg,image/png,image/webp,image/gif" class="hidden"></label>
+        </div>
+        <div class="media-grid" id="mediaGrid"></div>
+      </section>
+
+      <!-- CATEGORIES -->
+      <section id="section-categories" class="section hidden">
+        <h2>Categories</h2>
+        <p class="sub">Categories from the live site.</p>
+        <div class="notice"><b>Live categories:</b> changes are written to the database. Categories assigned to posts cannot be deleted.</div>
+        <div class="toolbar">
+          <input id="catNameInput" placeholder="New category name, e.g. Travel">
+          <input id="catDescInput" placeholder="Description (optional)">
+          <button class="btn" id="addCatBtn">+ Add Category</button>
+        </div>
+        <div class="card"><div class="table-wrap"><table>
+          <thead><tr><th>ID</th><th>Name</th><th>Description</th><th>Posts</th><th>Actions</th></tr></thead>
+          <tbody id="catTable"></tbody>
+        </table></div></div>
+      </section>
+
+      <!-- COMMENTS -->
+      <section id="section-comments" class="section hidden">
+        <h2>Comments</h2>
+        <p class="sub">Public comments are held for moderation. Only approved comments and their replies appear on posts.</p>
+        <div class="toolbar">
+          <select id="commentFilter"><option value="all">All</option><option value="pending">Pending</option><option value="approved">Approved</option><option value="rejected">Rejected</option></select>
+          <button class="btn ghost" id="refreshCommentsBtn" type="button">↻ Refresh comments</button>
+          <span id="commentCount" style="color:var(--muted);font-size:14px"></span>
+        </div>
+        <div class="card"><div class="table-wrap"><table>
+          <thead><tr><th>Author</th><th>Comment / Reply</th><th>Post</th><th>Date</th><th>Status</th><th>Actions</th></tr></thead>
+          <tbody id="commentTable"></tbody>
+        </table></div></div>
+        <div id="commentEditor" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="commentEditorTitle">
+          <div class="card modal-card">
+            <h3 id="commentEditorTitle">Edit comment</h3>
+            <form id="commentEditorForm">
+              <div id="commentEditFields">
+                <label for="commentEditName">Author name</label>
+                <input id="commentEditName" maxlength="120" required>
+                <label for="commentEditBody">Comment</label>
+                <textarea id="commentEditBody" maxlength="5000" required></textarea>
               </div>
-              <div class="field-row" style="margin-bottom:12px;">
-                <input id="postFilterSearch" type="search" placeholder="Search posts..." />
-                <select id="postStatusFilter">
-                  <option value="all">All</option>
-                  <option value="published">Published</option>
-                  <option value="draft">Draft</option>
-                  <option value="trash">Trash</option>
+              <div id="commentReplyField">
+                <label for="commentEditReply">Public admin reply</label>
+                <textarea id="commentEditReply" maxlength="5000"></textarea>
+              </div>
+              <div style="display:flex;gap:10px;margin-top:16px">
+                <button class="btn" type="submit">Save changes</button>
+                <button class="btn ghost" type="button" id="cancelCommentEdit">Cancel</button>
+              </div>
+              <div id="commentEditorError" class="error hidden"></div>
+            </form>
+          </div>
+        </div>
+      </section>
+
+      <!-- USERS -->
+      <section id="section-users" class="section hidden">
+        <h2>Users</h2>
+        <p class="sub">Manage dashboard accounts. New users receive a one-time temporary password and must change it at first sign-in.</p>
+        <div class="notice">Only the main administrator can grant or revoke administrator privileges. Temporary passwords are shown once after account creation.</div>
+        <div class="card">
+          <h3 style="margin-top:0">Add User</h3>
+          <form id="userForm"><div class="form-grid">
+            <div><label for="ufName">Name</label><input id="ufName" required placeholder="Full name"></div>
+            <div><label for="ufEmail">Email</label><input id="ufEmail" type="email" required placeholder="name@example.com" maxlength="254"></div>
+            <div><label for="ufRole">Role</label><select id="ufRole"><option value="editor">Editor</option><option value="author">Author</option><option value="viewer">Viewer</option><option value="administrator">Administrator</option></select></div>
+            <div><label>&nbsp;</label><button class="btn" type="submit" style="width:100%">Add User</button></div>
+          </div></form>
+          <div id="userFormMsg" class="notice hidden" style="margin-top:14px;overflow-wrap:anywhere"></div>
+        </div>
+        <div class="card"><div class="table-wrap"><table>
+          <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>State</th><th>Actions</th></tr></thead>
+          <tbody id="userTable"></tbody>
+        </table></div></div>
+        <div id="userEditor" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="userEditorTitle">
+          <div class="card modal-card">
+            <h3 id="userEditorTitle">Edit user</h3>
+            <form id="userEditorForm">
+              <label for="userEditName">Name</label>
+              <input id="userEditName" maxlength="120" required>
+              <div id="userEditRoleField">
+                <label for="userEditRole">Role</label>
+                <select id="userEditRole">
+                  <option value="administrator">Administrator</option>
+                  <option value="editor">Editor</option>
+                  <option value="author">Author</option>
+                  <option value="viewer">Viewer</option>
                 </select>
               </div>
-              <div class="table-wrap">
-                <table>
-                  <thead>
-                    <tr><th>Image</th><th>Title</th><th>Category</th><th>Author</th><th>Status</th><th>Date</th><th>Modified</th><th>Actions</th></tr>
-                  </thead>
-                  <tbody id="postsTableBody"></tbody>
-                </table>
+              <div style="display:flex;gap:10px;margin-top:16px">
+                <button class="btn" type="submit">Save user</button>
+                <button class="btn ghost" type="button" id="cancelUserEdit">Cancel</button>
               </div>
-            </div>
-          </section>
-
-          <section class="content-section" data-section-content="add-post">
-            <div class="panel">
-              <div class="panel-header"><h3 id="editorTitle">Add New Post</h3></div>
-              <form id="postForm">
-                <div class="editor-grid">
-                  <div>
-                    <div class="field">
-                      <label>Title</label>
-                      <input id="postTitle" type="text" required />
-                    </div>
-                    <div class="field">
-                      <label>Slug</label>
-                      <input id="postSlug" type="text" />
-                    </div>
-                    <div class="field">
-                      <label>Excerpt</label>
-                      <textarea id="postExcerpt" rows="3"></textarea>
-                    </div>
-                    <div class="field">
-                      <label>Content</label>
-                      <div class="toolbar" role="toolbar" aria-label="Content formatting">
-                        <button type="button" data-command="bold" title="Bold (Ctrl+B)"><strong>B</strong></button>
-                        <button type="button" data-command="italic" title="Italic (Ctrl+I)"><em>I</em></button>
-                        <button type="button" data-command="underline" title="Underline (Ctrl+U)"><u>U</u></button>
-                        <button type="button" data-command="strikeThrough" title="Strikethrough"><s>S</s></button>
-                        <button type="button" data-command="removeFormat" title="Clear formatting">Clear</button>
-                        <span class="toolbar-separator" aria-hidden="true"></span>
-                        <label class="toolbar-label" for="blockFormat">Block</label>
-                        <select id="blockFormat" title="Block format">
-                          <option value="p">Paragraph</option><option value="h1">H1</option><option value="h2">H2</option><option value="h3">H3</option><option value="h4">H4</option><option value="h5">H5</option><option value="h6">H6</option>
-                        </select>
-                        <span class="toolbar-separator" aria-hidden="true"></span>
-                        <button type="button" data-command="insertUnorderedList" title="Bulleted list">&#8226; List</button>
-                        <button type="button" data-command="insertOrderedList" title="Numbered list">1. List</button>
-                        <button type="button" data-command="indent" title="Increase indent">Indent +</button>
-                        <button type="button" data-command="outdent" title="Decrease indent">Indent -</button>
-                        <span class="toolbar-separator" aria-hidden="true"></span>
-                        <button type="button" data-command="justifyLeft" title="Align left">Left</button>
-                        <button type="button" data-command="justifyCenter" title="Align center">Center</button>
-                        <button type="button" data-command="justifyRight" title="Align right">Right</button>
-                        <button type="button" data-command="justifyFull" title="Justify">Justify</button>
-                        <span class="toolbar-separator" aria-hidden="true"></span>
-                        <label class="toolbar-label" for="textColor">Text</label><input id="textColor" type="color" value="#18212f" title="Text color" />
-                        <label class="toolbar-label" for="highlightColor">Highlight</label><input id="highlightColor" type="color" value="#fff2a8" title="Highlight color" />
-                        <span class="toolbar-separator" aria-hidden="true"></span>
-                        <button type="button" data-command="createLink" title="Insert or edit link">Link</button>
-                        <button type="button" data-command="unlink" title="Remove link">Unlink</button>
-                        <button type="button" data-command="formatBlock" data-value="blockquote" title="Blockquote">Quote</button>
-                        <button type="button" data-command="insertHorizontalRule" title="Horizontal line">Line</button>
-                        <button type="button" data-command="undo" title="Undo (Ctrl+Z)">Undo</button>
-                        <button type="button" data-command="redo" title="Redo (Ctrl+Y)">Redo</button>
-                      </div>
-                      <div id="richEditor" class="editor-area" contenteditable="true"></div>
-                    </div>
-                  </div>
-
-                  <div>
-                    <div class="field">
-                      <label>Featured Image</label>
-                      <input id="featuredImageInput" type="file" accept="image/*" />
-                      <div class="thumbnail-box" id="thumbnailBox" style="margin-top:8px;"><span class="muted">No image selected</span></div>
-                    </div>
-                    <div class="field">
-                      <label>Category</label>
-                      <select id="postCategory" required></select>
-                    </div>
-                    <div class="field">
-                      <label>Tags</label>
-                      <input id="postTags" type="text" placeholder="tag1, tag2" />
-                    </div>
-                    <div class="field">
-                      <label>Author</label>
-                      <input id="postAuthor" type="text" value="Admin" />
-                    </div>
-                    <div class="field">
-                      <label>Publish Date</label>
-                      <input id="postPublishedAt" type="datetime-local" />
-                    </div>
-                    <div class="field">
-                      <label>Status</label>
-                      <select id="postStatus">
-                        <option value="draft">Draft</option>
-                        <option value="published">Published</option>
-                        <option value="trash">Trashed</option>
-                      </select>
-                    </div>
-                    <div class="field">
-                      <label>Meta Title</label>
-                      <input id="postMetaTitle" type="text" />
-                    </div>
-                    <div class="field">
-                      <label>Meta Description</label>
-                      <textarea id="postMetaDescription" rows="3"></textarea>
-                    </div>
-                    <div class="actions">
-                      <button class="secondary-btn" type="button" id="saveDraftBtn">Save Draft</button>
-                      <button class="secondary-btn" type="button" id="previewBtn">Preview</button>
-                      <button class="secondary-btn" type="button" id="cancelPostBtn">Cancel</button>
-                      <button class="primary-btn" type="submit" id="publishPostBtn">Publish</button>
-                    </div>
-                  </div>
-                </div>
-              </form>
-            </div>
-          </section>
-
-        </main>
-      </div>
-    </div>
-
-    <div id="confirmModal" class="modal">
-      <div class="modal-card">
-        <h3 id="confirmTitle">Confirm</h3>
-        <p id="confirmText">Are you sure?</p>
-        <div class="modal-actions">
-          <button type="button" class="secondary-btn" id="cancelConfirmBtn">Cancel</button>
-          <button type="button" class="danger-btn" id="confirmDeleteBtn">Delete</button>
+              <div id="userEditorError" class="error hidden"></div>
+            </form>
+          </div>
         </div>
-      </div>
+      </section>
+
+      <!-- SETTINGS -->
+      <section id="section-settings" class="section hidden">
+        <h2>Settings</h2>
+        <p class="sub">Browser-local preferences only; these values do not update production site settings.</p>
+        <div class="card">
+          <form id="settingsForm"><div class="form-grid">
+            <div><label for="sTitle">Site Title</label><input id="sTitle"></div>
+            <div><label for="sTagline">Tagline</label><input id="sTagline"></div>
+            <div class="full"><label for="sUrl">Site URL</label><input id="sUrl"></div>
+            <div><label for="sAuthor">Default Author</label><input id="sAuthor"></div>
+            <div><label for="sPerPage">Posts per page</label><input id="sPerPage" type="number" min="1" max="50"></div>
+            <div><label for="sMetaTitle">SEO Meta Title</label><input id="sMetaTitle"></div>
+            <div class="full"><label for="sMetaDesc">SEO Meta Description</label><textarea id="sMetaDesc" style="min-height:60px"></textarea></div>
+            <div><label for="sFacebook">Facebook URL</label><input id="sFacebook" placeholder="https://facebook.com/..."></div>
+            <div><label for="sX">X (Twitter) URL</label><input id="sX" placeholder="https://x.com/..."></div>
+            <div><label for="sInstagram">Instagram URL</label><input id="sInstagram" placeholder="https://instagram.com/..."></div>
+            <div><label for="sYoutube">YouTube URL</label><input id="sYoutube" placeholder="https://youtube.com/..."></div>
+          </div>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:18px">
+            <button class="btn" type="submit">Save Settings</button>
+            <button class="btn ghost" type="button" id="resetSettingsBtn">Reset to defaults</button>
+          </div>
+          <div id="settingsMsg" style="margin-top:12px;font-size:13px;color:green"></div>
+          </form>
+        </div>
+      </section>
+
     </div>
+  </div>
+</div>
+<div id="toast" class="hidden"></div>
 
-    <script>
-      const state = { user: null, posts: [], categories: [], currentEditPostId: null, section: 'posts', selectedImage: '' };
-      const loginShell = document.getElementById('loginShell');
-      const adminApp = document.getElementById('adminApp');
-      const loginForm = document.getElementById('loginForm');
-      const loginError = document.getElementById('loginError');
-      const logoutBtn = document.getElementById('logoutBtn');
-      const adminName = document.getElementById('adminName');
-      const passwordRecoveryForm = document.getElementById('passwordRecoveryForm');
-      const passwordRecoveryError = document.getElementById('passwordRecoveryError');
-      const passwordRecoverySuccess = document.getElementById('passwordRecoverySuccess');
-      const forgotPasswordLink = document.getElementById('forgotPasswordLink');
-      const passwordRecoveryRequestForm = document.getElementById('passwordRecoveryRequestForm');
-      const recoveryRequestStatus = document.getElementById('recoveryRequestStatus');
-      const recoveryEmail = document.getElementById('recoveryEmail');
-      const useNetlifyAdminApi = /\.netlify\.app$/i.test(window.location.hostname);
-      const adminEndpoint = name => useNetlifyAdminApi ? `/.netlify/functions/api-admin-${name}` : `/api/${name}`;
-      const adminPostEndpoint = (id, action = '') => `${adminEndpoint('posts')}?id=${encodeURIComponent(id)}${action ? `&action=${encodeURIComponent(action)}` : ''}`;
-      if (useNetlifyAdminApi) forgotPasswordLink.classList.remove('hidden');
-      const recoveryParams = new URLSearchParams(window.location.hash.slice(1));
-      let recoveryAccessToken = useNetlifyAdminApi && recoveryParams.get('type') === 'recovery' ? recoveryParams.get('access_token') : null;
-      const isPasswordRecovery = Boolean(recoveryAccessToken);
-      if (isPasswordRecovery) {
-        window.history.replaceState(null, '', `${window.location.pathname}${window.location.search}`);
-        loginForm.classList.add('hidden');
-        passwordRecoveryForm.classList.remove('hidden');
-      }
-
-      function arrayBufferToBase64(buffer) {
-        const bytes = new Uint8Array(buffer);
-        let binary = '';
-        const chunkSize = 0x8000;
-        for (let index = 0; index < bytes.length; index += chunkSize) {
-          binary += String.fromCharCode(...bytes.subarray(index, index + chunkSize));
-        }
-        return btoa(binary);
-      }
-
-      function escapeHtml(value = '') {
-        return String(value).replace(/[&<>"']/g, (ch) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[ch]));
-      }
-
-      async function api(url, options = {}) {
-        const response = await fetch(url, {
-          headers: { 'Content-Type': 'application/json', ...(options.headers || {}) },
-          ...options
-        });
-        const contentType = response.headers.get('content-type') || '';
-        const data = contentType.includes('application/json') ? await response.json() : await response.text();
-        if (!response.ok) {
-          throw new Error(data.error || 'Request failed');
-        }
-        return data;
-      }
-
-      function formatDate(value) {
-        if (!value) return '—';
-        const text = String(value).trim();
-        const dateParts = text.match(/^(\d{4})-(\d{2})-(\d{2})/);
-        const hasTimezone = /(?:Z|[+-]\d{2}:?\d{2})$/i.test(text);
-        const date = dateParts && !hasTimezone
-          ? new Date(Date.UTC(Number(dateParts[1]), Number(dateParts[2]) - 1, Number(dateParts[3])))
-          : new Date(text);
-        return Number.isNaN(date.getTime())
-          ? '—'
-          : new Intl.DateTimeFormat(undefined, { year: 'numeric', month: 'short', day: 'numeric', timeZone: 'UTC' }).format(date);
-      }
-
-      function renderPostCategorySelect() {
-        const select = document.getElementById('postCategory');
-        if (!select) return;
-        select.innerHTML = '<option value="" disabled>Select a category</option>' + state.categories.map(cat => `<option value="${cat.id}">${escapeHtml(cat.name)}</option>`).join('');
-      }
-
-      function filterDashboardPosts(statusFilter) {
-        const isTrashed = post => post.status === 'trash' || Boolean(post.deleted_at);
-        if (statusFilter === 'trash') return state.posts.filter(isTrashed);
-        const activePosts = state.posts.filter(post => !isTrashed(post));
-        return statusFilter === 'all' ? activePosts : activePosts.filter(post => post.status === statusFilter);
-      }
-
-      function renderPostsTable() {
-        const statusFilter = document.getElementById('postStatusFilter').value;
-        const query = document.getElementById('postFilterSearch').value.trim().toLowerCase();
-        let posts = filterDashboardPosts(statusFilter);
-        if (query) posts = posts.filter(post => `${post.title} ${post.excerpt || ''} ${post.category || ''} ${post.content || ''}`.toLowerCase().includes(query));
-
-        document.getElementById('postsTableBody').innerHTML = (posts || []).map(post => `
-          <tr>
-            <td>${post.featured_image ? `<img src="${post.featured_image}" alt="" style="width:58px;height:58px;object-fit:cover;border-radius:8px;" />` : '—'}</td>
-            <td>${escapeHtml(post.title)}</td>
-            <td>${escapeHtml(post.category_name || post.category || 'Uncategorized')}</td>
-            <td>${escapeHtml(post.author || 'Admin')}</td>
-            <td><span class="status-badge ${post.status === 'published' ? 'status-published' : post.status === 'trash' ? 'status-trash' : 'status-draft'}">${escapeHtml(post.status)}</span></td>
-            <td>${formatDate(post.published_at || post.created_at)}</td>
-            <td>${formatDate(post.updated_at)}</td>
-            <td>
-              <div class="actions">
-                <button class="small-btn" type="button" data-action="view-post" data-id="${post.id}">View</button>
-                <button class="small-btn" type="button" data-action="edit-post" data-id="${post.id}">Edit</button>
-                <button class="small-btn" type="button" data-action="duplicate-post" data-id="${post.id}">Duplicate</button>
-                <button class="small-btn" type="button" data-action="toggle-status-post" data-id="${post.id}">${post.status === 'published' ? 'Draft' : post.status === 'trash' ? 'Restore' : 'Publish'}</button>
-                <button class="small-btn danger" type="button" data-action="trash-post" data-id="${post.id}">${post.status === 'trash' ? 'Delete' : 'Trash'}</button>
-              </div>
-            </td>
-          </tr>
-        `).join('') || '<tr><td colspan="8">No posts found.</td></tr>';
-      }
-
-      function setSection(section) {
-        state.section = section;
-        document.querySelectorAll('.nav-item').forEach(item => item.classList.toggle('active', item.dataset.section === section));
-        document.querySelectorAll('.content-section').forEach(el => el.classList.toggle('active', el.dataset.sectionContent === section));
-      }
-
-      function clearPostForm() {
-        state.currentEditPostId = null;
-        document.getElementById('editorTitle').textContent = 'Add New Post';
-        document.getElementById('publishPostBtn').textContent = 'Publish';
-        document.getElementById('postForm').reset();
-        document.getElementById('richEditor').innerHTML = '';
-        document.getElementById('thumbnailBox').innerHTML = '<span class="muted">No image selected</span>';
-        state.selectedImage = '';
-        document.getElementById('postAuthor').value = state.user?.name || 'Admin';
-        document.getElementById('postStatus').value = 'draft';
-        document.getElementById('postCategory').value = '';
-      }
-
-      function toIsoFromLocalDateTime(value) {
-        if (!value || typeof value !== 'string') return '';
-        const trimmed = value.trim();
-        if (!trimmed) return '';
-        const localMatch = trimmed.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/);
-        let parsedDate = null;
-        if (localMatch) {
-          const [, year, month, day, hours, minutes] = localMatch;
-          const localDate = new Date(Number(year), Number(month) - 1, Number(day), Number(hours), Number(minutes));
-          if (!Number.isNaN(localDate.getTime())) parsedDate = localDate;
-        }
-        if (!parsedDate) {
-          parsedDate = new Date(value);
-        }
-        if (!parsedDate || Number.isNaN(parsedDate.getTime())) return '';
-        const now = Date.now();
-        return parsedDate.getTime() > now ? new Date(now).toISOString() : parsedDate.toISOString();
-      }
-
-      function toDateTimeLocal(value) {
-        if (!value) return '';
-        const date = new Date(value);
-        if (Number.isNaN(date.getTime())) return '';
-        const offset = date.getTimezoneOffset() * 60000;
-        return new Date(date.getTime() - offset).toISOString().slice(0, 16);
-      }
-
-      function fillPostForm(post) {
-        state.currentEditPostId = post.id;
-        document.getElementById('editorTitle').textContent = 'Edit Post';
-        document.getElementById('publishPostBtn').textContent = 'Update Post';
-        document.getElementById('postTitle').value = post.title || '';
-        document.getElementById('postSlug').value = post.slug || '';
-        document.getElementById('postExcerpt').value = post.excerpt || '';
-        document.getElementById('richEditor').innerHTML = post.content || '';
-        document.getElementById('postAuthor').value = post.author || 'Admin';
-        document.getElementById('postMetaTitle').value = post.meta_title || '';
-        document.getElementById('postMetaDescription').value = post.meta_description || '';
-        const tags = Array.isArray(post.tags) ? post.tags : (() => {
-          try { return JSON.parse(post.tags || '[]'); } catch { return []; }
-        })();
-        document.getElementById('postTags').value = tags.join(', ');
-        document.getElementById('postStatus').value = ['draft', 'published', 'trash'].includes(post.status) ? post.status : 'draft';
-        document.getElementById('postPublishedAt').value = toDateTimeLocal(post.published_at);
-        const categoryId = String(post.category_id || state.categories.find(cat => cat.name === post.category)?.id || '');
-        document.getElementById('postCategory').value = categoryId;
-        state.selectedImage = post.featured_image || '';
-        document.getElementById('thumbnailBox').innerHTML = state.selectedImage ? `<img src="${state.selectedImage}" alt="Featured" />` : '<span class="muted">No image selected</span>';
-      }
-
-      const editorState = { range: null };
-
-      function saveEditorSelection() {
-        const editor = document.getElementById('richEditor');
-        const selection = window.getSelection();
-        if (!editor || !selection || !selection.rangeCount) return;
-        const range = selection.getRangeAt(0);
-        if (editor.contains(range.commonAncestorContainer)) editorState.range = range.cloneRange();
-      }
-
-      function restoreEditorSelection() {
-        const editor = document.getElementById('richEditor');
-        const selection = window.getSelection();
-        if (!editor || !selection) return;
-        editor.focus();
-        if (editorState.range) {
-          selection.removeAllRanges();
-          selection.addRange(editorState.range);
-        }
-      }
-
-      function updateToolbarState() {
-        const editor = document.getElementById('richEditor');
-        if (!editor) return;
-        document.querySelectorAll('[data-command]').forEach((button) => {
-          const command = button.dataset.command;
-          const activeCommands = ['bold', 'italic', 'underline', 'strikeThrough', 'insertUnorderedList', 'insertOrderedList', 'justifyLeft', 'justifyCenter', 'justifyRight', 'justifyFull'];
-          button.classList.toggle('active', activeCommands.includes(command) && document.queryCommandState(command));
-        });
-        const blockFormat = document.getElementById('blockFormat');
-        if (blockFormat) {
-          const current = String(document.queryCommandValue('formatBlock') || 'p').toLowerCase().replace(/[<>]/g, '');
-          blockFormat.value = ['p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6'].includes(current) ? current : 'p';
-        }
-      }
-
-      function executeEditorCommand(command, value = null) {
-        restoreEditorSelection();
-        if (command === 'createLink') {
-          const currentLink = window.getSelection()?.anchorNode?.parentElement?.closest('a');
-          const url = window.prompt('Link URL', currentLink?.href || 'https://');
-          if (url) document.execCommand('createLink', false, url);
-        } else if (command === 'formatBlock') {
-          document.execCommand('formatBlock', false, value);
-        } else if (command === 'hiliteColor') {
-          document.execCommand('styleWithCSS', false, true);
-          document.execCommand('hiliteColor', false, value);
-        } else if (command === 'foreColor') {
-          document.execCommand('styleWithCSS', false, true);
-          document.execCommand('foreColor', false, value);
-        } else if (value === null) {
-          document.execCommand(command);
-        } else {
-          document.execCommand(command, false, value);
-        }
-        saveEditorSelection();
-        updateToolbarState();
-      }
-
-      function bindGlobalHandlers() {
-        const navItems = document.querySelectorAll('.nav-item');
-        navItems.forEach(item => {
-          item.addEventListener('click', () => {
-            const section = item.dataset.section;
-            if (section === 'logout') return logout();
-            if (section === 'add-post') {
-              setSection('add-post');
-              clearPostForm();
-              return;
-            }
-            setSection(section);
-          });
-        });
-
-        document.querySelectorAll('[data-go-section]').forEach(btn => {
-          btn.addEventListener('click', () => {
-            setSection(btn.dataset.goSection);
-            if (btn.dataset.goSection === 'add-post') clearPostForm();
-          });
-        });
-
-        const postFilterSearch = document.getElementById('postFilterSearch');
-        const postStatusFilter = document.getElementById('postStatusFilter');
-        const globalSearch = document.getElementById('globalSearch');
-        if (postFilterSearch) postFilterSearch.addEventListener('input', renderPostsTable);
-        if (postStatusFilter) postStatusFilter.addEventListener('change', renderPostsTable);
-        if (globalSearch) globalSearch.addEventListener('input', () => {
-          const q = document.getElementById('globalSearch').value.trim().toLowerCase();
-          if (!q) { renderPostsTable(); return; }
-          const statusFilter = document.getElementById('postStatusFilter').value;
-          const matches = filterDashboardPosts(statusFilter).filter(post => `${post.title} ${post.content || ''} ${post.category || ''}`.toLowerCase().includes(q));
-          document.getElementById('postsTableBody').innerHTML = matches.map(post => `
-          <tr>
-            <td>${post.featured_image ? `<img src="${post.featured_image}" alt="" style="width:58px;height:58px;object-fit:cover;border-radius:8px;" />` : '—'}</td>
-            <td>${escapeHtml(post.title)}</td>
-            <td>${escapeHtml(post.category_name || post.category || 'Uncategorized')}</td>
-            <td>${escapeHtml(post.author || 'Admin')}</td>
-            <td><span class="status-badge ${post.status === 'published' ? 'status-published' : 'status-draft'}">${escapeHtml(post.status)}</span></td>
-            <td>${formatDate(post.published_at || post.created_at)}</td>
-            <td>${formatDate(post.updated_at)}</td>
-            <td></td>
-          </tr>
-          `).join('') || '<tr><td colspan="8">No results found.</td></tr>';
-        });
-
-        const logoutButton = document.getElementById('logoutBtn');
-        if (logoutButton) logoutButton.addEventListener('click', logout);
-
-        const saveDraftBtn = document.getElementById('saveDraftBtn');
-        if (saveDraftBtn) saveDraftBtn.addEventListener('click', () => {
-          const postStatus = document.getElementById('postStatus');
-          const postForm = document.getElementById('postForm');
-          if (postStatus) postStatus.value = 'draft';
-          if (postForm) postForm.requestSubmit();
-        });
-
-        const cancelPostBtn = document.getElementById('cancelPostBtn');
-        if (cancelPostBtn) cancelPostBtn.addEventListener('click', () => {
-          clearPostForm();
-          setSection('posts');
-        });
-
-        const postFormEl = document.getElementById('postForm');
-        if (postFormEl) postFormEl.addEventListener('submit', async (event) => {
-          event.preventDefault();
-          const isPublishAction = event.submitter?.id === 'publishPostBtn';
-          const rawPublishedAt = document.getElementById('postPublishedAt').value;
-          const payload = {
-            title: document.getElementById('postTitle').value.trim(),
-            slug: document.getElementById('postSlug').value.trim() || document.getElementById('postTitle').value.trim().toLowerCase().replace(/[^a-z0-9]+/g,'-'),
-            excerpt: document.getElementById('postExcerpt').value.trim(),
-            content: document.getElementById('richEditor').innerHTML.trim(),
-            category_id: Number(document.getElementById('postCategory').value),
-            tags: (document.getElementById('postTags').value || '').split(',').map(tag => tag.trim()).filter(Boolean),
-            author: document.getElementById('postAuthor').value.trim() || 'Admin',
-            status: isPublishAction && !state.currentEditPostId ? 'published' : document.getElementById('postStatus').value,
-            published_at: rawPublishedAt ? toIsoFromLocalDateTime(rawPublishedAt) : new Date().toISOString(),
-            meta_title: document.getElementById('postMetaTitle').value.trim(),
-            meta_description: document.getElementById('postMetaDescription').value.trim(),
-            featured_image: state.selectedImage || ''
-          };
-
-          try {
-            if (state.currentEditPostId) {
-              await api(useNetlifyAdminApi ? adminPostEndpoint(state.currentEditPostId) : `/api/posts/${state.currentEditPostId}`, { method: 'PUT', body: JSON.stringify(payload) });
-            } else {
-              await api(adminEndpoint('posts'), { method: 'POST', body: JSON.stringify(payload) });
-            }
-            await loadDashboard();
-            setSection('posts');
-            clearPostForm();
-          } catch (error) {
-            alert(error.message);
-          }
-        });
-
-        const previewBtn = document.getElementById('previewBtn');
-        if (previewBtn) previewBtn.addEventListener('click', () => {
-          const opened = window.open('about:blank', '_blank');
-          const richEditor = document.getElementById('richEditor');
-          if (opened && richEditor) opened.document.write(`<html><body>${richEditor.innerHTML}</body></html>`);
-        });
-
-        const featuredImageInput = document.getElementById('featuredImageInput');
-        if (featuredImageInput) featuredImageInput.addEventListener('change', async (event) => {
-          const file = event.target.files[0];
-          if (!file) return;
-          let data;
-          if (useNetlifyAdminApi) {
-            data = await api(adminEndpoint('upload'), {
-              method: 'POST',
-              body: JSON.stringify({ filename: file.name, contentType: file.type, data: arrayBufferToBase64(await file.arrayBuffer()) })
-            });
-          } else {
-            const formData = new FormData();
-            formData.append('file', file);
-            const response = await fetch('/api/upload', { method: 'POST', body: formData });
-            data = await response.json();
-            if (!response.ok) throw new Error(data.error || 'Upload failed');
-          }
-          state.selectedImage = data.url;
-          const thumbnailBox = document.getElementById('thumbnailBox');
-          if (thumbnailBox) thumbnailBox.innerHTML = `<img src="${data.url}" alt="Selected" />`;
-        });
-
-        const editor = document.getElementById('richEditor');
-        if (editor) {
-          editor.addEventListener('keyup', updateToolbarState);
-          editor.addEventListener('mouseup', () => { saveEditorSelection(); updateToolbarState(); });
-          editor.addEventListener('input', updateToolbarState);
-          editor.addEventListener('focus', updateToolbarState);
-          editor.addEventListener('keydown', (event) => {
-            if (!(event.ctrlKey || event.metaKey)) return;
-            const key = event.key.toLowerCase();
-            if (['b', 'i', 'u', 'z', 'y'].includes(key)) {
-              event.preventDefault();
-              executeEditorCommand(key === 'b' ? 'bold' : key === 'i' ? 'italic' : key === 'u' ? 'underline' : key === 'z' ? (event.shiftKey ? 'redo' : 'undo') : 'redo');
-            }
-          });
-        }
-        document.addEventListener('selectionchange', () => {
-          saveEditorSelection();
-          updateToolbarState();
-        });
-        document.querySelectorAll('[data-command]').forEach(button => {
-          button.addEventListener('mousedown', (event) => { event.preventDefault(); saveEditorSelection(); });
-          button.addEventListener('click', () => executeEditorCommand(button.dataset.command, button.dataset.value || null));
-        });
-        const blockFormat = document.getElementById('blockFormat');
-        if (blockFormat) {
-          blockFormat.addEventListener('mousedown', saveEditorSelection);
-          blockFormat.addEventListener('change', () => executeEditorCommand('formatBlock', blockFormat.value));
-        }
-        const textColor = document.getElementById('textColor');
-        if (textColor) {
-          textColor.addEventListener('focus', saveEditorSelection);
-          textColor.addEventListener('input', () => executeEditorCommand('foreColor', textColor.value));
-        }
-        const highlightColor = document.getElementById('highlightColor');
-        if (highlightColor) {
-          highlightColor.addEventListener('focus', saveEditorSelection);
-          highlightColor.addEventListener('input', () => executeEditorCommand('hiliteColor', highlightColor.value));
-        }
-
-        const cancelConfirmBtn = document.getElementById('cancelConfirmBtn');
-        if (cancelConfirmBtn) cancelConfirmBtn.addEventListener('click', () => {
-          document.getElementById('confirmModal').classList.remove('active');
-        });
-
-        const confirmDeleteBtn = document.getElementById('confirmDeleteBtn');
-        if (confirmDeleteBtn) confirmDeleteBtn.addEventListener('click', async () => {
-          const action = confirmDeleteBtn.dataset.action;
-          const id = confirmDeleteBtn.dataset.id;
-          const confirmModal = document.getElementById('confirmModal');
-          if (confirmModal) confirmModal.classList.remove('active');
-          if (!action || !id) return;
-          if (action === 'delete-post') { await api(useNetlifyAdminApi ? adminPostEndpoint(id) : `/api/posts/${id}`, { method: 'DELETE' }); }
-          await loadDashboard();
-        });
-
-        document.addEventListener('click', async (event) => {
-          const btn = event.target.closest('[data-action]');
-          if (!btn) return;
-          const { action, id } = btn.dataset;
-          if (action === 'view-post') {
-            const post = state.posts.find(p => String(p.id) === String(id));
-            if (post) window.open(`/article.html?id=${post.slug || post.id}`, '_blank');
-          }
-          if (action === 'edit-post') {
-            const post = state.posts.find(p => String(p.id) === String(id));
-            if (post) {
-              setSection('add-post');
-              fillPostForm(post);
-            }
-          }
-          if (action === 'duplicate-post') {
-            await api(useNetlifyAdminApi ? adminPostEndpoint(id, 'duplicate') : `/api/posts/${id}/duplicate`, { method: 'POST' });
-            await loadDashboard();
-          }
-          if (action === 'toggle-status-post') {
-            const post = state.posts.find(p => String(p.id) === String(id));
-            if (!post) return;
-            if (post.status === 'trash') {
-              await api(useNetlifyAdminApi ? adminPostEndpoint(id, 'restore') : `/api/posts/${id}/restore`, { method: 'POST' });
-            } else {
-              const target = post.status === 'published' ? 'draft' : 'publish';
-              await api(useNetlifyAdminApi ? adminPostEndpoint(id, target) : `/api/posts/${id}/${target}`, { method: 'POST' });
-            }
-            await loadDashboard();
-          }
-          if (action === 'trash-post') {
-            const post = state.posts.find(p => String(p.id) === String(id));
-            if (post && post.status === 'trash') {
-              const confirmModal = document.getElementById('confirmModal');
-              if (confirmModal) confirmModal.classList.add('active');
-              const confirmTitle = document.getElementById('confirmTitle');
-              const confirmText = document.getElementById('confirmText');
-              if (confirmTitle) confirmTitle.textContent = 'Delete permanently';
-              if (confirmText) confirmText.textContent = 'This action removes the post permanently and cannot be undone.';
-              if (confirmDeleteBtn) {
-                confirmDeleteBtn.dataset.action = 'delete-post';
-                confirmDeleteBtn.dataset.id = id;
-              }
-            } else {
-              await api(useNetlifyAdminApi ? adminPostEndpoint(id, 'trash') : `/api/posts/${id}/trash`, { method: 'POST' });
-              await loadDashboard();
-            }
-          }
-        });
-      }
-
-      async function loadDashboard() {
-        const [posts, categories] = await Promise.all([
-          api(adminEndpoint('posts')),
-          api(adminEndpoint('categories'))
-        ]);
-        state.posts = posts;
-        state.categories = categories;
-        renderPostCategorySelect();
-        renderPostsTable();
-        adminName.textContent = state.user?.name || 'Admin';
-      }
-
-      async function checkSession() {
-        try {
-          const data = await api(adminEndpoint('session'));
-          if (data.user) {
-            state.user = data.user;
-            loginShell.classList.add('hidden');
-            adminApp.classList.remove('hidden');
-            await loadDashboard();
-            setSection('posts');
-          } else {
-            loginShell.classList.remove('hidden');
-            adminApp.classList.add('hidden');
-          }
-        } catch {
-          loginShell.classList.remove('hidden');
-          adminApp.classList.add('hidden');
-        }
-      }
-
-      async function login(event) {
-        event.preventDefault();
-        const email = document.getElementById('email').value.trim();
-        const password = document.getElementById('password').value;
-        try {
-          const result = await api(adminEndpoint('login'), { method: 'POST', body: JSON.stringify({ email, password }) });
-          state.user = result.user;
-          loginError.textContent = '';
-          loginShell.classList.add('hidden');
-          adminApp.classList.remove('hidden');
-          await loadDashboard();
-          setSection('posts');
-        } catch (error) {
-          loginError.textContent = error.message;
-        }
-      }
-
-      async function logout() {
-        try { await fetch(adminEndpoint('logout'), { method: 'POST' }); } catch (error) {}
-        state.user = null;
-        loginShell.classList.remove('hidden');
-        adminApp.classList.add('hidden');
-      }
-
-      forgotPasswordLink.addEventListener('click', (event) => {
-        event.preventDefault();
-        recoveryEmail.value = document.getElementById('email').value.trim() || 'mnaveedca888@gmail.com';
-        recoveryRequestStatus.textContent = '';
-        loginForm.classList.add('hidden');
-        passwordRecoveryRequestForm.classList.remove('hidden');
-      });
-
-      document.getElementById('cancelRecoveryRequest').addEventListener('click', () => {
-        passwordRecoveryRequestForm.classList.add('hidden');
-        loginForm.classList.remove('hidden');
-      });
-
-      passwordRecoveryRequestForm.addEventListener('submit', async (event) => {
-        event.preventDefault();
-        recoveryRequestStatus.textContent = '';
-        try {
-          await api(adminEndpoint('password-recovery-request'), {
-            method: 'POST',
-            body: JSON.stringify({ email: recoveryEmail.value.trim() })
-          });
-          recoveryRequestStatus.textContent = 'If the address matches the BlogSphere Admin account, a recovery link will be sent.';
-        } catch (error) {
-          recoveryRequestStatus.textContent = error.message;
-        }
-      });
-
-      passwordRecoveryForm.addEventListener('submit', async (event) => {
-        event.preventDefault();
-        passwordRecoveryError.textContent = '';
-        const password = document.getElementById('newAdminPassword').value;
-        const confirmation = document.getElementById('confirmAdminPassword').value;
-        if (password !== confirmation) {
-          passwordRecoveryError.textContent = 'The passwords do not match.';
-          return;
-        }
-        if (!recoveryAccessToken) {
-          passwordRecoveryError.textContent = 'This recovery link is invalid or expired. Request a new recovery email.';
-          return;
-        }
-        try {
-          await api('/.netlify/functions/api-admin-password-recovery', {
-            method: 'POST',
-            body: JSON.stringify({ accessToken: recoveryAccessToken, password })
-          });
-          recoveryAccessToken = null;
-          passwordRecoveryForm.classList.add('hidden');
-          passwordRecoverySuccess.classList.remove('hidden');
-        } catch (error) {
-          passwordRecoveryError.textContent = error.message;
-        }
-      });
-
-      document.getElementById('returnToAdminLogin').addEventListener('click', () => {
-        passwordRecoverySuccess.classList.add('hidden');
-        loginForm.classList.remove('hidden');
-      });
-
-      document.querySelector('.toggle-pass').addEventListener('click', () => {
-        const passwordField = document.getElementById('password');
-        const button = document.querySelector('.toggle-pass');
-        const visible = passwordField.type === 'text';
-        passwordField.type = visible ? 'password' : 'text';
-        button.textContent = visible ? 'Show' : 'Hide';
-      });
-      loginForm.addEventListener('submit', login);
-      bindGlobalHandlers();
-      clearPostForm();
-      if (!isPasswordRecovery) checkSession();
-    </script>
-  </body>
+<script src="/admin-full.js" defer></script>
+</body>
 </html>

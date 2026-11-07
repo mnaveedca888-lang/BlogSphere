@@ -468,6 +468,75 @@ const renderArticlePage = () => {
 
   updateCategoryCounts();
   attachArticleNavigation();
+  loadArticleComments(post.id);
+  bindArticleCommentForm(post.id);
+};
+
+const escapeCommentText = (value) => String(value ?? '').replace(/[&<>"']/g, (character) => ({
+  '&': '&amp;',
+  '<': '&lt;',
+  '>': '&gt;',
+  '"': '&quot;',
+  "'": '&#39;'
+}[character]));
+
+const loadArticleComments = async (postId) => {
+  const container = document.getElementById('article-comments');
+  if (!container) return;
+  container.textContent = 'Loading comments…';
+  try {
+    const response = await fetch(`/api/comments?post_id=${encodeURIComponent(postId)}`, {
+      headers: { Accept: 'application/json' }
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(data.error || `Comments could not be loaded (${response.status}).`);
+    if (!Array.isArray(data)) throw new Error('The comments service returned an invalid response.');
+    container.innerHTML = data.map((comment) => `
+      <article class="public-comment" style="padding:12px 0;border-bottom:1px solid #e2e8f0">
+        <strong>${escapeCommentText(comment.name)}</strong>
+        <small style="margin-left:8px;color:#64748b">${escapeCommentText(formatDisplayDate(comment.created_at))}</small>
+        <p style="white-space:pre-wrap">${escapeCommentText(comment.body)}</p>
+        ${comment.reply ? `<div class="public-comment-reply" style="margin:8px 0 0 16px;padding:10px;border-left:3px solid #2563eb"><strong>Admin reply</strong><p style="white-space:pre-wrap">${escapeCommentText(comment.reply)}</p></div>` : ''}
+      </article>
+    `).join('') || '<p>No approved comments yet.</p>';
+  } catch (error) {
+    container.textContent = error.message;
+  }
+};
+
+const bindArticleCommentForm = (postId) => {
+  const form = document.getElementById('comment-form');
+  if (!form || form.dataset.bound === 'true') return;
+  form.dataset.bound = 'true';
+  form.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const status = document.getElementById('comment-status');
+    const button = form.querySelector('button[type="submit"]');
+    button.disabled = true;
+    status.textContent = 'Submitting comment…';
+    try {
+      const response = await fetch(`/api/comments?post_id=${encodeURIComponent(postId)}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+        body: JSON.stringify({
+          name: document.getElementById('comment-name').value.trim(),
+          email: document.getElementById('comment-email').value.trim(),
+          website_url: document.getElementById('comment-website').value.trim(),
+          website: document.getElementById('comment-website-check').value,
+          body: document.getElementById('comment-body').value.trim()
+        })
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.error || `Comment submission failed (${response.status}).`);
+      status.textContent = data.message || 'Your comment is awaiting moderation.';
+      form.reset();
+      await loadArticleComments(postId);
+    } catch (error) {
+      status.textContent = error.message;
+    } finally {
+      button.disabled = false;
+    }
+  });
 };
 
 const bindTheme = () => {

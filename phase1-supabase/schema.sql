@@ -11,12 +11,32 @@ CREATE TABLE IF NOT EXISTS categories (
 
 CREATE TABLE IF NOT EXISTS users (
   id BIGSERIAL PRIMARY KEY,
+  auth_user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
   name TEXT,
   email TEXT NOT NULL UNIQUE,
   password_hash TEXT,
   role TEXT NOT NULL DEFAULT 'administrator',
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+ALTER TABLE public.users
+  ADD COLUMN IF NOT EXISTS auth_user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE;
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_users_auth_user_id ON public.users(auth_user_id);
+
+-- Public reads support post image URLs; uploads go through the authenticated Netlify Function.
+INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+VALUES (
+  'blog-images',
+  'blog-images',
+  true,
+  8388608,
+  ARRAY['image/jpeg', 'image/png', 'image/webp', 'image/gif']
+)
+ON CONFLICT (id) DO UPDATE
+SET public = EXCLUDED.public,
+    file_size_limit = EXCLUDED.file_size_limit,
+    allowed_mime_types = EXCLUDED.allowed_mime_types;
 
 CREATE TABLE IF NOT EXISTS posts (
   id BIGSERIAL PRIMARY KEY,
@@ -55,5 +75,6 @@ VALUES
 ON CONFLICT (name) DO NOTHING;
 
 -- Notes:
--- This schema intentionally excludes legacy SQLite tables that are not part of the active runtime path:
--- comments, media, pages, settings.
+-- Legacy media, pages, and settings tables remain out of the active schema.
+-- Moderated comments and account lifecycle columns are introduced by the
+-- unapplied follow-up migration in migrations/20260610_dashboard_comments_users.sql.

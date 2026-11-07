@@ -1,6 +1,6 @@
-const { adminEmail, getConfig, jsonResponse } = require('./_supabase');
+const { getConfig, jsonResponse, supabaseGet } = require('./_supabase');
 
-const recoveryRedirect = 'https://blogggsphere.netlify.app';
+const recoveryRedirect = `${String(process.env.URL || 'https://resplendent-lebkuchen-4a94ae.netlify.app').replace(/\/+$/, '')}/admin-full.html`;
 const diagnosticFields = ['message', 'msg', 'error', 'error_description', 'error_code', 'code'];
 
 function sanitizeDiagnostic(value) {
@@ -26,9 +26,20 @@ function safeErrorDetails(body) {
 exports.handler = async event => {
   if (event.httpMethod !== 'POST') return jsonResponse(405, { error: 'Method not allowed.' });
   try {
-    const body = event.body ? JSON.parse(event.isBase64Encoded ? Buffer.from(event.body, 'base64').toString('utf8') : event.body) : {};
+    let body;
+    try {
+      body = event.body ? JSON.parse(event.isBase64Encoded ? Buffer.from(event.body, 'base64').toString('utf8') : event.body) : {};
+    } catch {
+      return jsonResponse(400, { error: 'Invalid JSON body.' });
+    }
+    if (!body || typeof body !== 'object' || Array.isArray(body)) {
+      return jsonResponse(400, { error: 'A JSON object is required.' });
+    }
     const email = String(body.email || '').trim().toLowerCase();
-    if (email !== adminEmail) return jsonResponse(200, { ok: true });
+    const profiles = email
+      ? await supabaseGet(`/rest/v1/users?select=auth_user_id,is_active&email=eq.${encodeURIComponent(email)}&limit=1`)
+      : [];
+    if (!profiles[0]?.auth_user_id || profiles[0].is_active !== true) return jsonResponse(200, { ok: true });
 
     const { url, anonKey } = getConfig();
     const endpoint = new URL('/auth/v1/recover', url);

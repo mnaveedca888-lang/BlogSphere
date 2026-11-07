@@ -1,5 +1,6 @@
 const {
   getCategories,
+  hasRole,
   jsonResponse,
   parseBody,
   requireAdmin,
@@ -124,23 +125,32 @@ exports.handler = async event => {
     const params = query(event);
     const id = params.id;
     const action = params.action;
+    const user = access.session.user;
     const setCookie = access.session.setCookie ? { 'Set-Cookie': access.session.setCookie } : {};
 
     if (event.httpMethod === 'GET') {
-      const posts = await supabaseGet('/rest/v1/posts?select=*&order=updated_at.desc.nullslast,created_at.desc.nullslast,id.desc');
+      const ownerFilter = user.role === 'author' ? `&author_user_id=eq.${encodeURIComponent(user.id)}` : '';
+      const posts = await supabaseGet(`/rest/v1/posts?select=*&order=updated_at.desc.nullslast,created_at.desc.nullslast,id.desc${ownerFilter}`);
       return responseWithHeaders(200, await withCategoryNames(posts), setCookie);
+    }
+
+    if (!hasRole(user, ['administrator', 'editor', 'author'])) {
+      return responseWithHeaders(403, { error: 'Your role does not allow post changes.' }, setCookie);
     }
 
     if (event.httpMethod === 'POST' && action) {
       const post = await findPost(id);
       if (!post) return jsonResponse(404, { error: 'Post not found.' });
+      if (user.role === 'author' && String(post.author_user_id) !== String(user.id)) {
+        return responseWithHeaders(403, { error: 'Authors can only manage their own posts.' }, setCookie);
+      }
       const now = new Date().toISOString();
       if (action === 'duplicate') {
         const slug = `${post.slug}-copy-${Date.now()}`;
         await supabaseRequest('/rest/v1/posts', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', Prefer: 'return=minimal' },
-          body: JSON.stringify({ title: `${post.title} Copy`, slug, excerpt: post.excerpt, content: post.content, featured_image: post.featured_image, category: post.category, category_id: post.category_id, tags: toJson(post.tags, []), author: post.author, status: 'draft', meta_title: post.meta_title, meta_description: post.meta_description, published_at: now })
+          body: JSON.stringify({ title: `${post.title} Copy`, slug, excerpt: post.excerpt, content: post.content, featured_image: post.featured_image, category: post.category, category_id: post.category_id, tags: toJson(post.tags, []), author: user.name || post.author, author_user_id: user.id, status: 'draft', meta_title: post.meta_title, meta_description: post.meta_description, published_at: now })
         });
       } else if (action === 'publish') {
         await updatePost(id, { status: 'published', published_at: now, updated_at: now });
@@ -180,7 +190,8 @@ exports.handler = async event => {
         meta_description: payload.meta_description || payload.excerpt || '',
         published_at: nextPublishedAt,
         created_at: now,
-        updated_at: now
+        updated_at: now,
+        author_user_id: access.session.user.id
       });
       return responseWithHeaders(201, { ok: true }, setCookie);
     }
@@ -188,6 +199,9 @@ exports.handler = async event => {
     if (!id) return jsonResponse(400, { error: 'Post id is required.' });
     const existing = await findPost(id);
     if (!existing) return jsonResponse(404, { error: 'Post not found.' });
+    if (user.role === 'author' && String(existing.author_user_id) !== String(user.id)) {
+      return responseWithHeaders(403, { error: 'Authors can only manage their own posts.' }, setCookie);
+    }
 
     if (event.httpMethod === 'DELETE') {
       await supabaseRequest(`/rest/v1/posts?id=eq.${encodeURIComponent(id)}`, { method: 'DELETE', headers: { Prefer: 'return=minimal' } });

@@ -2,6 +2,12 @@
   functions = "netlify/functions"
 
 [[redirects]]
+  from = "/admin"
+  to = "/admin-full.html"
+  status = 301
+  force = true
+
+[[redirects]]
   from = "/admin.html"
   to = "/admin-full.html"
   status = 301
@@ -39,6 +45,11 @@
 [[redirects]]
   from = "/api/public-data"
   to = "/.netlify/functions/api-public-data"
+  status = 200
+
+[[redirects]]
+  from = "/api/comments"
+  to = "/.netlify/functions/api-comments"
   status = 200
 
 [[redirects]]
