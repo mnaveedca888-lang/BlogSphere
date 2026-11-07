@@ -617,11 +617,11 @@ app.post('/api/upload', requireAuth, (req, res) => {
 });
 
 app.get('/admin', (_, res) => {
-  res.sendFile(path.join(ROOT_DIR, 'admin.html'));
+  res.sendFile(path.join(ROOT_DIR, 'admin-full.html'));
 });
 
 app.get('/admin.html', (_, res) => {
-  res.sendFile(path.join(ROOT_DIR, 'admin.html'));
+  res.sendFile(path.join(ROOT_DIR, 'admin-full.html'));
 });
 
 app.get('/api/health', (_, res) => {
