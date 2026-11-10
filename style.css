@@ -2126,6 +2126,76 @@ body.home-page .site-footer {
   margin-bottom: 8px;
 }
 
+.article-content table {
+  width: 100%;
+  max-width: 100%;
+  display: block;
+  overflow-x: auto;
+  border-collapse: collapse;
+  margin: 16px 0 20px;
+  font-size: 0.95rem;
+  line-height: 1.6;
+  color: #495d77;
+}
+
+.article-content th,
+.article-content td {
+  border: 1px solid #dbe4f0;
+  padding: 9px 12px;
+  text-align: left;
+  vertical-align: top;
+}
+
+.article-content th {
+  background: #eef4fb;
+  font-weight: 700;
+  color: #1d2d40;
+  white-space: nowrap;
+}
+
+.article-content tbody tr:nth-child(even) td {
+  background: #f8fafc;
+}
+
+.article-content figure {
+  margin: 16px 0 20px;
+}
+
+.article-content figure img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+  border-radius: 8px;
+}
+
+.article-content figcaption {
+  font-size: 0.9rem;
+  color: #64748b;
+  margin-top: 8px;
+}
+
+body.theme-dark .article-content table {
+  color: var(--text);
+}
+
+body.theme-dark .article-content th,
+body.theme-dark .article-content td {
+  border-color: #334155;
+}
+
+body.theme-dark .article-content th {
+  background: #1e293b;
+  color: var(--text);
+}
+
+body.theme-dark .article-content tbody tr:nth-child(even) td {
+  background: #16233a;
+}
+
+body.theme-dark .article-content figcaption {
+  color: #94a3b8;
+}
+
 .rank-list {
   list-style: none;
   margin: 18px 0 12px;
