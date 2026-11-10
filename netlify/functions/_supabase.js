@@ -1,6 +1,6 @@
 const crypto = require('crypto');
 
-const allowedTags = new Set(['a', 'b', 'blockquote', 'br', 'div', 'em', 'font', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'hr', 'i', 'li', 'ol', 'p', 's', 'span', 'strike', 'strong', 'u', 'ul']);
+const allowedTags = new Set(['a', 'b', 'blockquote', 'br', 'caption', 'col', 'colgroup', 'div', 'em', 'figcaption', 'figure', 'font', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'hr', 'i', 'img', 'li', 'ol', 'p', 's', 'span', 'strike', 'strong', 'table', 'tbody', 'td', 'tfoot', 'th', 'thead', 'tr', 'u', 'ul']);
 const sessionCookieName = 'blogsphere_admin_session';
 const sessionMaxAge = 60 * 60 * 24 * 7;
 const adminEmail = 'mnaveedca888@gmail.com';
