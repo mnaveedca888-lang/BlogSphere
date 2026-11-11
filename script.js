@@ -490,7 +490,11 @@ const renderCategoryPage = (category) => {
 
 const buildArticleContent = (post) => {
   if (!post) return '<p>This post is unavailable.</p>';
-  if (post.content && /<(?:h[1-6]|p|ul|ol|blockquote|img)\b/i.test(post.content)) return post.content;
+  if (post.content && /<(?:h[1-6]|p|ul|ol|blockquote|img)\b/i.test(post.content)) {
+    // The page template already shows the title as its H1; drop the body's
+    // duplicate opening H1 so the page has a single top-level heading.
+    return post.content.replace(/^\s*<h1[^>]*>.*?<\/h1>/is, '');
+  }
   if (post.content && post.content.trim()) return post.content;
   return '<p>This post is unavailable.</p>';
 };
@@ -559,6 +563,12 @@ const renderArticlePage = () => {
   }
   if (tagNode) {
     tagNode.innerHTML = '<span>Tags:</span> ' + post.tags.map((tag) => `<a href="index.html?q=${encodeURIComponent(tag)}">${tag}</a>`).join(' ');
+  }
+
+  // Sidebar tag card shows this article's own tags, not a fixed Technology list.
+  const sidebarTagList = document.querySelector('.article-sidebar-card.tags-card .tag-list');
+  if (sidebarTagList && post.tags && post.tags.length) {
+    sidebarTagList.innerHTML = post.tags.map((tag) => `<a class="tag" href="index.html?q=${encodeURIComponent(tag)}">${tag}</a>`).join('');
   }
 
   if (popularList) {

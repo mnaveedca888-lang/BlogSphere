@@ -3983,3 +3983,31 @@ a.page-number:hover {
     min-height: 300px;
   }
 }
+
+/* --- 2026-11-11 fix round 2: 404 vertical centering + list skeletons --- */
+.not-found {
+  min-height: 55vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.list-skeleton {
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--panel);
+  margin-bottom: 14px;
+}
+
+.list-skeleton .skeleton-line {
+  background: linear-gradient(100deg, #dfeaf2 40%, #f2f6fa 50%, #dfeaf2 60%);
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.4s linear infinite;
+}
+
+body.theme-dark .list-skeleton .skeleton-line {
+  background: linear-gradient(100deg, #16233a 40%, #1d2f4d 50%, #16233a 60%);
+  background-size: 200% 100%;
+}
