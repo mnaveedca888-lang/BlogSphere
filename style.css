@@ -3595,3 +3595,391 @@ body.theme-dark .category-list li:nth-child(3) .category-bullet::before {
     gap: 6px;
   }
 }
+
+/* ============================================================
+   2026-11-11 redesign — homepage hero, latest grid, hover
+   polish, lazy-image placeholders, working pagination, 404.
+   Appended after the original rules so these win on ties.
+   ============================================================ */
+
+/* --- Vibrant homepage hero --- */
+.site-hero {
+  position: relative;
+  overflow: hidden;
+  border-radius: 24px;
+  margin-bottom: 22px;
+  background:
+    radial-gradient(720px 340px at 12% -10%, rgba(109, 92, 230, 0.55), transparent 60%),
+    radial-gradient(640px 320px at 88% 0%, rgba(47, 91, 229, 0.55), transparent 60%),
+    radial-gradient(560px 300px at 55% 115%, rgba(226, 109, 157, 0.45), transparent 60%),
+    linear-gradient(135deg, #12263f 0%, #1d3d8f 52%, #4c1d95 100%);
+  color: #fff;
+  box-shadow: var(--shadow);
+}
+
+.site-hero-glow {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(420px 180px at 78% 30%, rgba(255, 255, 255, 0.14), transparent 70%);
+  pointer-events: none;
+}
+
+.site-hero-copy {
+  position: relative;
+  z-index: 1;
+  padding: 44px 40px 38px;
+  max-width: 780px;
+}
+
+.hero-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.14);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  backdrop-filter: blur(4px);
+}
+
+.site-hero h1 {
+  margin: 18px 0 12px;
+  font-size: clamp(2.4rem, 4.6vw, 3.6rem);
+  line-height: 1.02;
+  letter-spacing: -0.05em;
+  color: #fff;
+}
+
+.site-hero p {
+  margin: 0;
+  max-width: 620px;
+  color: rgba(255, 255, 255, 0.86);
+  font-size: 1.05rem;
+  line-height: 1.6;
+}
+
+.hero-search {
+  display: flex;
+  gap: 8px;
+  margin-top: 24px;
+  max-width: 560px;
+  padding: 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 10px 30px rgba(2, 6, 23, 0.35);
+}
+
+.hero-search input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  padding: 8px 8px 8px 16px;
+  font-size: 0.98rem;
+  color: #121a29;
+}
+
+.hero-search input::placeholder {
+  color: #8a99a9;
+}
+
+.hero-search button {
+  flex: 0 0 auto;
+  border: 0;
+  border-radius: 999px;
+  padding: 10px 22px;
+  background: linear-gradient(135deg, #2f5be5, #6d5ce6);
+  color: #fff;
+  font-weight: 700;
+  font-size: 0.92rem;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.hero-search button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 18px rgba(47, 91, 229, 0.45);
+}
+
+.hero-stats {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-top: 20px;
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.hero-stats strong {
+  color: #fff;
+  font-size: 1.05rem;
+}
+
+.hero-stat-dot {
+  opacity: 0.6;
+}
+
+.hero-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.hero-chips a {
+  padding: 7px 14px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  color: #fff;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  transition: background 0.15s ease, transform 0.15s ease;
+}
+
+.hero-chips a:hover {
+  background: rgba(255, 255, 255, 0.24);
+  transform: translateY(-1px);
+}
+
+/* --- Latest articles grid --- */
+.latest-block {
+  margin-top: 34px;
+}
+
+.latest-note {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.latest-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 18px;
+  margin-top: 16px;
+}
+
+/* --- Category strip: 4 cards, 4 columns (was 3, so the 4th wrapped) --- */
+.category-strip {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.category-card {
+  cursor: pointer;
+  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+}
+
+.category-card:hover {
+  transform: translateY(-3px);
+  border-color: rgba(47, 91, 229, 0.35);
+  box-shadow: var(--shadow);
+}
+
+/* --- Card hover polish + image zoom --- */
+.story-card,
+.mini-feature,
+.tech-article {
+  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+}
+
+.story-card:hover,
+.mini-feature:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow);
+  border-color: rgba(47, 91, 229, 0.3);
+}
+
+.tech-article:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow);
+}
+
+.story-image,
+.article-thumb,
+.mini-image,
+.mini-thumb,
+.related-thumb {
+  overflow: hidden;
+}
+
+.story-card:hover .story-image,
+.tech-article:hover .article-thumb {
+  transform: scale(1.04);
+}
+
+.story-image,
+.article-thumb {
+  transition: transform 0.35s ease;
+}
+
+/* --- Lazy-loaded background placeholders --- */
+.lazy-bg {
+  background-color: #dfeaf2;
+  background-size: cover;
+  background-position: center;
+}
+
+body.theme-dark .lazy-bg {
+  background-color: #16233a;
+}
+
+/* --- Featured hero card: real <img>, fixed height, skeleton --- */
+.feature-card {
+  min-height: 420px;
+}
+
+.feature-card-image {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.feature-card.skeleton {
+  background: linear-gradient(100deg, #dfeaf2 40%, #f2f6fa 50%, #dfeaf2 60%);
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.4s linear infinite;
+}
+
+body.theme-dark .feature-card.skeleton {
+  background: linear-gradient(100deg, #16233a 40%, #1d2f4d 50%, #16233a 60%);
+  background-size: 200% 100%;
+}
+
+@keyframes skeleton-shimmer {
+  from { background-position: 200% 0; }
+  to { background-position: -200% 0; }
+}
+
+.mini-feature.skeleton .mini-image {
+  background: linear-gradient(100deg, #dfeaf2 40%, #f2f6fa 50%, #dfeaf2 60%);
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.4s linear infinite;
+}
+
+.skeleton-line {
+  display: block;
+  height: 12px;
+  margin: 8px 0;
+  border-radius: 6px;
+  background: #dfeaf2;
+}
+
+.skeleton-line.short {
+  width: 60%;
+}
+
+/* --- Working pagination (links, not dead buttons) --- */
+.pagination {
+  flex-wrap: wrap;
+}
+
+.page-number {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 34px;
+  height: 34px;
+  padding: 0 10px;
+  text-decoration: none;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+a.page-number:hover {
+  border-color: #0d68d8;
+  color: #0d68d8;
+}
+
+.page-number.disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+/* --- 404 page --- */
+.not-found {
+  text-align: center;
+  padding: 64px 20px 72px;
+}
+
+.not-found-code {
+  margin: 0;
+  font-size: clamp(4rem, 12vw, 7rem);
+  font-weight: 800;
+  letter-spacing: -0.06em;
+  line-height: 1;
+  background: linear-gradient(135deg, #2f5be5, #6d5ce6, #e26d9d);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.not-found h1 {
+  margin: 12px 0 10px;
+  font-size: clamp(1.6rem, 3vw, 2.2rem);
+  letter-spacing: -0.04em;
+}
+
+.not-found p {
+  color: var(--muted);
+  max-width: 520px;
+  margin: 0 auto;
+  line-height: 1.6;
+}
+
+.not-found-links {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 26px;
+}
+
+/* --- Responsive: hero + latest grid --- */
+@media (max-width: 900px) {
+  .latest-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .category-strip {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .site-hero-copy {
+    padding: 34px 24px 30px;
+  }
+
+  .feature-card {
+    min-height: 340px;
+  }
+}
+
+@media (max-width: 560px) {
+  .latest-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .category-strip {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .hero-search {
+    flex-direction: column;
+    border-radius: 16px;
+  }
+
+  .hero-search button {
+    width: 100%;
+  }
+
+  .feature-card {
+    min-height: 300px;
+  }
+}

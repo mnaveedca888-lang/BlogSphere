@@ -7,7 +7,11 @@ if (window.location.hostname.endsWith('.netlify.app') && authRecoveryParams.get(
   window.location.replace(`${window.location.origin}/admin.html${window.location.search}${window.location.hash}`);
 }
 
+const PAGE_SIZE = 15;
+
 let POSTS = [];
+let ARTICLE_POST = null;
+let lastPublicLoadAt = 0;
 
 const PAGE_CATEGORY = {
   Technology: 'Technology.html',
@@ -51,28 +55,34 @@ const findArticlePost = (articleId) => {
   if (!articleId) return null;
   const lookup = articleId.trim();
   const normalizedLookup = normalizeForLookup(lookup);
-
-  return POSTS.find((item) => {
-    if (!isPubliclyVisiblePost(item)) return false;
+  const matchesLookup = (item) => {
     const itemId = String(item.id || '');
     const itemSlug = String(item.slug || '');
     const itemTitle = String(item.title || '');
     return itemId === lookup || itemSlug === lookup || normalizeForLookup(itemSlug) === normalizedLookup || normalizeForLookup(itemTitle) === normalizedLookup;
+  };
+
+  // The single-post fetch carries the full article body; prefer it.
+  if (ARTICLE_POST && matchesLookup(ARTICLE_POST)) return ARTICLE_POST;
+
+  return POSTS.find((item) => {
+    if (!isPubliclyVisiblePost(item)) return false;
+    return matchesLookup(item);
   }) || null;
 };
 
-const getArticleHref = (post) => `article.html?id=${encodeURIComponent(String(post.id))}`;
+const getArticleHref = (post) => `article.html?id=${encodeURIComponent(String(post.slug || post.id))}`;
 
 const buildStoryCard = (post) => {
   const categoryClass = post.category === 'Business' ? 'business-pill' : post.category === 'Home Decor' ? 'decor-pill' : post.category === 'Make Money Online' ? 'money-pill' : '';
   return `
     <article class="story-card" data-post-id="${post.id}" data-post-url="${getArticleHref(post)}" role="link" tabindex="0">
-      <div class="story-image" style="background-image:url('${post.thumb}')"></div>
+      <div class="story-image lazy-bg" data-bg="${post.thumb}"></div>
       <div class="story-body">
         <span class="pill ${categoryClass}">${post.category}</span>
         <h3>${post.title}</h3>
         <div class="meta-row compact">
-          <span>${formatPostDate(post)}</span>
+          <span class="rel-time" data-ts="${post.published_at || post.created_at || post.date || ''}">${formatPostDate(post)}</span>
           <span class="meta-divider">•</span>
           <span>${post.readTime}</span>
         </div>
@@ -85,12 +95,12 @@ const buildMiniFeature = (post) => {
   const categoryClass = post.category === 'Business' ? 'business-pill' : post.category === 'Home Decor' ? 'decor-pill' : post.category === 'Make Money Online' ? 'money-pill' : '';
   return `
     <article class="mini-feature" data-post-id="${post.id}" data-post-url="${getArticleHref(post)}" role="link" tabindex="0">
-      <div class="mini-image" style="background-image:url('${post.thumb}')"></div>
+      <div class="mini-image lazy-bg" data-bg="${post.thumb}"></div>
       <div class="mini-copy">
         <span class="pill ${categoryClass}">${post.category}</span>
         <h3>${post.title}</h3>
         <div class="meta-row compact">
-          <span>${formatPostDate(post)}</span>
+          <span class="rel-time" data-ts="${post.published_at || post.created_at || post.date || ''}">${formatPostDate(post)}</span>
           <span class="meta-divider">•</span>
           <span>${post.readTime}</span>
         </div>
@@ -101,14 +111,14 @@ const buildMiniFeature = (post) => {
 
 const buildTechArticleCard = (post) => `
   <a class="tech-article" href="${getArticleHref(post)}" data-post-id="${post.id}" data-post-url="${getArticleHref(post)}">
-    <div class="article-thumb" style="background-image:url('${post.thumb}')"></div>
+    <div class="article-thumb lazy-bg" data-bg="${post.thumb}"></div>
     <div class="article-copy">
       <span class="article-label">${post.category}</span>
       <h3>${post.title}</h3>
       <p>${post.summary}</p>
       <div class="article-meta">
         <span class="calendar" aria-hidden="true"></span>
-        <span>${formatPostDate(post)}</span>
+        <span class="rel-time" data-ts="${post.published_at || post.created_at || post.date || ''}">${formatPostDate(post)}</span>
         <span class="meta-dot" aria-hidden="true"></span>
         <span>${post.readTime}</span>
       </div>
@@ -118,11 +128,11 @@ const buildTechArticleCard = (post) => `
 
 const buildPopularCard = (post) => `
   <li>
-    <a href="article.html?id=${post.id}">
-      <span class="mini-thumb" style="background-image:url('${post.thumb}')"></span>
+    <a href="${getArticleHref(post)}">
+      <span class="mini-thumb lazy-bg" data-bg="${post.thumb}"></span>
       <span class="popular-copy">
         <strong>${post.title}</strong>
-        <small>${formatPostDate(post)}</small>
+        <small class="rel-time" data-ts="${post.published_at || post.created_at || post.date || ''}">${formatPostDate(post)}</small>
       </span>
     </a>
   </li>
@@ -186,20 +196,80 @@ const formatRelativeTime = (value) => {
 
 const formatPostDate = (post) => formatRelativeTime(post?.published_at || post?.created_at || post?.date);
 
+// Card thumbnails are background images, which cannot lazy-load natively, so
+// they are painted only when they scroll near the viewport. Above-the-fold
+// images (hero, article feature image) are loaded eagerly instead.
+let lazyBgObserver = null;
+const observeLazyBackgrounds = () => {
+  const targets = document.querySelectorAll('.lazy-bg[data-bg]:not([data-bg-loaded])');
+  if (!targets.length) return;
+  if (!('IntersectionObserver' in window)) {
+    targets.forEach((el) => { el.style.backgroundImage = `url('${el.dataset.bg}')`; el.dataset.bgLoaded = 'true'; });
+    return;
+  }
+  if (!lazyBgObserver) {
+    lazyBgObserver = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        if (!entry.isIntersecting) return;
+        const el = entry.target;
+        el.style.backgroundImage = `url('${el.dataset.bg}')`;
+        el.dataset.bgLoaded = 'true';
+        lazyBgObserver.unobserve(el);
+      });
+    }, { rootMargin: '200px' });
+  }
+  targets.forEach((el) => lazyBgObserver.observe(el));
+};
+
+// Relative times ("3 hrs ago") are refreshed in place instead of re-rendering
+// whole pages, which used to rebuild the DOM and re-request images every 15s.
+const updateRelativeTimes = () => {
+  document.querySelectorAll('.rel-time[data-ts]').forEach((node) => {
+    const value = node.getAttribute('data-ts');
+    if (value) node.textContent = formatRelativeTime(value);
+  });
+};
+
+// Real pagination: 15 articles per page, with working Prev / number / Next
+// links that keep the category and search query in the URL.
+const getCurrentPage = (totalPages) => {
+  const raw = Number.parseInt(getUrlParams().get('page') || '1', 10);
+  if (Number.isNaN(raw) || raw < 1) return 1;
+  return Math.min(raw, Math.max(totalPages, 1));
+};
+
+const renderPagination = (container, currentPage, totalPages, buildPageUrl) => {
+  if (!container) return;
+  if (totalPages <= 1) {
+    container.innerHTML = '';
+    container.hidden = true;
+    return;
+  }
+  container.hidden = false;
+  const pageLink = (page, label, { active = false, disabled = false } = {}) => {
+    const classes = ['page-number'];
+    if (active) classes.push('active');
+    if (disabled) classes.push('disabled');
+    const aria = active ? ' aria-current="page"' : '';
+    return disabled
+      ? `<span class="${classes.join(' ')}" aria-disabled="true"${aria}>${label}</span>`
+      : `<a class="${classes.join(' ')}" href="${buildPageUrl(page)}"${aria}>${label}</a>`;
+  };
+  const pages = [];
+  const windowStart = Math.max(1, Math.min(currentPage - 2, totalPages - 4));
+  const windowEnd = Math.min(totalPages, windowStart + 4);
+  for (let page = windowStart; page <= windowEnd; page += 1) {
+    pages.push(pageLink(page, String(page), { active: page === currentPage }));
+  }
+  container.innerHTML = [
+    pageLink(currentPage - 1, '‹ Prev', { disabled: currentPage <= 1 }),
+    ...pages,
+    pageLink(currentPage + 1, 'Next ›', { disabled: currentPage >= totalPages })
+  ].join('');
+};
+
 const refreshRelativeTimeRender = () => {
-  const pageName = getPageName();
-  if (pageName === 'index.html') {
-    renderHomePage();
-    return;
-  }
-  if (['Technology.html', 'Business.html', 'Home-Decor.html', 'Make-Money-Online.html'].includes(pageName)) {
-    const category = pageName === 'Technology.html' ? 'Technology' : pageName === 'Business.html' ? 'Business' : pageName === 'Home-Decor.html' ? 'Home Decor' : 'Make Money Online';
-    renderCategoryPage(category);
-    return;
-  }
-  if (pageName === 'article.html') {
-    renderArticlePage();
-  }
+  updateRelativeTimes();
 };
 
 const setFeaturedPostContent = (element, post) => {
@@ -214,6 +284,7 @@ const setFeaturedPostContent = (element, post) => {
     element.removeAttribute('data-post-id');
     return;
   }
+  element.classList.remove('skeleton');
 
   element.setAttribute('data-post-id', post.id);
   element.setAttribute('aria-label', post.title);
@@ -221,7 +292,13 @@ const setFeaturedPostContent = (element, post) => {
   if (title) title.textContent = post.title;
   if (summary) summary.textContent = post.summary || post.excerpt || '';
   if (element.classList.contains('feature-card')) {
-    element.style.backgroundImage = `url('${post.image || post.thumb || ''}')`;
+    const featureImage = element.querySelector('.feature-card-image');
+    if (featureImage) {
+      featureImage.src = post.image || post.thumb || '';
+      featureImage.alt = post.title;
+      featureImage.setAttribute('fetchpriority', 'high');
+    }
+    element.style.backgroundImage = '';
   }
   if (metaItems.length >= 2) {
     metaItems[0].textContent = formatPostDate(post);
@@ -299,11 +376,7 @@ const renderPopularList = (selector, posts, max = 5) => {
 
   const visiblePosts = posts.filter(isPubliclyVisiblePost).slice(0, max);
   list.innerHTML = visiblePosts.length ? visiblePosts.map(buildPopularCard).join('') : '<li class="empty-state">No published articles available.</li>';
-  document.querySelectorAll(`${selector} a`).forEach((link) => {
-    const href = link.getAttribute('href') || '';
-    const postId = href.split('id=')[1];
-    if (postId) link.setAttribute('href', `article.html?id=${postId}`);
-  });
+  observeLazyBackgrounds();
 };
 
 const renderHomePage = () => {
@@ -317,6 +390,20 @@ const renderHomePage = () => {
   const popularCard = document.querySelector('.sidebar .popular-card');
   if (popularCard) popularCard.hidden = hasSinglePost;
   if (!hasSinglePost) renderPopularList('.sidebar .popular-list', POSTS, 5);
+
+  const heroStat = document.getElementById('hero-stat-articles');
+  if (heroStat) heroStat.textContent = String(sortPublishedPosts(POSTS).length);
+
+  // "Fresh off the press": the newest articles across all categories.
+  const latestGrid = document.querySelector('.latest-grid');
+  if (latestGrid) {
+    const latest = sortPublishedPosts(POSTS).filter((post) => matchesQuery(post, query)).slice(0, 6);
+    latestGrid.innerHTML = latest.length
+      ? latest.map(buildStoryCard).join('')
+      : '<div class="empty-state">No published articles available.</div>';
+    const latestBlock = latestGrid.closest('.latest-block');
+    if (latestBlock) latestBlock.hidden = hasSinglePost;
+  }
 
   blocks.forEach((block, index) => {
     if (hasSinglePost) {
@@ -354,6 +441,7 @@ const renderHomePage = () => {
 
   updateCategoryCounts();
   attachArticleNavigation();
+  observeLazyBackgrounds();
 };
 
 const renderCategoryPage = (category) => {
@@ -363,11 +451,23 @@ const renderCategoryPage = (category) => {
 
   list.innerHTML = '';
   const matches = POSTS.filter((post) => isPubliclyVisiblePost(post) && post.category === category && matchesQuery(post, query));
+  const totalPages = Math.max(1, Math.ceil(matches.length / PAGE_SIZE));
+  const currentPage = getCurrentPage(totalPages);
+  const pagePosts = matches.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
   if (!matches.length) {
     list.innerHTML = '<div class="empty-state">No published articles available in this category.</div>';
   } else {
-    list.innerHTML = matches.map(buildTechArticleCard).join('');
+    list.innerHTML = pagePosts.map(buildTechArticleCard).join('');
   }
+
+  const pagination = document.querySelector('.pagination');
+  renderPagination(pagination, currentPage, totalPages, (page) => {
+    const url = new URL(window.location.href);
+    url.searchParams.set('category', category);
+    if (query) url.searchParams.set('q', query); else url.searchParams.delete('q');
+    if (page > 1) url.searchParams.set('page', String(page)); else url.searchParams.delete('page');
+    return `${url.pathname}${url.search}`;
+  });
 
   const popularList = document.querySelector('.tech-sidebar .popular-list');
   if (popularList) {
@@ -375,10 +475,6 @@ const renderCategoryPage = (category) => {
     if (popularCard) popularCard.hidden = matches.length <= 1;
     const popularPosts = POSTS.filter((post) => isPubliclyVisiblePost(post) && post.category === category).slice(0, 5);
     popularList.innerHTML = matches.length > 1 && popularPosts.length ? popularPosts.map(buildPopularCard).join('') : '';
-    document.querySelectorAll('.tech-sidebar .popular-list a').forEach((link) => {
-      const postId = link.getAttribute('href').split('id=')[1];
-      if (postId) link.setAttribute('href', `article.html?id=${postId}`);
-    });
   }
 
   document.querySelectorAll('.category-list a').forEach((link) => {
@@ -389,6 +485,7 @@ const renderCategoryPage = (category) => {
 
   updateCategoryCounts();
   attachArticleNavigation();
+  observeLazyBackgrounds();
 };
 
 const buildArticleContent = (post) => {
@@ -431,7 +528,26 @@ const renderArticlePage = () => {
   if (summaryNode) summaryNode.textContent = post.summary;
   if (categoryNode) categoryNode.textContent = post.category;
   if (dateNode) dateNode.textContent = formatPostDate(post);
+  const readTimeNode = document.getElementById('article-readtime');
+  if (readTimeNode) readTimeNode.textContent = post.readTime || '5 min read';
   if (contentNode) contentNode.innerHTML = buildArticleContent(post);
+  updateArticleMeta(post);
+  bindArticleShare(post);
+
+  // "Previous Post" goes to the next older article in the same category.
+  const prevPostLink = document.querySelector('.prev-post');
+  if (prevPostLink) {
+    const sameCategory = sortPublishedPosts(POSTS).filter((item) => item.category === post.category);
+    const index = sameCategory.findIndex((item) => String(item.id) === String(post.id));
+    const previous = index >= 0 ? sameCategory[index + 1] : null;
+    if (previous) {
+      prevPostLink.setAttribute('href', getArticleHref(previous));
+      prevPostLink.textContent = `← ${previous.title}`;
+    } else {
+      prevPostLink.setAttribute('href', PAGE_CATEGORY[post.category] || 'index.html');
+      prevPostLink.textContent = `← All ${post.category} Articles`;
+    }
+  }
   if (breadcrumbs) {
     breadcrumbs.innerHTML = `
       <a href="index.html">Home</a>
@@ -453,11 +569,12 @@ const renderArticlePage = () => {
     const relatedPosts = POSTS.filter((item) => isPubliclyVisiblePost(item) && item.category === post.category && item.id !== post.id).slice(0, 4);
     relatedList.innerHTML = relatedPosts.map((item) => `
       <li>
-        <span class="related-thumb" style="background-image:url('${item.thumb}')"></span>
-        <a href="article.html?id=${item.id}">${item.title}</a>
+        <span class="related-thumb lazy-bg" data-bg="${item.thumb}"></span>
+        <a href="${getArticleHref(item)}">${item.title}</a>
         <span class="related-arrow">›</span>
       </li>
     `).join('');
+    observeLazyBackgrounds();
   }
 
   document.querySelectorAll('.article-sidebar .category-list a').forEach((link) => {
@@ -470,6 +587,53 @@ const renderArticlePage = () => {
   attachArticleNavigation();
   loadArticleComments(post.id);
   bindArticleCommentForm(post.id);
+};
+
+const updateArticleMeta = (post) => {
+  const title = post.meta_title || post.title;
+  const description = post.meta_description || post.excerpt || post.summary || '';
+  const url = `${window.location.origin}/article.html?id=${encodeURIComponent(String(post.slug || post.id))}`;
+  const image = post.image || post.thumb || '';
+  document.title = `${title} | BlogSphere`;
+  const setMeta = (selector, value) => {
+    const node = document.querySelector(selector);
+    if (node && value) node.setAttribute('content', value);
+  };
+  setMeta('meta[name="description"]', description);
+  setMeta('meta[property="og:title"]', title);
+  setMeta('meta[property="og:description"]', description);
+  setMeta('meta[property="og:url"]', url);
+  setMeta('meta[property="og:image"]', image);
+  setMeta('meta[name="twitter:title"]', title);
+  setMeta('meta[name="twitter:description"]', description);
+  setMeta('meta[name="twitter:image"]', image);
+  let canonical = document.querySelector('link[rel="canonical"]');
+  if (!canonical) {
+    canonical = document.createElement('link');
+    canonical.setAttribute('rel', 'canonical');
+    document.head.appendChild(canonical);
+  }
+  canonical.setAttribute('href', url);
+};
+
+const bindArticleShare = (post) => {
+  const url = `${window.location.origin}/article.html?id=${encodeURIComponent(String(post.slug || post.id))}`;
+  const text = encodeURIComponent(post.title);
+  const encodedUrl = encodeURIComponent(url);
+  const links = {
+    'share-facebook': `https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}`,
+    'share-x': `https://twitter.com/intent/tweet?url=${encodedUrl}&text=${text}`,
+    'share-linkedin': `https://www.linkedin.com/sharing/share-offsite/?url=${encodedUrl}`,
+    'share-pinterest': `https://pinterest.com/pin/create/button/?url=${encodedUrl}&media=${encodeURIComponent(post.image || '')}&description=${text}`
+  };
+  Object.entries(links).forEach(([id, href]) => {
+    const node = document.getElementById(id);
+    if (node) {
+      node.setAttribute('href', href);
+      node.setAttribute('target', '_blank');
+      node.setAttribute('rel', 'noopener');
+    }
+  });
 };
 
 const escapeCommentText = (value) => String(value ?? '').replace(/[&<>"']/g, (character) => ({
@@ -598,7 +762,7 @@ const bindMobileMenu = () => {
 
 const bindSearchFocus = () => {
   const triggerButton = document.querySelector('.search-button');
-  const searchInput = document.querySelector('.sidebar-search-input, .search-box input');
+  const searchInput = document.querySelector('.hero-search input, .sidebar-search-input, .search-box input');
   if (!triggerButton || !searchInput) return;
 
   triggerButton.addEventListener('click', () => {
@@ -608,7 +772,7 @@ const bindSearchFocus = () => {
 };
 
 const bindSearchInputs = () => {
-  const inputs = document.querySelectorAll('.sidebar-search-input, .search-box input');
+  const inputs = document.querySelectorAll('.hero-search input, .sidebar-search-input, .search-box input');
   inputs.forEach((input) => {
     input.addEventListener('input', () => {
       const query = input.value.trim();
@@ -639,15 +803,12 @@ const bindSearchInputs = () => {
 };
 
 const bindCategoryLinks = () => {
+  // Category cards on the homepage go to the category page.
   document.querySelectorAll('.category-card').forEach((card) => {
     card.addEventListener('click', () => {
       const text = card.querySelector('h3')?.textContent.trim();
-      if (!text) return;
-      const url = new URL(window.location.href);
-      url.pathname = 'index.html';
-      url.searchParams.set('category', text);
-      url.searchParams.delete('q');
-      window.location.href = url.toString();
+      if (!text || !PAGE_CATEGORY[text]) return;
+      window.location.href = `${PAGE_CATEGORY[text]}?category=${encodeURIComponent(text)}`;
     });
   });
 
@@ -672,7 +833,7 @@ const bindPopularLinks = () => {
     const href = link.getAttribute('href') || '';
     const strongText = link.querySelector('strong')?.textContent?.trim() || '';
     const match = POSTS.find((post) => post.title === strongText);
-    if (match) link.setAttribute('href', `article.html?id=${match.id}`);
+    if (match) link.setAttribute('href', getArticleHref(match));
     else if (href === '#' || href.includes('article.html') && !href.includes('id=')) {
       link.setAttribute('href', 'index.html');
     }
@@ -764,22 +925,17 @@ const clearRelativeTimeRefreshTimer = () => {
 const loadPublicPosts = async () => {
   const localHost = ['localhost', '127.0.0.1'].includes(window.location.hostname);
   const endpoints = localHost
-    ? ['/api/public-data', '/.netlify/functions/api-public-data']
-    : ['/.netlify/functions/api-public-data', '/api/public-data'];
+    ? ['/api/public-data?lite=1', '/.netlify/functions/api-public-data?lite=1']
+    : ['/.netlify/functions/api-public-data?lite=1', '/api/public-data?lite=1'];
   for (const endpoint of endpoints) {
     try {
-      const url = `${endpoint}${endpoint.includes('?') ? '&' : '?'}_=${Date.now()}`;
-      const response = await fetch(url, {
-        cache: 'no-store',
-        headers: {
-          'Cache-Control': 'no-cache, no-store, must-revalidate',
-          Pragma: 'no-cache',
-          Expires: '0'
-        }
-      });
+      // Lite list: no article bodies, so the payload is ~70KB instead of ~590KB.
+      // The response is cacheable (60s) instead of cache-busted on every load.
+      const response = await fetch(endpoint, { headers: { Accept: 'application/json' } });
       if (!response.ok) continue;
       const data = await response.json();
       POSTS = Array.isArray(data.posts) ? data.posts.filter(isPubliclyVisiblePost) : [];
+      lastPublicLoadAt = Date.now();
       return;
     } catch (error) {
       continue;
@@ -788,16 +944,44 @@ const loadPublicPosts = async () => {
   POSTS = [];
 };
 
+// Article pages fetch the single full post (with its body) by id or slug.
+const loadArticlePost = async (articleId) => {
+  if (!articleId) return;
+  const localHost = ['localhost', '127.0.0.1'].includes(window.location.hostname);
+  const base = localHost ? '/api/public-data' : '/.netlify/functions/api-public-data';
+  const fallback = localHost ? '/.netlify/functions/api-public-data' : '/api/public-data';
+  for (const endpoint of [base, fallback]) {
+    try {
+      const response = await fetch(`${endpoint}?id=${encodeURIComponent(articleId)}`, { headers: { Accept: 'application/json' } });
+      if (!response.ok) continue;
+      const data = await response.json();
+      if (data.post) {
+        ARTICLE_POST = data.post;
+        return;
+      }
+    } catch (error) {
+      continue;
+    }
+  }
+  ARTICLE_POST = null;
+};
+
 const refreshPublicPosts = async () => {
   await loadPublicPosts();
   if (getPageName() === 'index.html') renderHomePage();
 };
 
 const initializePage = async () => {
-  await loadPublicPosts();
-  bindPopularLinks();
   const pageName = getPageName();
-
+  if (pageName === 'article.html') {
+    // Article pages need the lite list (related posts, categories) and the
+    // single full post (body + meta) in parallel.
+    const articleId = getArticleRequestValue();
+    await Promise.all([loadPublicPosts(), loadArticlePost(articleId)]);
+  } else {
+    await loadPublicPosts();
+  }
+  bindPopularLinks();
   if (pageName === 'index.html') {
     renderHomePage();
   } else if (pageName === 'Technology.html') {
@@ -813,10 +997,11 @@ const initializePage = async () => {
   }
 
   clearRelativeTimeRefreshTimer();
+  // Relative times update in place once a minute; the page is never rebuilt.
   relativeTimeRefreshTimer = setInterval(() => {
     if (document.hidden) return;
     refreshRelativeTimeRender();
-  }, 15000);
+  }, 60000);
 };
 
 bindTheme();
@@ -830,7 +1015,9 @@ initializePage();
 
 document.addEventListener('visibilitychange', () => {
   if (!document.hidden) {
-    refreshPublicPosts();
+    // Refetch at most every 5 minutes when the tab regains focus; the list
+    // response is cached for 60s, so this is cheap.
+    if (Date.now() - lastPublicLoadAt > 5 * 60 * 1000) refreshPublicPosts();
     refreshRelativeTimeRender();
   }
 });

@@ -4,6 +4,17 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="description" content="BlogSphere article" />
+    <meta property="og:type" content="article" />
+    <meta property="og:site_name" content="BlogSphere" />
+    <meta property="og:title" content="Article | BlogSphere" />
+    <meta property="og:description" content="BlogSphere article" />
+    <meta property="og:url" content="https://blogsphere.info/" />
+    <meta property="og:image" content="https://blogsphere.info/Logo.webp" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Article | BlogSphere" />
+    <meta name="twitter:description" content="BlogSphere article" />
+    <meta name="twitter:image" content="https://blogsphere.info/Logo.webp" />
+    <link rel="canonical" href="https://blogsphere.info/" />
     <title>Article | BlogSphere</title>
     <link rel="icon" type="image/webp" href="Favicon_11zon.webp" />
     <link rel="stylesheet" href="style.css" />
@@ -63,16 +74,16 @@
           <div class="article-meta-line">
             <span id="article-date" class="meta-item date-item"></span>
             <span class="meta-divider">•</span>
-            <span class="meta-item">6 min read</span>
+            <span id="article-readtime" class="meta-item">5 min read</span>
             <span class="meta-divider">•</span>
             <span class="meta-item">By Admin</span>
           </div>
 
           <div class="article-socials" aria-label="Share article">
-            <a href="https://www.facebook.com" aria-label="Share on Facebook">f</a>
-            <a href="https://x.com" aria-label="Share on X">x</a>
-            <a href="https://www.linkedin.com" aria-label="Share on LinkedIn">in</a>
-            <a href="https://www.pinterest.com" aria-label="Share on Pinterest">P</a>
+            <a id="share-facebook" href="https://www.facebook.com" aria-label="Share on Facebook">f</a>
+            <a id="share-x" href="https://x.com" aria-label="Share on X">x</a>
+            <a id="share-linkedin" href="https://www.linkedin.com" aria-label="Share on LinkedIn">in</a>
+            <a id="share-pinterest" href="https://www.pinterest.com" aria-label="Share on Pinterest">P</a>
           </div>
 
           <div id="article-content" class="article-content"></div>
@@ -133,30 +144,23 @@
           <div class="sidebar-card article-sidebar-card categories-card">
             <h3>Categories</h3>
             <ul class="category-list">
-              <li><a href="article.html"><span class="category-item"><span class="category-bullet"></span>Technology</span><span class="category-count"></span></a></li>
-              <li><a href="article.html"><span class="category-item"><span class="category-bullet"></span>Business</span><span class="category-count"></span></a></li>
-              <li><a href="article.html"><span class="category-item"><span class="category-bullet"></span>Home Decor</span><span class="category-count"></span></a></li>
+              <li><a href="Technology.html?category=Technology"><span class="category-item"><span class="category-bullet"></span>Technology</span><span class="category-count"></span></a></li>
+              <li><a href="Business.html?category=Business"><span class="category-item"><span class="category-bullet"></span>Business</span><span class="category-count"></span></a></li>
+              <li><a href="Home-Decor.html?category=Home+Decor"><span class="category-item"><span class="category-bullet"></span>Home Decor</span><span class="category-count"></span></a></li>
               <li><a href="Make-Money-Online.html?category=Make+Money+Online"><span class="category-item"><span class="category-bullet"></span>Make Money Online</span><span class="category-count"></span></a></li>
             </ul>
-          </div>
-
-          <div class="sidebar-card article-sidebar-card newsletter-box">
-            <h3>Newsletter</h3>
-            <p>Get the latest tech updates, straight to your inbox.</p>
-            <input type="email" placeholder="Your email address" />
-            <button type="button">Subscribe</button>
           </div>
 
           <div class="sidebar-card article-sidebar-card tags-card">
             <h3>Tags</h3>
             <div class="tag-list">
-              <span class="tag">Gadgets</span>
-              <span class="tag">Software</span>
-              <span class="tag">Devices</span>
-              <span class="tag">Internet</span>
-              <span class="tag">Tech News</span>
-              <span class="tag">Security</span>
-              <span class="tag">Innovation</span>
+              <a class="tag" href="index.html?q=Gadgets">Gadgets</a>
+              <a class="tag" href="index.html?q=Software">Software</a>
+              <a class="tag" href="index.html?q=Devices">Devices</a>
+              <a class="tag" href="index.html?q=Internet">Internet</a>
+              <a class="tag" href="index.html?q=Tech%20News">Tech News</a>
+              <a class="tag" href="index.html?q=Security">Security</a>
+              <a class="tag" href="index.html?q=Innovation">Innovation</a>
             </div>
           </div>
         </aside>

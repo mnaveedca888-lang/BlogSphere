@@ -3,10 +3,33 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="BlogSphere - Ideas, insights, and better living." />
-    <title>BlogSphere</title>
+    <meta name="description" content="BlogSphere — practical guides on AI tools, small business, home decor and making money online. Ideas, insights, and better living." />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="BlogSphere" />
+    <meta property="og:title" content="BlogSphere — Ideas, Insights & Better Living" />
+    <meta property="og:description" content="Practical guides on AI tools, small business, home decor and making money online — written in plain English." />
+    <meta property="og:url" content="https://blogsphere.info/" />
+    <meta property="og:image" content="https://blogsphere.info/Logo.webp" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="BlogSphere — Ideas, Insights & Better Living" />
+    <meta name="twitter:description" content="Practical guides on AI tools, small business, home decor and making money online — written in plain English." />
+    <meta name="twitter:image" content="https://blogsphere.info/Logo.webp" />
+    <link rel="canonical" href="https://blogsphere.info/" />
+    <title>BlogSphere — Ideas, Insights & Better Living</title>
     <link rel="icon" type="image/webp" href="Favicon_11zon.webp" />
+    <link rel="preconnect" href="https://acmhgxoyddzurgljvsrb.supabase.co" crossorigin />
+    <link rel="preconnect" href="https://images.unsplash.com" crossorigin />
     <link rel="stylesheet" href="style.css" />
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "Blog",
+      "name": "BlogSphere",
+      "url": "https://blogsphere.info/",
+      "description": "Practical guides on AI tools, small business, home decor and making money online.",
+      "inLanguage": "en"
+    }
+    </script>
   </head>
   <body class="home-page">
     <div class="page-shell">
@@ -41,9 +64,36 @@
       </header>
 
       <main class="container page-main">
+        <section class="site-hero" aria-label="Welcome to BlogSphere">
+          <div class="site-hero-glow" aria-hidden="true"></div>
+          <div class="site-hero-copy">
+            <span class="hero-eyebrow">✦ BlogSphere — Ideas, insights &amp; better living</span>
+            <h1>Ideas that make life smarter.</h1>
+            <p>Practical guides on AI tools, small business, home decor and making money online — written in plain English and checked against real sources.</p>
+            <form class="hero-search" action="index.html" method="get" role="search">
+              <label class="sr-only" for="hero-search">Search articles</label>
+              <input id="hero-search" name="q" type="search" placeholder="Search guides, tools, ideas..." autocomplete="off" />
+              <button type="submit">Search</button>
+            </form>
+            <div class="hero-stats" aria-label="Site statistics">
+              <span><strong id="hero-stat-articles">45</strong> practical guides</span>
+              <span class="hero-stat-dot" aria-hidden="true">•</span>
+              <span><strong>4</strong> categories</span>
+              <span class="hero-stat-dot" aria-hidden="true">•</span>
+              <span>New guides every week</span>
+            </div>
+            <div class="hero-chips" aria-label="Browse categories">
+              <a href="Technology.html">Technology</a>
+              <a href="Business.html">Business</a>
+              <a href="Home-Decor.html">Home Decor</a>
+              <a href="Make-Money-Online.html">Make Money Online</a>
+            </div>
+          </div>
+        </section>
+
         <section class="hero-grid" aria-label="Featured stories">
-          <article class="feature-card feature-large">
-            <img class="feature-card-image" src="" alt="" />
+          <article class="feature-card feature-large skeleton">
+            <img class="feature-card-image" alt="" fetchpriority="high" />
             <div class="feature-overlay"></div>
             <div class="feature-content">
               <span class="pill small-pill"></span>
@@ -57,7 +107,11 @@
               </div>
             </div>
           </article>
-          <aside class="stacked-feature-list" aria-label="Trending articles"></aside>
+          <aside class="stacked-feature-list" aria-label="Trending articles">
+            <div class="mini-feature skeleton" aria-hidden="true"><div class="mini-image"></div><div class="mini-copy"><span class="skeleton-line"></span><span class="skeleton-line short"></span></div></div>
+            <div class="mini-feature skeleton" aria-hidden="true"><div class="mini-image"></div><div class="mini-copy"><span class="skeleton-line"></span><span class="skeleton-line short"></span></div></div>
+            <div class="mini-feature skeleton" aria-hidden="true"><div class="mini-image"></div><div class="mini-copy"><span class="skeleton-line"></span><span class="skeleton-line short"></span></div></div>
+          </aside>
         </section>
         <p class="empty-state" hidden>No published posts yet.</p>
 
@@ -93,6 +147,17 @@
               <p>Freelancing, digital products, online income and creator strategies.</p>
             </div>
           </article>
+        </section>
+
+        <section class="latest-block" aria-label="Latest articles">
+          <div class="section-heading">
+            <div class="heading-left">
+              <span class="heading-bar"></span>
+              <h2>Fresh off the press</h2>
+            </div>
+            <span class="latest-note">Newest guides across all categories</span>
+          </div>
+          <div class="latest-grid"></div>
         </section>
 
         <section class="content-grid">
