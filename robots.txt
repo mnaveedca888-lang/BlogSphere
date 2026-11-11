@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://blogsphere.info/sitemap.xml
