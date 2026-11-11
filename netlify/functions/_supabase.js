@@ -229,7 +229,7 @@ function sanitizeRichText(value = '') {
   });
 }
 
-function mapPublicPost(post, categoriesById) {
+function mapPublicPost(post, categoriesById, options = {}) {
   const categoryName = categoriesById.get(String(post.category_id)) || post.category || 'Technology';
   const publishedAt = post.published_at || post.created_at;
   const image = post.featured_image || 'https://images.unsplash.com/photo-1498050108023-c5249f4df085?auto=format&fit=crop&w=1200&q=80';
@@ -247,7 +247,9 @@ function mapPublicPost(post, categoriesById) {
     image,
     thumb: post.featured_image || 'https://images.unsplash.com/photo-1498050108023-c5249f4df085?auto=format&fit=crop&w=900&q=80',
     tags: toJson(post.tags, []),
-    content: sanitizeRichText(post.content || ''),
+    // Lite mode (list pages) omits the full article body so the list payload
+    // stays small; article pages fetch the single post with content instead.
+    content: options.lite ? undefined : sanitizeRichText(post.content || ''),
     author: post.author || 'Admin',
     status: post.status,
     meta_title: post.meta_title || post.title,
@@ -266,10 +268,22 @@ async function getPublishedPosts() {
   return supabaseGet('/rest/v1/posts?select=*&status=eq.published&deleted_at=is.null&order=published_at.desc.nullslast,created_at.desc.nullslast,id.desc');
 }
 
-async function getPublicData() {
+async function getPublicData(options = {}) {
   const [categories, posts] = await Promise.all([getCategories(), getPublishedPosts()]);
   const categoriesById = new Map(categories.map(category => [String(category.id), category.name]));
-  return { posts: posts.map(post => mapPublicPost(post, categoriesById)), categories };
+  return { posts: posts.map(post => mapPublicPost(post, categoriesById, options)), categories };
+}
+
+async function getPublicPost(lookup) {
+  const wanted = String(lookup || '').trim();
+  if (!wanted) return null;
+  const normalized = wanted.toLowerCase();
+  const posts = await getPublishedPosts();
+  const post = posts.find(item => String(item.id) === wanted || String(item.slug || '').toLowerCase() === normalized);
+  if (!post) return null;
+  const categories = await getCategories();
+  const categoriesById = new Map(categories.map(category => [String(category.id), category.name]));
+  return mapPublicPost(post, categoriesById);
 }
 
 module.exports = {
@@ -283,6 +297,7 @@ module.exports = {
   getCategories,
   getPublishedPosts,
   getPublicData,
+  getPublicPost,
   hasRole,
   isMainAdmin,
   jsonResponse,
