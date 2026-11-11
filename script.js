@@ -17,7 +17,8 @@ const PAGE_CATEGORY = {
   Technology: 'Technology.html',
   Business: 'Business.html',
   'Home Decor': 'Home-Decor.html',
-  'Make Money Online': 'Make-Money-Online.html'
+  'Make Money Online': 'Make-Money-Online.html',
+  'Health & Fitness': 'Health-Fitness.html'
 };
 
 const normalize = (value = '') => value.toLowerCase().trim();
@@ -31,6 +32,7 @@ const getPageName = () => {
     business: 'Business.html',
     'home-decor': 'Home-Decor.html',
     'make-money-online': 'Make-Money-Online.html',
+    'health-fitness': 'Health-Fitness.html',
     article: 'article.html'
   };
   return cleanRoutes[pageName.toLowerCase()] || pageName;
@@ -74,7 +76,7 @@ const findArticlePost = (articleId) => {
 const getArticleHref = (post) => `article.html?id=${encodeURIComponent(String(post.slug || post.id))}`;
 
 const buildStoryCard = (post) => {
-  const categoryClass = post.category === 'Business' ? 'business-pill' : post.category === 'Home Decor' ? 'decor-pill' : post.category === 'Make Money Online' ? 'money-pill' : '';
+  const categoryClass = post.category === 'Business' ? 'business-pill' : post.category === 'Home Decor' ? 'decor-pill' : post.category === 'Make Money Online' ? 'money-pill' : post.category === 'Health & Fitness' ? 'health-pill' : '';
   return `
     <article class="story-card" data-post-id="${post.id}" data-post-url="${getArticleHref(post)}" role="link" tabindex="0">
       <div class="story-image lazy-bg" data-bg="${post.thumb}"></div>
@@ -92,7 +94,7 @@ const buildStoryCard = (post) => {
 };
 
 const buildMiniFeature = (post) => {
-  const categoryClass = post.category === 'Business' ? 'business-pill' : post.category === 'Home Decor' ? 'decor-pill' : post.category === 'Make Money Online' ? 'money-pill' : '';
+  const categoryClass = post.category === 'Business' ? 'business-pill' : post.category === 'Home Decor' ? 'decor-pill' : post.category === 'Make Money Online' ? 'money-pill' : post.category === 'Health & Fitness' ? 'health-pill' : '';
   return `
     <article class="mini-feature" data-post-id="${post.id}" data-post-url="${getArticleHref(post)}" role="link" tabindex="0">
       <div class="mini-image lazy-bg" data-bg="${post.thumb}"></div>
@@ -384,7 +386,7 @@ const renderHomePage = () => {
   const query = getUrlParams().get('q') || '';
   const selectedCategory = getUrlParams().get('category') || 'All';
   const blocks = document.querySelectorAll('.section-block');
-  const categories = ['Technology', 'Business', 'Home Decor', 'Make Money Online'];
+  const categories = ['Technology', 'Business', 'Home Decor', 'Make Money Online', 'Health & Fitness'];
   const hasSinglePost = sortPublishedPosts(POSTS).length === 1;
 
   const popularCard = document.querySelector('.sidebar .popular-card');
@@ -1002,6 +1004,8 @@ const initializePage = async () => {
     renderCategoryPage('Home Decor');
   } else if (pageName === 'Make-Money-Online.html') {
     renderCategoryPage('Make Money Online');
+  } else if (pageName === 'Health-Fitness.html') {
+    renderCategoryPage('Health & Fitness');
   } else if (pageName === 'article.html') {
     renderArticlePage();
   }

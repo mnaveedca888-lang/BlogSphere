@@ -809,8 +809,14 @@ body.home-page .site-footer {
   color: #a35b1e;
 }
 
-.mini-copy > .pill:not(.business-pill):not(.decor-pill):not(.money-pill),
-.story-body > .pill:not(.business-pill):not(.decor-pill):not(.money-pill) {
+.health-pill {
+  background: rgba(15, 157, 88, 0.12);
+  border-color: rgba(15, 157, 88, 0.22);
+  color: #0b6e3f;
+}
+
+.mini-copy > .pill:not(.business-pill):not(.decor-pill):not(.money-pill):not(.health-pill),
+.story-body > .pill:not(.business-pill):not(.decor-pill):not(.money-pill):not(.health-pill) {
   background: var(--blue-soft);
   border-color: rgba(47, 91, 229, 0.22);
   color: var(--link);
@@ -850,6 +856,7 @@ body.home-page .site-footer {
 .business-icon { background: linear-gradient(180deg, #2cb783, #179169); }
 .decor-icon { background: linear-gradient(180deg, #8b5ce8, #623ec5); }
 .money-icon { background: linear-gradient(180deg, #efaa61, #d4782c); }
+.health-icon { background: linear-gradient(180deg, #f43f5e, #be123c); }
 
 .category-copy h3 {
   margin: 0 0 4px;
@@ -914,6 +921,10 @@ body.home-page .site-footer {
 
 .money-bar {
   background: var(--orange);
+}
+
+.health-bar {
+  background: #e63946;
 }
 
 .section-heading h2 {
@@ -1380,6 +1391,10 @@ body.home-page .site-footer {
 
 .tech-hero-image--make-money-online {
   background-image: url('Make-Money-Online.webp');
+}
+
+.tech-hero-image--health-fitness {
+  background-image: url('Health-Fitness.jpeg');
 }
 
 .tech-content {
