@@ -1,7 +1,7 @@
 const nodemailer = require('nodemailer');
 const { jsonResponse } = require('./_supabase');
 
-const CONTACT_RECIPIENT = 'mnaveedca888@gmail.com';
+const CONTACT_RECIPIENT = 'admin@blogsphere.info';
 
 exports.handler = async event => {
   if (event.httpMethod !== 'POST') {
@@ -19,12 +19,14 @@ exports.handler = async event => {
   const email = String(payload.email || '').trim();
   const subject = String(payload.subject || '').trim();
   const message = String(payload.message || '').trim();
+  const queryType = String(payload.queryType || 'General inquiry').trim();
+  const article = String(payload.article || '').trim();
 
   if (!name || !email || !subject || !message) {
     return jsonResponse(400, { ok: false, message: 'Name, email, subject, and message are required.' });
   }
 
-  if (name.length > 120 || subject.length > 200 || message.length > 5000 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+  if (name.length > 120 || subject.length > 200 || message.length > 5000 || queryType.length > 60 || article.length > 500 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     return jsonResponse(400, { ok: false, message: 'Please provide valid contact information.' });
   }
 
@@ -48,8 +50,8 @@ exports.handler = async event => {
       from: gmailUser,
       to: CONTACT_RECIPIENT,
       replyTo: email,
-      subject: `[BlogSphere Contact] ${subject.replace(/[\r\n]+/g, ' ')}`,
-      text: `Visitor name: ${name}\nVisitor email: ${email}\nSubject: ${subject}\nSubmitted: ${new Date().toISOString()}\n\nMessage:\n${message}`
+      subject: `[BlogSphere Contact: ${queryType.replace(/[\r\n]+/g, ' ')}] ${subject.replace(/[\r\n]+/g, ' ')}`,
+      text: `Visitor name: ${name}\nVisitor email: ${email}\nQuery type: ${queryType}\nArticle: ${article || '—'}\nSubject: ${subject}\nSubmitted: ${new Date().toISOString()}\n\nMessage:\n${message}`
     });
 
     return jsonResponse(200, { ok: true, message: 'Your message has been sent successfully.' });
