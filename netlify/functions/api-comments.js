@@ -13,9 +13,10 @@ function validPostId(value) {
 
 function requestIp(event) {
   const headers = event.headers || {};
-  return String(headers['x-nf-client-connection-ip'] || headers['X-Nf-Client-Connection-Ip'] || headers['x-forwarded-for'] || '')
-    .split(',')[0].trim();
+  return String(headers['x-nf-client-connection-ip'] || headers['X-Nf-Client-Connection-Ip'] || '').trim();
 }
+
+exports.requestIp = requestIp;
 
 function rateLimitHash(event, postId, email) {
   const { serviceRoleKey } = getConfig();

@@ -4,7 +4,14 @@
   "private": true,
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "build:pages": "node scripts/build-pages.js",
+    "check:node": "node scripts/check-node-version.js",
+    "test": "node --test",
+    "pages:dev": "npm run check:node && npm run build:pages && wrangler pages dev dist --ip 127.0.0.1 --port 8788"
+  },
+  "engines": {
+    "node": ">=22.12.0"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
@@ -13,6 +20,9 @@
     "express-session": "^1.18.0",
     "multer": "^1.4.5-lts.1",
     "nodemailer": "^10.0.10",
-    "sqlite3": "^5.1.7"
+    "sqlite3": "^6.0.1"
+  },
+  "devDependencies": {
+    "wrangler": "^4.160.1"
   }
 }

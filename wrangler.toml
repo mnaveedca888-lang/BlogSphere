@@ -1,0 +1,5 @@
+name = "blogsphere"
+account_id = "66aaedd3e086b68a7fd9809589932db0"
+pages_build_output_dir = "./dist"
+compatibility_date = "2026-08-03"
+compatibility_flags = ["nodejs_compat", "nodejs_compat_populate_process_env"]

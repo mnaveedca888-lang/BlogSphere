@@ -1,28 +1,8 @@
-const localDevelopment = ['localhost', '127.0.0.1'].includes(window.location.hostname);
-const netlifyDevelopment = localDevelopment && ['8888', '9999'].includes(window.location.port);
-const api = localDevelopment && !netlifyDevelopment ? {
-  login: '/api/login',
-  session: '/api/session',
-  logout: '/api/logout',
-  posts: '/api/posts',
-  categories: '/api/categories',
-  upload: '/api/upload',
-  comments: '/.netlify/functions/api-admin-comments',
-  users: '/.netlify/functions/api-admin-users',
-  passwordChange: '/.netlify/functions/api-admin-password-change'
-} : {
-  login: '/.netlify/functions/api-admin-login',
-  session: '/.netlify/functions/api-admin-session',
-  logout: '/.netlify/functions/api-admin-logout',
-  posts: '/.netlify/functions/api-admin-posts',
-  categories: '/.netlify/functions/api-admin-categories',
-  upload: '/.netlify/functions/api-admin-upload',
-  comments: '/.netlify/functions/api-admin-comments',
-  users: '/.netlify/functions/api-admin-users',
-  passwordChange: '/.netlify/functions/api-admin-password-change',
-  recoveryRequest: '/.netlify/functions/api-admin-password-recovery-request',
-  recoveryUpdate: '/.netlify/functions/api-admin-password-recovery-update'
-};
+const { api, expressDevelopment } = window.BlogSphereAdminRouting.resolveAdminApiRouting({
+  hostname: window.location.hostname,
+  port: window.location.port,
+  platform: window.BLOGSPHERE_API_PLATFORM
+});
 
 const $ = id => document.getElementById(id);
 const escapeHtml = value => String(value == null ? '' : value).replace(/[&<>"']/g, char => ({
@@ -144,7 +124,7 @@ function allPosts() {
 }
 
 function postEndpoint(id, action) {
-  if (!localDevelopment) {
+  if (!expressDevelopment) {
     const params = new URLSearchParams();
     if (id != null) params.set('id', id);
     if (action) params.set('action', action);
@@ -157,7 +137,7 @@ function postEndpoint(id, action) {
 }
 
 function categoryEndpoint(id) {
-  if (!localDevelopment && id != null) return `${api.categories}?id=${encodeURIComponent(id)}`;
+  if (!expressDevelopment && id != null) return `${api.categories}?id=${encodeURIComponent(id)}`;
   return id == null ? api.categories : `${api.categories}/${encodeURIComponent(id)}`;
 }
 
@@ -669,7 +649,7 @@ $('mediaFileInput').addEventListener('change', async event => {
   }
   try {
     let result;
-    if (localDevelopment) {
+    if (expressDevelopment) {
       const formData = new FormData();
       formData.append('file', file);
       result = await request(api.upload, { method: 'POST', body: formData });

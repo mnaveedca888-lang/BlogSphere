@@ -935,10 +935,7 @@ const clearRelativeTimeRefreshTimer = () => {
 };
 
 const loadPublicPosts = async () => {
-  const localHost = ['localhost', '127.0.0.1'].includes(window.location.hostname);
-  const endpoints = localHost
-    ? ['/api/public-data?lite=1', '/.netlify/functions/api-public-data?lite=1']
-    : ['/.netlify/functions/api-public-data?lite=1', '/api/public-data?lite=1'];
+  const endpoints = ['/api/public-data?lite=1'];
   for (const endpoint of endpoints) {
     try {
       // Lite list: no article bodies, so the payload is ~70KB instead of ~590KB.
@@ -959,10 +956,7 @@ const loadPublicPosts = async () => {
 // Article pages fetch the single full post (with its body) by id or slug.
 const loadArticlePost = async (articleId) => {
   if (!articleId) return;
-  const localHost = ['localhost', '127.0.0.1'].includes(window.location.hostname);
-  const base = localHost ? '/api/public-data' : '/.netlify/functions/api-public-data';
-  const fallback = localHost ? '/.netlify/functions/api-public-data' : '/api/public-data';
-  for (const endpoint of [base, fallback]) {
+  for (const endpoint of ['/api/public-data']) {
     try {
       const response = await fetch(`${endpoint}?id=${encodeURIComponent(articleId)}`, { headers: { Accept: 'application/json' } });
       if (!response.ok) continue;

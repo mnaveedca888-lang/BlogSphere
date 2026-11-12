@@ -1,6 +1,5 @@
 const { getConfig, jsonResponse, supabaseGet } = require('./_supabase');
 
-const recoveryRedirect = `${String(process.env.URL || 'https://resplendent-lebkuchen-4a94ae.netlify.app').replace(/\/+$/, '')}/admin-full.html`;
 const diagnosticFields = ['message', 'msg', 'error', 'error_description', 'error_code', 'code'];
 
 function sanitizeDiagnostic(value) {
@@ -42,6 +41,9 @@ exports.handler = async event => {
     if (!profiles[0]?.auth_user_id || profiles[0].is_active !== true) return jsonResponse(200, { ok: true });
 
     const { url, anonKey } = getConfig();
+    const siteUrl = String(process.env.SITE_URL || process.env.URL || '').trim();
+    if (!siteUrl) return jsonResponse(503, { error: 'Password recovery is not configured.' });
+    const recoveryRedirect = new URL('/admin-full.html', siteUrl).toString();
     const endpoint = new URL('/auth/v1/recover', url);
     endpoint.searchParams.set('redirect_to', recoveryRedirect);
     const response = await fetch(endpoint, {

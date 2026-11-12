@@ -2,9 +2,13 @@ node_modules/
 .env
 .env.*
 !.env.example
+.dev.vars*
+!.dev.vars.example
 npm-debug.log*
 blogsphere.db
 uploads/
 phase1-backup/
+dist/
+.wrangler/
 # Local Netlify folder
 .netlify
