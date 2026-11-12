@@ -13,6 +13,13 @@ function getConfig() {
   return { url, anonKey, serviceRoleKey };
 }
 
+function getPublicConfig() {
+  const url = String(process.env.SUPABASE_URL || '').trim();
+  const anonKey = String(process.env.SUPABASE_ANON_KEY || '').trim();
+  if (!url || !anonKey) throw new Error('Supabase public-read configuration is missing.');
+  return { url, anonKey };
+}
+
 async function supabaseGet(path) {
   const { url, serviceRoleKey } = getConfig();
   const response = await fetch(`${url}${path}`, {
@@ -47,6 +54,18 @@ async function supabaseRequest(path, options = {}) {
     throw error;
   }
   return { response, body };
+}
+
+async function supabasePublicGet(path) {
+  const { url, anonKey } = getPublicConfig();
+  const response = await fetch(`${url}${path}`, {
+    headers: {
+      apikey: anonKey,
+      Authorization: `Bearer ${anonKey}`
+    }
+  });
+  if (!response.ok) throw new Error(`Supabase public read failed with status ${response.status}.`);
+  return response.json();
 }
 
 function jsonResponse(statusCode, body) {
@@ -264,12 +283,16 @@ async function getCategories() {
   return supabaseGet('/rest/v1/categories?select=*&order=name.asc');
 }
 
+async function getPublicCategories() {
+  return supabasePublicGet('/rest/v1/categories?select=*&order=name.asc');
+}
+
 async function getPublishedPosts() {
-  return supabaseGet('/rest/v1/posts?select=*&status=eq.published&deleted_at=is.null&order=published_at.desc.nullslast,created_at.desc.nullslast,id.desc');
+  return supabasePublicGet('/rest/v1/posts?select=*&status=eq.published&deleted_at=is.null&order=published_at.desc.nullslast,created_at.desc.nullslast,id.desc');
 }
 
 async function getPublicData(options = {}) {
-  const [categories, posts] = await Promise.all([getCategories(), getPublishedPosts()]);
+  const [categories, posts] = await Promise.all([getPublicCategories(), getPublishedPosts()]);
   const categoriesById = new Map(categories.map(category => [String(category.id), category.name]));
   return { posts: posts.map(post => mapPublicPost(post, categoriesById, options)), categories };
 }
@@ -281,7 +304,7 @@ async function getPublicPost(lookup) {
   const posts = await getPublishedPosts();
   const post = posts.find(item => String(item.id) === wanted || String(item.slug || '').toLowerCase() === normalized);
   if (!post) return null;
-  const categories = await getCategories();
+  const categories = await getPublicCategories();
   const categoriesById = new Map(categories.map(category => [String(category.id), category.name]));
   return mapPublicPost(post, categoriesById);
 }
@@ -295,6 +318,7 @@ module.exports = {
   getAdminSession,
   getAuthUser,
   getCategories,
+  getPublicCategories,
   getPublishedPosts,
   getPublicData,
   getPublicPost,
@@ -307,6 +331,7 @@ module.exports = {
   requireAdmin,
   responseWithHeaders,
   sessionCookie,
+  supabasePublicGet,
   supabaseGet,
   supabaseRequest,
   toJson,

@@ -3,6 +3,7 @@ const {
   getConfig,
   jsonResponse,
   parseBody,
+  supabasePublicGet,
   supabaseGet,
   supabaseRequest
 } = require('./_supabase');
@@ -38,9 +39,9 @@ exports.handler = async event => {
     if (!validPostId(postId)) return response(400, { error: 'A valid post_id is required.' });
 
     if (event.httpMethod === 'GET') {
-      const postRows = await supabaseGet(`/rest/v1/posts?select=id&id=eq.${encodeURIComponent(postId)}&status=eq.published&deleted_at=is.null&limit=1`);
+      const postRows = await supabasePublicGet(`/rest/v1/posts?select=id&id=eq.${encodeURIComponent(postId)}&status=eq.published&deleted_at=is.null&limit=1`);
       if (!postRows.length) return response(404, { error: 'Post not found.' });
-      const comments = await supabaseGet(`/rest/v1/comments?select=id,name,body,reply,reply_at,created_at&post_id=eq.${encodeURIComponent(postId)}&status=eq.approved&order=created_at.asc`);
+      const comments = await supabasePublicGet(`/rest/v1/comments?select=id,name,body,reply,reply_at,created_at&post_id=eq.${encodeURIComponent(postId)}&status=eq.approved&order=created_at.asc`);
       return response(200, comments);
     }
 

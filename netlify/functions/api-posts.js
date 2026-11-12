@@ -1,9 +1,9 @@
-const { getCategories, getPublishedPosts, jsonResponse, mapPublicPost } = require('./_supabase');
+const { getPublicCategories, getPublishedPosts, jsonResponse, mapPublicPost } = require('./_supabase');
 
 exports.handler = async event => {
   if (event.httpMethod !== 'GET') return jsonResponse(405, { error: 'Method not allowed.' });
   try {
-    const [categories, posts] = await Promise.all([getCategories(), getPublishedPosts()]);
+    const [categories, posts] = await Promise.all([getPublicCategories(), getPublishedPosts()]);
     const categoriesById = new Map(categories.map(category => [String(category.id), category.name]));
     return jsonResponse(200, posts.map(post => mapPublicPost(post, categoriesById)));
   } catch (error) {

@@ -192,6 +192,176 @@ test('Supabase-backed GET APIs fail with a non-cacheable 503 when credentials ar
   }
 });
 
+test('public category reads use the anon key without requiring the service-role key', async () => {
+  const originalFetch = global.fetch;
+  const originalUrl = process.env.SUPABASE_URL;
+  const originalAnonKey = process.env.SUPABASE_ANON_KEY;
+  const originalServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const calls = [];
+
+  process.env.SUPABASE_URL = 'https://supabase.example';
+  process.env.SUPABASE_ANON_KEY = 'test-anon-key';
+  delete process.env.SUPABASE_SERVICE_ROLE_KEY;
+  global.fetch = async (url, options) => {
+    calls.push({ url: String(url), headers: options.headers });
+    return new Response(JSON.stringify([{
+      id: 1,
+      name: 'Technology',
+      slug: 'technology',
+      description: null,
+      created_at: '2026-01-01T00:00:00Z'
+    }]), { status: 200, headers: { 'Content-Type': 'application/json' } });
+  };
+
+  try {
+    const response = await adapter.dispatch(
+      new Request('https://blogsphere.pages.dev/api/categories'),
+      {
+        SUPABASE_URL: process.env.SUPABASE_URL,
+        SUPABASE_ANON_KEY: process.env.SUPABASE_ANON_KEY
+      }
+    );
+    assert.equal(response.status, 200);
+    assert.equal((await response.json())[0].name, 'Technology');
+    assert.equal(calls.length, 1);
+    assert.match(calls[0].url, /\/rest\/v1\/categories\?select=\*&order=name.asc/);
+    assert.equal(calls[0].headers.apikey, 'test-anon-key');
+    assert.equal(calls[0].headers.Authorization, 'Bearer test-anon-key');
+  } finally {
+    global.fetch = originalFetch;
+    if (originalUrl === undefined) delete process.env.SUPABASE_URL;
+    else process.env.SUPABASE_URL = originalUrl;
+    if (originalAnonKey === undefined) delete process.env.SUPABASE_ANON_KEY;
+    else process.env.SUPABASE_ANON_KEY = originalAnonKey;
+    if (originalServiceRoleKey === undefined) delete process.env.SUPABASE_SERVICE_ROLE_KEY;
+    else process.env.SUPABASE_SERVICE_ROLE_KEY = originalServiceRoleKey;
+  }
+});
+
+test('public post APIs use only the anon key', async () => {
+  const originalFetch = global.fetch;
+  const originalUrl = process.env.SUPABASE_URL;
+  const originalAnonKey = process.env.SUPABASE_ANON_KEY;
+  const originalServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const calls = [];
+
+  process.env.SUPABASE_URL = 'https://supabase.example';
+  process.env.SUPABASE_ANON_KEY = 'test-anon-key';
+  delete process.env.SUPABASE_SERVICE_ROLE_KEY;
+  global.fetch = async (url, options) => {
+    calls.push({ url: String(url), headers: options.headers });
+    const body = String(url).includes('/rest/v1/categories')
+      ? [{ id: 2, name: 'Technology', slug: 'technology', description: null, created_at: '2026-01-01T00:00:00Z' }]
+      : [{
+        id: 1,
+        title: 'Public article',
+        slug: 'public-article',
+        category_id: 2,
+        status: 'published',
+        published_at: '2026-01-01T00:00:00Z',
+        created_at: '2026-01-01T00:00:00Z',
+        updated_at: '2026-01-01T00:00:00Z'
+      }];
+    return new Response(JSON.stringify(body), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' }
+    });
+  };
+
+  try {
+    for (const route of ['/api/posts', '/api/public-data']) {
+      const response = await adapter.dispatch(
+        new Request(`https://blogsphere.pages.dev${route}`),
+        {
+          SUPABASE_URL: process.env.SUPABASE_URL,
+          SUPABASE_ANON_KEY: process.env.SUPABASE_ANON_KEY
+        }
+      );
+      assert.equal(response.status, 200, route);
+      assert.ok(calls.every(call => call.headers.apikey === 'test-anon-key'));
+      assert.ok(calls.every(call => call.headers.Authorization === 'Bearer test-anon-key'));
+    }
+    assert.equal(calls.length, 4);
+    assert.equal(
+      calls.filter(call => call.url.includes('/rest/v1/posts?')).length,
+      2
+    );
+    assert.ok(calls.filter(call => call.url.includes('/rest/v1/posts?')).every(call =>
+      call.url.includes('/rest/v1/posts?select=*&status=eq.published&deleted_at=is.null&order=published_at.desc.nullslast,created_at.desc.nullslast,id.desc')
+    ));
+  } finally {
+    global.fetch = originalFetch;
+    if (originalUrl === undefined) delete process.env.SUPABASE_URL;
+    else process.env.SUPABASE_URL = originalUrl;
+    if (originalAnonKey === undefined) delete process.env.SUPABASE_ANON_KEY;
+    else process.env.SUPABASE_ANON_KEY = originalAnonKey;
+    if (originalServiceRoleKey === undefined) delete process.env.SUPABASE_SERVICE_ROLE_KEY;
+    else process.env.SUPABASE_SERVICE_ROLE_KEY = originalServiceRoleKey;
+  }
+});
+
+test('admin database APIs still require the service-role binding', async () => {
+  const response = await adapter.dispatch(
+    new Request('https://blogsphere.pages.dev/api/admin/users'),
+    {
+      BLOGSPHERE_READ_ONLY: 'false',
+      SUPABASE_URL: 'https://supabase.example',
+      SUPABASE_ANON_KEY: 'test-anon-key'
+    }
+  );
+  assert.equal(response.status, 503);
+  assert.deepEqual(await response.json(), {
+    error: 'API is unavailable in this static-only preview.'
+  });
+});
+
+test('public comment reads use the anon key for published-post and approved-comment queries', async () => {
+  const originalFetch = global.fetch;
+  const originalUrl = process.env.SUPABASE_URL;
+  const originalAnonKey = process.env.SUPABASE_ANON_KEY;
+  const originalServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const calls = [];
+
+  process.env.SUPABASE_URL = 'https://supabase.example';
+  process.env.SUPABASE_ANON_KEY = 'test-anon-key';
+  delete process.env.SUPABASE_SERVICE_ROLE_KEY;
+  global.fetch = async (url, options) => {
+    calls.push({ url: String(url), headers: options.headers });
+    const body = String(url).includes('/rest/v1/posts') ? [{ id: 1 }] : [];
+    return new Response(JSON.stringify(body), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' }
+    });
+  };
+
+  try {
+    const response = await adapter.dispatch(
+      new Request('https://blogsphere.pages.dev/api/comments?post_id=1'),
+      {
+        SUPABASE_URL: process.env.SUPABASE_URL,
+        SUPABASE_ANON_KEY: process.env.SUPABASE_ANON_KEY
+      }
+    );
+    assert.equal(response.status, 200);
+    assert.deepEqual(await response.json(), []);
+    assert.equal(calls.length, 2);
+    assert.ok(calls.every(call => call.headers.apikey === 'test-anon-key'));
+    assert.ok(calls.every(call => call.headers.Authorization === 'Bearer test-anon-key'));
+    assert.match(calls[0].url, /\/rest\/v1\/posts\?/);
+    assert.match(calls[0].url, /status=eq\.published&deleted_at=is\.null&limit=1/);
+    assert.match(calls[1].url, /\/rest\/v1\/comments\?/);
+    assert.match(calls[1].url, /status=eq\.approved&order=created_at\.asc/);
+  } finally {
+    global.fetch = originalFetch;
+    if (originalUrl === undefined) delete process.env.SUPABASE_URL;
+    else process.env.SUPABASE_URL = originalUrl;
+    if (originalAnonKey === undefined) delete process.env.SUPABASE_ANON_KEY;
+    else process.env.SUPABASE_ANON_KEY = originalAnonKey;
+    if (originalServiceRoleKey === undefined) delete process.env.SUPABASE_SERVICE_ROLE_KEY;
+    else process.env.SUPABASE_SERVICE_ROLE_KEY = originalServiceRoleKey;
+  }
+});
+
 test('handlers reject unsupported methods when read-only mode is explicitly disabled', async () => {
   const testBindings = {
     BLOGSPHERE_READ_ONLY: 'false',

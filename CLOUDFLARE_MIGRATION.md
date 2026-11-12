@@ -55,19 +55,15 @@ Do not put the existing project's service-role key or other production credentia
 
 `.dev.vars.example` contains placeholders only and is not required for these checks. Do not copy production keys into `.dev.vars`.
 
-## Static-only Pages preview plan
+## Supabase Preview API configuration
 
-Do not configure the existing Supabase project or any other database for this preview. No `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `SESSION_SECRET`, `SITE_URL`, or Gmail credentials should be present in Pages Preview or local `.dev.vars`.
+Public GET handlers (`/api/categories`, `/api/posts`, `/api/public-data`, and `GET /api/comments`) use `SUPABASE_URL` and `SUPABASE_ANON_KEY`. They preserve the existing select/filter and response behavior while applying the existing Supabase anon-role permissions. They no longer require the service-role key just to serve public reads.
 
-The preview serves only the allowlisted static assets. It contains no production Supabase data or service-role key. Supabase-backed API reads return a generic `503` with `Cache-Control: no-store` when credentials are absent; health and logged-out session checks remain available. All non-GET API requests remain blocked by default.
+Admin and write handlers continue using the existing service-role helper and authorization flow. The Pages adapter's existing `BLOGSPHERE_READ_ONLY` guard is unchanged: when the variable is unset or `true`, non-GET API requests are blocked with `403`; setting it to `false` enables the existing handler behavior. No database policies, schema, data, or credentials are changed by the code.
 
-1. Keep `BLOGSPHERE_READ_ONLY` unset or set to `true` in **Preview**. The Pages adapter defaults to read-only and rejects every non-GET API request under `/api/*` with `403`.
-2. Do not add any Supabase, session, mail, or other production credentials. The build and static pages do not require them.
-3. Keep the Pages preview on its `*.pages.dev` hostname. Do not attach a custom domain or alter production DNS.
-4. Preview builds on non-`master` branches replace `robots.txt` with `Disallow: /` and add `X-Robots-Tag: noindex, nofollow`; the `master` build keeps the checked-in production SEO files.
-5. Do not edit Supabase Auth URLs, RLS, schema, data, Storage, users, or credentials. Do not create a test user. Password recovery, successful admin login, and content loading from Supabase are intentionally unavailable.
+If existing Supabase grants/RLS do not allow anon reads, the handler will return its existing generic API error after receiving the Supabase response. Do not apply SQL migrations as part of a Pages deployment. Environment changes take effect on a new Pages deployment; the current deployment continues to use its existing bindings.
 
-The read-only flag is enforced at the Cloudflare Pages adapter, before any of the 19 existing handlers run. Supabase-backed handlers are not called if any required API credential is absent. Any future preview needing production content would require separate explicit approval, Access protection, and a new review. A future production cutover that needs writes would require explicit approval to set `BLOGSPHERE_READ_ONLY=false`.
+Keep the Pages preview on its `*.pages.dev` hostname. Do not attach a custom domain or alter production DNS. Preview builds on non-`master` branches replace `robots.txt` with `Disallow: /` and add `X-Robots-Tag: noindex, nofollow`; the `master` build keeps the checked-in production SEO files.
 
 ### Preview checks classified by production effect
 
@@ -76,8 +72,8 @@ The read-only flag is enforced at the Cloudflare Pages adapter, before any of th
 | Homepage, category/article pages, admin login screen, redirects, 404, static assets | Static read | Check rendering and routing; do not submit forms. |
 | `robots.txt`, `sitemap.xml` | Static read / SEO | Confirm preview `robots.txt` disallows crawling and `_headers` applies `noindex`; sitemap retains production canonical URLs. |
 | `GET /api/health`, `/api/session` | Static/no-credential API check | Available without Supabase; session endpoint reports logged out. |
-| `GET /api/posts`, `/api/categories`, `/api/public-data`, `/api/comments?post_id=…` | Missing-credentials check | Returns generic `503` before invoking a Supabase handler; does not read production data. |
-| `GET /api/admin/posts`, `/categories`, `/comments`, `/users` | Missing-credentials check | Returns generic `503`; no production cookie or Supabase access is used. |
+| `GET /api/posts`, `/api/categories`, `/api/public-data`, `/api/comments?post_id=…` | Public-read API | Uses the anon key and existing Supabase permissions; returns generic `503` when URL or anon key is absent. |
+| `GET /api/admin/posts`, `/categories`, `/comments`, `/users` | Existing admin API | Uses the existing session checks and service-role helper; do not test with production admin sessions. |
 | `GET /api/admin/session` without a cookie | Read-only request | Confirms logged-out behavior; returns no user and does not authenticate. |
 | `POST /api/admin/login` | Auth side effect | Blocked in Pages preview. A successful Supabase login creates/updates Auth session/sign-in state; no production login test. |
 | `POST /api/comments` | Production data write | Blocked. Creates a pending production comment and rate-limit record. |
@@ -86,7 +82,7 @@ The read-only flag is enforced at the Cloudflare Pages adapter, before any of th
 | `POST /api/admin/upload` | Production Storage write | Blocked. Uploads to the existing Supabase Storage bucket. |
 | `POST /api/admin/password-recovery-request` | Email/Auth side effect | Blocked. It sends a real Supabase recovery email; no recovery request or password update test. |
 
-Automated tests run without production credentials and assert that all non-GET methods on every registered Pages route are rejected by default, Supabase-backed GETs fail with a non-cacheable `503` when bindings are absent, and the admin session remains logged out. A test that explicitly sets `BLOGSPHERE_READ_ONLY=false` exercises existing handler validation only with an invalid contact payload; it does not send email or call Supabase.
+Automated tests run without production credentials and assert that all non-GET methods on every registered Pages route are rejected by default, public reads use only the anon key, admin APIs still require service-role configuration, and the admin session remains logged out. A test that explicitly sets `BLOGSPHERE_READ_ONLY=false` exercises existing handler validation only with an invalid contact payload; it does not send email or call Supabase.
 
 ### Authentication, cookies, headers, and SEO findings
 
@@ -124,10 +120,10 @@ Checked the Cloudflare dashboard on 2026-11-12:
 - Runtime settings: `wrangler.toml` (`compatibility_date` and Node compatibility flags)
 - Production branch: `master`; do not switch production traffic or attach custom domains
 - Preview branch: `cloudflare-migration`
-- Preview variable: no API credentials; `BLOGSPHERE_READ_ONLY=true` (or leave unset; the adapter defaults to read-only)
+- Preview variables for public reads: `SUPABASE_URL` and `SUPABASE_ANON_KEY`; existing Supabase anon-role grants/RLS determine whether reads are allowed. Admin and write handlers retain their existing service-role requirements. Keep `BLOGSPHERE_READ_ONLY=true` (or unset; the adapter defaults to read-only).
 - No `blogsphere.info` or `www.blogsphere.info` custom domain
 
-Connecting GitHub or creating Pages resources can trigger builds and has not been done. If approved later, authorize the Cloudflare Workers & Pages GitHub App only for `mnaveedca888-lang/BlogSphere`, configure branch controls before enabling builds, keep API credentials unset, and do not set the read-only flag to `false`.
+Connecting GitHub or creating Pages resources can trigger builds and has not been done. If approved later, authorize the Cloudflare Workers & Pages GitHub App only for `mnaveedca888-lang/BlogSphere`, configure branch controls before enabling builds, and do not set the read-only flag to `false` without separate approval.
 
 ## GitHub branch preparation (not performed)
 

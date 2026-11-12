@@ -27,6 +27,18 @@ const routesWithoutSupabaseConfig = new Set([
   '/api/session'
 ]);
 
+const publicReadRoutes = new Set([
+  '/api/categories',
+  '/api/comments',
+  '/api/posts',
+  '/api/public-data'
+]);
+
+function hasPublicSupabaseConfig(env) {
+  return ['SUPABASE_URL', 'SUPABASE_ANON_KEY']
+    .every(name => typeof env[name] === 'string' && env[name].trim());
+}
+
 function hasSupabaseConfig(env) {
   return ['SUPABASE_URL', 'SUPABASE_ANON_KEY', 'SUPABASE_SERVICE_ROLE_KEY']
     .every(name => typeof env[name] === 'string' && env[name].trim());
@@ -76,7 +88,9 @@ async function dispatch(request, env = {}) {
   if (!handler) return new Response('Not Found', { status: 404 });
   const canCheckAdminSessionWithoutSupabase = pathname === '/api/admin/session'
     && !request.headers.has('cookie');
-  if (!routesWithoutSupabaseConfig.has(pathname) && !canCheckAdminSessionWithoutSupabase && !hasSupabaseConfig(env)) {
+  const isPublicRead = request.method === 'GET' && publicReadRoutes.has(pathname);
+  const hasRequiredConfig = isPublicRead ? hasPublicSupabaseConfig(env) : hasSupabaseConfig(env);
+  if (!routesWithoutSupabaseConfig.has(pathname) && !canCheckAdminSessionWithoutSupabase && !hasRequiredConfig) {
     return new Response(JSON.stringify({ error: 'API is unavailable in this static-only preview.' }), {
       status: 503,
       headers: {
