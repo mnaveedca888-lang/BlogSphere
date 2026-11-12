@@ -232,7 +232,7 @@ function sanitizeRichText(value = '') {
 function mapPublicPost(post, categoriesById, options = {}) {
   const categoryName = categoriesById.get(String(post.category_id)) || post.category || 'Technology';
   const publishedAt = post.published_at || post.created_at;
-  const image = post.featured_image || 'https://images.unsplash.com/photo-1498050108023-c5249f4df085?auto=format&fit=crop&w=1200&q=80';
+  const image = post.featured_image || 'https://blogsphere.info/Logo.webp';
   return {
     id: String(post.id),
     slug: post.slug || String(post.title || '').toLowerCase().replace(/[^a-z0-9\s-]/g, '').replace(/\s+/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, ''),
@@ -245,7 +245,7 @@ function mapPublicPost(post, categoriesById, options = {}) {
     summary: post.excerpt || '',
     excerpt: post.excerpt || '',
     image,
-    thumb: post.featured_image || 'https://images.unsplash.com/photo-1498050108023-c5249f4df085?auto=format&fit=crop&w=900&q=80',
+    thumb: post.featured_image || 'https://blogsphere.info/Logo.webp',
     tags: toJson(post.tags, []),
     // Lite mode (list pages) omits the full article body so the list payload
     // stays small; article pages fetch the single post with content instead.
