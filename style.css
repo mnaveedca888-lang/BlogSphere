@@ -144,6 +144,7 @@ body.theme-dark .article-content li,
 body.theme-dark .rank-list strong,
 body.theme-dark .quote-box h3,
 body.theme-dark .comment-form input,
+body.theme-dark .comment-form select,
 body.theme-dark .comment-form textarea,
 body.theme-dark .theme-toggle,
 body.theme-dark .icon-button,
@@ -211,6 +212,7 @@ body.theme-dark .chip,
 body.theme-dark .search-box,
 body.theme-dark .sort-select,
 body.theme-dark .comment-form input,
+body.theme-dark .comment-form select,
 body.theme-dark .comment-form textarea,
 body.theme-dark .newsletter-box input,
 body.theme-dark .article-tags a,
@@ -2416,6 +2418,10 @@ body.theme-dark .article-content figcaption {
   gap: 12px;
 }
 
+.form-row .span-2 {
+  grid-column: span 2;
+}
+
 .comment-form label {
   display: grid;
   gap: 6px;
@@ -2429,6 +2435,7 @@ body.theme-dark .article-content figcaption {
 }
 
 .comment-form input,
+.comment-form select,
 .comment-form textarea {
   width: 100%;
   border: 1px solid #dfe6ee;
@@ -2837,6 +2844,7 @@ body.article-page {
 .search-box input,
 .newsletter-box input,
 .comment-form input,
+.comment-form select,
 .comment-form textarea {
   background: var(--panel);
   border-color: var(--line);
@@ -2847,6 +2855,7 @@ body.article-page {
 .sort-select,
 .newsletter-box input,
 .comment-form input,
+.comment-form select,
 .comment-form textarea {
   color: var(--input-text);
 }

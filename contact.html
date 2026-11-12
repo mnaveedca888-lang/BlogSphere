@@ -43,12 +43,22 @@
           <h2>Looking for Something to Read First?</h2>
           <p>Your question may already be answered. Browse our latest articles in <a href="Technology.html">Technology</a>, <a href="Business.html">Business</a>, <a href="Home-Decor.html">Home Decor</a>, <a href="Make-Money-Online.html">Make Money Online</a> and <a href="Health-Fitness.html">Health &amp; Fitness</a>, or start from the <a href="index.html">homepage</a>, where the newest articles are listed first.</p>
           <h2>Contact Form</h2>
-          <p class="muted">Send questions, suggestions, feedback, or general website-related matters to the BlogSphere team.</p>
+          <p class="muted">Ask a question about a blog post, report a correction, suggest a topic, or send general feedback — your message goes to the BlogSphere team at admin@blogsphere.info.</p>
           <form id="contactForm" class="comment-form" novalidate>
             <div class="form-row">
               <label><span>Name</span><input name="name" type="text" autocomplete="name" required maxlength="120" /></label>
               <label><span>Email</span><input name="email" type="email" autocomplete="email" required maxlength="254" /></label>
               <label><span>Subject</span><input name="subject" type="text" required maxlength="200" /></label>
+            </div>
+            <div class="form-row">
+              <label><span>Query type</span><select name="queryType" required>
+                <option value="Blog post question" selected>Blog post question</option>
+                <option value="Correction to an article">Correction to an article</option>
+                <option value="Topic suggestion">Topic suggestion</option>
+                <option value="Guest post or advertising">Guest post or advertising</option>
+                <option value="General inquiry">General inquiry</option>
+              </select></label>
+              <label class="span-2"><span>Article / blog post (title or link)</span><input name="article" type="text" maxlength="500" placeholder="Paste the article link, or write its title" /></label>
             </div>
             <label><span>Message</span><textarea name="message" required maxlength="5000"></textarea></label>
             <p id="contactStatus" class="form-status" role="status" aria-live="polite"></p>

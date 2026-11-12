@@ -17,7 +17,7 @@ const DB_PATH = path.join(ROOT_DIR, 'blogsphere.db');
 const UPLOAD_DIR = path.join(ROOT_DIR, 'uploads');
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'admin@blogsphere.com';
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'Admin123!';
-const CONTACT_RECIPIENT = 'mnaveedca888@gmail.com';
+const CONTACT_RECIPIENT = 'admin@blogsphere.info';
 
 fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 const db = new sqlite3.Database(DB_PATH);
@@ -455,11 +455,13 @@ app.post('/api/contact', async (req, res) => {
   const email = String(req.body?.email || '').trim();
   const subject = String(req.body?.subject || '').trim();
   const message = String(req.body?.message || '').trim();
+  const queryType = String(req.body?.queryType || 'General inquiry').trim();
+  const article = String(req.body?.article || '').trim();
 
   if (!name || !email || !subject || !message) {
     return res.status(400).json({ ok: false, message: 'Name, email, subject, and message are required.' });
   }
-  if (name.length > 120 || subject.length > 200 || message.length > 5000 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+  if (name.length > 120 || subject.length > 200 || message.length > 5000 || queryType.length > 60 || article.length > 500 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     return res.status(400).json({ ok: false, message: 'Please provide valid contact information.' });
   }
   const gmailUser = String(process.env.GMAIL_USER || '').trim();
@@ -480,8 +482,8 @@ app.post('/api/contact', async (req, res) => {
       from: gmailUser,
       to: CONTACT_RECIPIENT,
       replyTo: email,
-      subject: `[BlogSphere Contact] ${subject.replace(/[\r\n]+/g, ' ')}`,
-      text: `Visitor name: ${name}\nVisitor email: ${email}\nSubject: ${subject}\nSubmitted: ${new Date().toISOString()}\n\nMessage:\n${message}`
+      subject: `[BlogSphere Contact: ${queryType.replace(/[\r\n]+/g, ' ')}] ${subject.replace(/[\r\n]+/g, ' ')}`,
+      text: `Visitor name: ${name}\nVisitor email: ${email}\nQuery type: ${queryType}\nArticle: ${article || '—'}\nSubject: ${subject}\nSubmitted: ${new Date().toISOString()}\n\nMessage:\n${message}`
     });
     return res.json({ ok: true, message: 'Your message has been sent successfully.' });
   } catch (error) {
