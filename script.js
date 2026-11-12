@@ -527,8 +527,15 @@ const renderArticlePage = () => {
   const relatedList = document.querySelector('.related-list');
 
   if (featureImage) {
-    featureImage.style.backgroundImage = `url('${post.image}')`;
-    featureImage.setAttribute('aria-label', `Featured image for ${post.title}`);
+    const featureSrc = post.image || post.thumb;
+    if (featureSrc) {
+      featureImage.src = featureSrc;
+      featureImage.alt = `Featured image for ${post.title}`;
+      featureImage.style.aspectRatio = 'auto';
+      featureImage.onerror = () => { featureImage.style.display = 'none'; };
+    } else {
+      featureImage.style.display = 'none';
+    }
   }
   if (titleNode) titleNode.textContent = post.title;
   if (summaryNode) summaryNode.textContent = post.summary;
@@ -574,19 +581,26 @@ const renderArticlePage = () => {
   }
 
   if (popularList) {
-    renderPopularList('.article-sidebar .popular-list', POSTS.filter((item) => isPubliclyVisiblePost(item) && item.category === post.category && item.id !== post.id), 5);
+    let popularPosts = POSTS.filter((item) => isPubliclyVisiblePost(item) && item.category === post.category && item.id !== post.id);
+    if (!popularPosts.length) popularPosts = sortPublishedPosts(POSTS).filter((item) => item.id !== post.id);
+    renderPopularList('.article-sidebar .popular-list', popularPosts, 5);
   }
 
   if (relatedList) {
     const relatedPosts = POSTS.filter((item) => isPubliclyVisiblePost(item) && item.category === post.category && item.id !== post.id).slice(0, 4);
-    relatedList.innerHTML = relatedPosts.map((item) => `
+    const relatedWrap = document.querySelector('.related-wrap');
+    if (relatedPosts.length) {
+      relatedList.innerHTML = relatedPosts.map((item) => `
       <li>
         <span class="related-thumb lazy-bg" data-bg="${item.thumb}"></span>
         <a href="${getArticleHref(item)}">${item.title}</a>
         <span class="related-arrow">›</span>
       </li>
     `).join('');
-    observeLazyBackgrounds();
+      observeLazyBackgrounds();
+    } else if (relatedWrap) {
+      relatedWrap.style.display = 'none';
+    }
   }
 
   document.querySelectorAll('.article-sidebar .category-list a').forEach((link) => {
