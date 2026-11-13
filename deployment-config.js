@@ -1,1 +1,1 @@
-window.BLOGSPHERE_API_PLATFORM = 'netlify';
+window.BLOGSPHERE_API_PLATFORM = 'cloudflare';
