@@ -949,7 +949,10 @@ const clearRelativeTimeRefreshTimer = () => {
 };
 
 const loadPublicPosts = async () => {
-  const endpoints = ['/api/public-data?lite=1'];
+  // /api/public-data works on every host (Netlify redirects it to the
+  // function, the local server defines it, Cloudflare serves it), so try
+  // it first and keep the direct function path only as a fallback.
+  const endpoints = ['/api/public-data?lite=1', '/.netlify/functions/api-public-data?lite=1'];
   for (const endpoint of endpoints) {
     try {
       // Lite list: no article bodies, so the payload is ~70KB instead of ~590KB.
@@ -970,7 +973,9 @@ const loadPublicPosts = async () => {
 // Article pages fetch the single full post (with its body) by id or slug.
 const loadArticlePost = async (articleId) => {
   if (!articleId) return;
-  for (const endpoint of ['/api/public-data']) {
+  const base = '/api/public-data';
+  const fallback = '/.netlify/functions/api-public-data';
+  for (const endpoint of [base, fallback]) {
     try {
       const response = await fetch(`${endpoint}?id=${encodeURIComponent(articleId)}`, { headers: { Accept: 'application/json' } });
       if (!response.ok) continue;
