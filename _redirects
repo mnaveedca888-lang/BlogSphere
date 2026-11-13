@@ -6,3 +6,6 @@
 /api/public-data https://blogggsphere.netlify.app/.netlify/functions/api-public-data 200
 /api/comments https://blogggsphere.netlify.app/.netlify/functions/api-comments 200
 /api/contact https://blogggsphere.netlify.app/.netlify/functions/api-contact 200
+# Also proxy the admin's Netlify-function calls (/.netlify/functions/* returns
+# 404 on Pages today, so the admin cannot save posts either).
+/.netlify/functions/* https://blogggsphere.netlify.app/.netlify/functions/:splat 200
