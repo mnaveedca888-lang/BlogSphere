@@ -1,0 +1,8 @@
+# Proxy BlogSphere API calls to the Netlify Functions backend.
+# Cloudflare Pages serves only static files from this repo, so /api/*
+# is forwarded (200 = proxy, not redirect) to the live Netlify functions.
+# This keeps posts, comments, contact and health working on Pages deploys.
+/api/health https://blogggsphere.netlify.app/.netlify/functions/api-health 200
+/api/public-data https://blogggsphere.netlify.app/.netlify/functions/api-public-data 200
+/api/comments https://blogggsphere.netlify.app/.netlify/functions/api-comments 200
+/api/contact https://blogggsphere.netlify.app/.netlify/functions/api-contact 200
