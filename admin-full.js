@@ -159,6 +159,37 @@ function showLogin() {
   $('loginScreen').classList.remove('hidden');
 }
 
+function updateSessionCheckStatus(message, retryable) {
+  const card = $('loginScreen').querySelector('.login-card');
+  let status = $('sessionCheckStatus');
+  if (!status) {
+    status = document.createElement('p');
+    status.id = 'sessionCheckStatus';
+    status.setAttribute('role', 'status');
+    status.className = 'error';
+    card.append(status);
+  }
+  status.textContent = message;
+
+  let retryButton = $('sessionCheckRetry');
+  if (retryable && !retryButton) {
+    retryButton = document.createElement('button');
+    retryButton.id = 'sessionCheckRetry';
+    retryButton.type = 'button';
+    retryButton.className = 'btn';
+    retryButton.textContent = 'Retry session check';
+    retryButton.addEventListener('click', init);
+    card.append(retryButton);
+  } else if (!retryable && retryButton) {
+    retryButton.remove();
+  }
+}
+
+function clearSessionCheckStatus() {
+  $('sessionCheckStatus')?.remove();
+  $('sessionCheckRetry')?.remove();
+}
+
 function showApp(user) {
   adminUser = user;
   $('loginScreen').classList.add('hidden');
@@ -1029,16 +1060,58 @@ function renderAll() {
 async function init() {
   handleRecoveryLink();
   document.body.classList.toggle('dark', window.localStorage.getItem('blogsphere-theme') === 'dark');
+  $('app').classList.add('hidden');
+  $('passwordChangeScreen').classList.add('hidden');
+  $('loginScreen').classList.remove('hidden');
+  if (!recoveryToken) $('loginForm').classList.add('hidden');
+  updateSessionCheckStatus('Checking administrator session…', false);
+
+  let session;
   try {
-    const session = await request(api.session);
-    if (!session.user) {
+    session = await request(api.session);
+  } catch (error) {
+    if (error.status === 401) {
+      clearSessionCheckStatus();
       showLogin();
+      if (!recoveryToken) {
+        $('loginForm').classList.remove('hidden');
+        showLoginError('Your administrator session has expired. Please sign in again.');
+      }
       return;
     }
-    if (showApp(session.user)) await refreshData();
-  } catch (error) {
+    if (!error.status || error.status >= 500) {
+      updateSessionCheckStatus(
+        'Unable to verify your administrator session. It has not been cleared. Retry the check to continue.',
+        true
+      );
+      return;
+    }
+    clearSessionCheckStatus();
     showLogin();
-    showLoginError(`Unable to check administrator session: ${error.message}`);
+    if (!recoveryToken) {
+      $('loginForm').classList.remove('hidden');
+      showLoginError(error.message);
+    }
+    return;
+  }
+
+  if (!session.user) {
+    clearSessionCheckStatus();
+    showLogin();
+    if (!recoveryToken) $('loginForm').classList.remove('hidden');
+    return;
+  }
+
+  clearSessionCheckStatus();
+  if (showApp(session.user)) {
+    try {
+      await refreshData();
+    } catch (error) {
+      if (error.status === 401 && !recoveryToken) {
+        $('loginForm').classList.remove('hidden');
+        showLoginError('Your administrator session has expired. Please sign in again.');
+      }
+    }
   }
 }
 

@@ -2,7 +2,7 @@ const crypto = require('crypto');
 
 const allowedTags = new Set(['a', 'b', 'blockquote', 'br', 'caption', 'col', 'colgroup', 'div', 'em', 'figcaption', 'figure', 'font', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'hr', 'i', 'img', 'li', 'ol', 'p', 's', 'span', 'strike', 'strong', 'table', 'tbody', 'td', 'tfoot', 'th', 'thead', 'tr', 'u', 'ul']);
 const sessionCookieName = 'blogsphere_admin_session';
-const sessionMaxAge = 60 * 60 * 24 * 7;
+const sessionMaxAge = 60 * 60 * 24 * 30;
 const sessionAuthTagLength = 16;
 const adminEmail = 'mnaveedca888@gmail.com';
 const safeDiagnosticErrorNames = new Set(['Error', 'TypeError', 'RangeError', 'ReferenceError', 'SyntaxError', 'URIError', 'EvalError', 'OperationError', 'DataError', 'InvalidAccessError', 'NotSupportedError']);
@@ -108,7 +108,8 @@ async function getAuthUser(accessToken) {
   const response = await fetch(`${url}/auth/v1/user`, {
     headers: { apikey: anonKey, Authorization: `Bearer ${accessToken}` }
   });
-  if (!response.ok) return null;
+  if ([401, 403].includes(response.status)) return null;
+  if (!response.ok) throw new Error(`Supabase Auth user lookup failed with status ${response.status}.`);
   return response.json();
 }
 
@@ -200,20 +201,35 @@ async function decodeSession(value) {
       cryptoKey,
       new Uint8Array(encrypted)
     );
-    return JSON.parse(new TextDecoder().decode(decrypted));
-  } catch {
-    return null;
+    const session = JSON.parse(new TextDecoder().decode(decrypted));
+    return session && typeof session === 'object' && !Array.isArray(session) ? session : null;
+  } catch (error) {
+    if (error instanceof SyntaxError || error?.name === 'OperationError') return null;
+    throw error;
   }
 }
 
 function readCookie(event, name) {
   const cookieHeader = event.headers?.cookie || event.headers?.Cookie || '';
   const item = cookieHeader.split(';').map(value => value.trim()).find(value => value.startsWith(`${name}=`));
-  return item ? decodeURIComponent(item.slice(name.length + 1)) : null;
+  if (!item) return null;
+  try {
+    return decodeURIComponent(item.slice(name.length + 1));
+  } catch {
+    return null;
+  }
 }
 
 async function sessionCookie(session) {
-  return `${sessionCookieName}=${encodeURIComponent(await encodeSession(session))}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${sessionMaxAge}`;
+  const now = Math.floor(Date.now() / 1000);
+  const requestedExpiry = Number.isSafeInteger(session.expiresAt)
+    ? session.expiresAt
+    : now + sessionMaxAge;
+  const expiresAt = Math.min(requestedExpiry, now + sessionMaxAge);
+  const maxAge = expiresAt - now;
+  if (maxAge <= 0) throw new Error('Cannot issue an expired admin session.');
+  const value = await encodeSession({ ...session, expiresAt });
+  return `${sessionCookieName}=${encodeURIComponent(value)}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${maxAge}`;
 }
 
 function clearSessionCookie() {
@@ -235,20 +251,34 @@ function publicAdminUser(profile) {
 async function getAdminSession(event) {
   const session = await decodeSession(readCookie(event, sessionCookieName));
   if (!session?.accessToken) return null;
+  const now = Math.floor(Date.now() / 1000);
+  const legacySession = session.expiresAt === undefined;
+  const expiresAt = legacySession ? now + sessionMaxAge : session.expiresAt;
+  if (!Number.isSafeInteger(expiresAt) || expiresAt <= now) return null;
+
   let authUser = await getAuthUser(session.accessToken);
   let refreshed = null;
   if (!authUser && session.refreshToken) {
     const result = await authRequest('refresh_token', { refresh_token: session.refreshToken });
     if (result.response.ok) {
+      if (!result.data.access_token) {
+        throw new Error('Supabase Auth refresh returned no access token.');
+      }
       refreshed = result.data;
       authUser = await getAuthUser(refreshed.access_token);
+    } else if (![400, 401, 403].includes(result.response.status)) {
+      throw new Error(`Supabase Auth refresh failed with status ${result.response.status}.`);
     }
   }
   if (!authUser) return null;
   const profile = await getAdminProfile(authUser.id);
   if (!profile) return null;
-  const setCookie = refreshed
-    ? await sessionCookie({ accessToken: refreshed.access_token, refreshToken: refreshed.refresh_token || session.refreshToken })
+  const setCookie = refreshed || legacySession
+    ? await sessionCookie({
+      accessToken: refreshed?.access_token || session.accessToken,
+      refreshToken: refreshed?.refresh_token || session.refreshToken,
+      expiresAt
+    })
     : null;
   return {
     user: publicAdminUser(profile),
