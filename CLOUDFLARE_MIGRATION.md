@@ -77,12 +77,12 @@ Keep the Pages preview on its `*.pages.dev` hostname. Do not attach a custom dom
 | `GET /api/admin/session` without a cookie | Read-only request | Confirms logged-out behavior; returns no user and does not authenticate. |
 | `POST /api/admin/login` | Auth side effect | Blocked in Pages preview. A successful Supabase login creates/updates Auth session/sign-in state; no production login test. |
 | `POST /api/comments` | Production data write | Blocked. Creates a pending production comment and rate-limit record. |
-| `POST /api/contact` | External side effect | Blocked in Pages read-only mode. When enabled, sends email using the configured SMTP bindings. |
+| `POST /api/contact` | External side effect | Blocked in Pages read-only mode. When enabled, sends email through the Resend HTTPS API. |
 | Admin post/category/comment/user create, edit, publish, moderation, delete, password-change and recovery routes | Production data/Auth writes | Blocked. Do not call these endpoints or test destructive actions. |
 | `POST /api/admin/upload` | Production Storage write | Blocked. Uploads to the existing Supabase Storage bucket. |
 | `POST /api/admin/password-recovery-request` | Email/Auth side effect | Blocked. It sends a real Supabase recovery email; no recovery request or password update test. |
 
-Automated tests run without production credentials and assert that all non-GET methods on every registered Pages route are rejected by default, public reads use only the anon key, admin APIs still require service-role configuration, and the admin session remains logged out. A test that explicitly sets `BLOGSPHERE_READ_ONLY=false` exercises existing handler validation only with an invalid contact payload; it does not send email or call Supabase.
+Automated tests run without production credentials and assert that all non-GET methods on every registered Pages route are rejected by default, public reads use only the anon key, admin APIs still require service-role configuration, and the admin session remains logged out. Contact delivery tests mock `fetch` responses from Resend; they do not call the Resend API or send real email. A test that explicitly sets `BLOGSPHERE_READ_ONLY=false` exercises the adapter's legacy contact validation with an invalid payload and does not send email or call Supabase.
 
 ### Authentication, cookies, headers, and SEO findings
 
@@ -96,7 +96,7 @@ Automated tests run without production credentials and assert that all non-GET m
 
 ## Contact email and password-recovery risks
 
-The Pages contact route uses Cloudflare's `cloudflare:sockets` TCP API and requires `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASSWORD`, `CONTACT_FROM`, and `CONTACT_RECIPIENT` runtime bindings. Port 465 uses direct TLS; it does not issue STARTTLS. Store `SMTP_PASSWORD` as a Cloudflare secret and never put its value in source or local development files. Cloudflare Workers support outbound TCP sockets for SMTP; outbound port 25 is blocked. A contact submission sends real email when Pages writes are enabled, so do not submit production test messages without approval.
+The Pages contact route sends mail with `fetch()` to `https://api.resend.com/emails`. It requires `RESEND_API_KEY` as a Cloudflare Production secret, plus `CONTACT_FROM` and `CONTACT_RECIPIENT` runtime variables. Keep `BLOGSPHERE_READ_ONLY` unset or `true` for read-only deployments; setting it to `false` enables contact POSTs and can send real email. Verify the sending domain in Resend and use the exact DKIM and SPF/return-path records shown in its dashboard; those generated records must not be guessed. Local contact tests mock Resend responses and never send email.
 
 Password-recovery request sends a real email through the existing Supabase Auth project, while recovery-update changes the user's production password. Both routes are blocked in read-only Pages mode and must not be used for preview testing.
 
