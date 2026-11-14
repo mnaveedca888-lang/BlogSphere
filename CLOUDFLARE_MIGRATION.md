@@ -4,7 +4,7 @@ This branch prepares a Pages static build and Pages Functions API while retainin
 
 ## What is routed
 
-The Pages function at `functions/api/[[path]].js` adapts each request and response to the existing Netlify handler contract. The original handler implementations remain in `netlify/functions`; the route table is in `functions/api/adapter.cjs`.
+The Pages function at `functions/api/[[path]].js` adapts each request and response to the existing Netlify handler contract. The original handler implementations remain in `netlify/functions`; the route table is in `functions/api/adapter.cjs`. The more-specific `functions/api/contact.js` handles `/api/contact` directly as a native Pages Function.
 
 | Pages path | Methods handled | Existing handler |
 | --- | --- | --- |
@@ -14,7 +14,7 @@ The Pages function at `functions/api/[[path]].js` adapts each request and respon
 | `/api/categories` | GET | `api-categories` |
 | `/api/session` | GET | `api-session` |
 | `/api/comments` | GET, POST | `api-comments` |
-| `/api/contact` | POST | `api-contact` |
+| `/api/contact` | POST | `functions/api/contact.js` |
 | `/api/admin/login` | POST | `api-admin-login` |
 | `/api/admin/session` | GET | `api-admin-session` |
 | `/api/admin/logout` | POST | `api-admin-logout` |
@@ -77,7 +77,7 @@ Keep the Pages preview on its `*.pages.dev` hostname. Do not attach a custom dom
 | `GET /api/admin/session` without a cookie | Read-only request | Confirms logged-out behavior; returns no user and does not authenticate. |
 | `POST /api/admin/login` | Auth side effect | Blocked in Pages preview. A successful Supabase login creates/updates Auth session/sign-in state; no production login test. |
 | `POST /api/comments` | Production data write | Blocked. Creates a pending production comment and rate-limit record. |
-| `POST /api/contact` | External side effect | Blocked. Sends email to the fixed recipient in `api-contact.js`. |
+| `POST /api/contact` | External side effect | Blocked in Pages read-only mode. When enabled, sends email using the configured SMTP bindings. |
 | Admin post/category/comment/user create, edit, publish, moderation, delete, password-change and recovery routes | Production data/Auth writes | Blocked. Do not call these endpoints or test destructive actions. |
 | `POST /api/admin/upload` | Production Storage write | Blocked. Uploads to the existing Supabase Storage bucket. |
 | `POST /api/admin/password-recovery-request` | Email/Auth side effect | Blocked. It sends a real Supabase recovery email; no recovery request or password update test. |
@@ -94,9 +94,9 @@ Automated tests run without production credentials and assert that all non-GET m
 - Source `robots.txt` contains `Allow: /` and a production sitemap URL; `sitemap.xml` contains production canonical URLs. Non-`master` Pages builds emit a disallow-all `robots.txt` and `X-Robots-Tag: noindex, nofollow`; do not submit preview URLs to search engines.
 - The admin user-creation handler returns a temporary password in its response, and the admin-posts error handler can return PostgREST diagnostic details. Keep authenticated admin APIs private and treat these as existing hardening items before production cutover.
 
-## Gmail and password-recovery risks
+## Contact email and password-recovery risks
 
-Do not configure Gmail credentials or test delivery in this static-only preview. `api-contact.js` sends to a fixed recipient and requires `GMAIL_USER` and `GMAIL_APP_PASSWORD`; a request can email the production inbox. Cloudflare blocks outbound TCP port 25, and Nodemailer's Gmail TLS route is not yet verified end to end. If mail testing becomes necessary later, first obtain approval for the recipient and delivery side effect; an HTTPS transactional email API may be more reliable.
+The Pages contact route uses Cloudflare's `cloudflare:sockets` TCP API and requires `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASSWORD`, `CONTACT_FROM`, and `CONTACT_RECIPIENT` runtime bindings. Port 465 uses direct TLS; it does not issue STARTTLS. Store `SMTP_PASSWORD` as a Cloudflare secret and never put its value in source or local development files. Cloudflare Workers support outbound TCP sockets for SMTP; outbound port 25 is blocked. A contact submission sends real email when Pages writes are enabled, so do not submit production test messages without approval.
 
 Password-recovery request sends a real email through the existing Supabase Auth project, while recovery-update changes the user's production password. Both routes are blocked in read-only Pages mode and must not be used for preview testing.
 

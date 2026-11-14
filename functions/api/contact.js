@@ -1,8 +1,5 @@
 import { connect } from 'cloudflare:sockets';
 
-const CONTACT_RECIPIENT = 'admin@blogsphere.info';
-const SMTP_HOST = 'smtp.gmail.com';
-const SMTP_PORT = 587;
 const SMTP_TIMEOUT_MS = 15000;
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
@@ -121,12 +118,6 @@ class SmtpConnection {
     await this.readReply(stage, expectedCodes);
   }
 
-  async startTls() {
-    this.reader.releaseLock();
-    this.writer.releaseLock();
-    return new SmtpConnection(this.socket.startTls());
-  }
-
   async close() {
     try {
       await this.socket.close();
@@ -137,10 +128,10 @@ class SmtpConnection {
   }
 }
 
-function buildMessage({ gmailUser, replyTo, subject, body }) {
+function buildMessage({ contactFrom, contactRecipient, replyTo, subject, body }) {
   return [
-    `From: <${gmailUser}>`,
-    `To: <${CONTACT_RECIPIENT}>`,
+    `From: <${contactFrom}>`,
+    `To: <${contactRecipient}>`,
     `Reply-To: <${replyTo}>`,
     `Subject: ${encodeSubject(subject)}`,
     `Date: ${new Date().toUTCString()}`,
@@ -152,10 +143,20 @@ function buildMessage({ gmailUser, replyTo, subject, body }) {
   ].join('\r\n');
 }
 
-async function sendEmail({ gmailUser, gmailAppPassword, replyTo, subject, body }) {
+async function sendEmail({
+  smtpHost,
+  smtpPort,
+  smtpUser,
+  smtpPassword,
+  contactFrom,
+  contactRecipient,
+  replyTo,
+  subject,
+  body
+}) {
   const socket = connect(
-    { hostname: SMTP_HOST, port: SMTP_PORT },
-    { secureTransport: 'starttls' }
+    { hostname: smtpHost, port: smtpPort },
+    { secureTransport: 'on' }
   );
   let connection = new SmtpConnection(socket);
 
@@ -163,20 +164,17 @@ async function sendEmail({ gmailUser, gmailAppPassword, replyTo, subject, body }
     await withTimeout(socket.opened, 'connect');
     await connection.readReply('greeting', [220]);
     await connection.command('EHLO blogsphere.info', 'EHLO', [250]);
-    await connection.command('STARTTLS', 'STARTTLS', [220]);
-
-    connection = await connection.startTls();
-    await connection.command('EHLO blogsphere.info', 'secure EHLO', [250]);
     await connection.command(
-      `AUTH PLAIN ${base64(encoder.encode(`\0${gmailUser}\0${gmailAppPassword}`))}`,
+      `AUTH PLAIN ${base64(encoder.encode(`\0${smtpUser}\0${smtpPassword}`))}`,
       'authentication',
       [235]
     );
-    await connection.command(`MAIL FROM:<${gmailUser}>`, 'sender', [250]);
-    await connection.command(`RCPT TO:<${CONTACT_RECIPIENT}>`, 'recipient', [250, 251]);
+    await connection.command(`MAIL FROM:<${contactFrom}>`, 'sender', [250]);
+    await connection.command(`RCPT TO:<${contactRecipient}>`, 'recipient', [250, 251]);
     await connection.command('DATA', 'message data', [354]);
     await connection.writer.write(encoder.encode(`${buildMessage({
-      gmailUser,
+      contactFrom,
+      contactRecipient,
       replyTo,
       subject,
       body
@@ -231,17 +229,36 @@ export async function onRequest({ request, env }) {
     return jsonResponse(400, { ok: false, message: 'Please provide valid contact information.' });
   }
 
-  const gmailUser = text(env.GMAIL_USER);
-  const gmailAppPassword = text(env.GMAIL_APP_PASSWORD).replace(/\s+/g, '');
-  if (!gmailUser || !gmailAppPassword || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(gmailUser)) {
-    console.error('Contact email configuration is missing a valid GMAIL_USER or GMAIL_APP_PASSWORD.');
+  const smtpHost = text(env.SMTP_HOST);
+  const smtpPortValue = text(env.SMTP_PORT);
+  const smtpPort = /^\d+$/.test(smtpPortValue) ? Number(smtpPortValue) : 0;
+  const smtpSecure = text(env.SMTP_SECURE);
+  const smtpUser = text(env.SMTP_USER);
+  const smtpPassword = String(env.SMTP_PASSWORD || '');
+  const contactFrom = text(env.CONTACT_FROM);
+  const contactRecipient = text(env.CONTACT_RECIPIENT);
+  const validEmail = value => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+  if (!smtpHost
+    || /[\s/:@]/.test(smtpHost)
+    || smtpPort !== 465
+    || smtpSecure !== 'true'
+    || !smtpUser
+    || !smtpPassword.trim()
+    || !validEmail(smtpUser)
+    || !validEmail(contactFrom)
+    || !validEmail(contactRecipient)) {
+    console.error('Contact email configuration is missing or invalid required SMTP settings.');
     return jsonResponse(503, { ok: false, message: 'Unable to send your message.' });
   }
 
   try {
     await sendEmail({
-      gmailUser,
-      gmailAppPassword,
+      smtpHost,
+      smtpPort,
+      smtpUser,
+      smtpPassword,
+      contactFrom,
+      contactRecipient,
       replyTo: email,
       subject: `[BlogSphere Contact: ${queryType.replace(/[\r\n]+/g, ' ')}] ${subject.replace(/[\r\n]+/g, ' ')}`,
       body: `Visitor name: ${name}\nVisitor email: ${email}\nQuery type: ${queryType}\nArticle: ${article || '—'}\nSubject: ${subject}\nSubmitted: ${new Date().toISOString()}\n\nMessage:\n${message}`
