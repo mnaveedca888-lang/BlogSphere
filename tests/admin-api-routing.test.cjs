@@ -5,16 +5,11 @@ const test = require('node:test');
 const { resolveAdminApiRouting } = require('../admin-api-routing');
 const { supportsWrangler } = require('../scripts/check-node-version');
 
-test('Netlify custom domains and previews keep using Netlify Functions', () => {
+test('deployment config selects Cloudflare Pages Functions', () => {
   assert.equal(
     fs.readFileSync(path.resolve(__dirname, '..', 'deployment-config.js'), 'utf8').replace(/\r\n/g, '\n'),
-    "window.BLOGSPHERE_API_PLATFORM = 'netlify';\n"
+    "window.BLOGSPHERE_API_PLATFORM = 'cloudflare';\n"
   );
-  for (const hostname of ['blogsphere.info', 'www.blogsphere.info', 'preview.netlify.app']) {
-    const { api } = resolveAdminApiRouting({ hostname, platform: 'netlify' });
-    assert.equal(api.login, '/.netlify/functions/api-admin-login');
-    assert.equal(api.recoveryRequest, '/.netlify/functions/api-admin-password-recovery-request');
-  }
 });
 
 test('Cloudflare custom domains and Pages previews use /api routes', () => {
@@ -22,7 +17,14 @@ test('Cloudflare custom domains and Pages previews use /api routes', () => {
     const { api } = resolveAdminApiRouting({ hostname, platform: 'cloudflare' });
     assert.equal(api.login, '/api/admin/login');
     assert.equal(api.recoveryRequest, '/api/admin/password-recovery-request');
+    assert.equal(api.posts, '/api/admin/posts');
   }
+});
+
+test('admin frontend uses the configured development flag without an undeclared localDevelopment reference', () => {
+  const adminScript = fs.readFileSync(path.resolve(__dirname, '..', 'admin-full.js'), 'utf8');
+  assert.doesNotMatch(adminScript, /\blocalDevelopment\b/);
+  assert.match(adminScript, /request\(postEndpoint\(post\.id\), \{ method: 'DELETE' \}\)/);
 });
 
 test('local Netlify, Pages, and Express development select their own API routes', () => {

@@ -340,7 +340,7 @@ $('recoveryRequestForm').addEventListener('submit', async event => {
   const message = $('recoveryRequestMsg');
   message.classList.add('hidden');
   try {
-    if (localDevelopment) throw new Error('Password recovery is available on the deployed site only.');
+    if (expressDevelopment) throw new Error('Password recovery is available on the deployed site only.');
     await request(api.recoveryRequest, {
       method: 'POST',
       body: JSON.stringify({ email: $('recoveryEmail').value.trim() })
@@ -527,7 +527,7 @@ function editPost(post) {
 async function performPostAction(post, action) {
   try {
     if (action === 'delete') {
-      await request(localDevelopment ? postEndpoint(post.id) : postEndpoint(post.id), { method: 'DELETE' });
+      await request(postEndpoint(post.id), { method: 'DELETE' });
     } else {
       const serverAction = action === 'publish' || action === 'draft' || action === 'trash' || action === 'restore' || action === 'duplicate'
         ? action : null;
