@@ -41,7 +41,17 @@ exports.handler = async event => {
     if (event.httpMethod === 'GET') {
       const postRows = await supabasePublicGet(`/rest/v1/posts?select=id&id=eq.${encodeURIComponent(postId)}&status=eq.published&deleted_at=is.null&limit=1`);
       if (!postRows.length) return response(404, { error: 'Post not found.' });
-      const comments = await supabasePublicGet(`/rest/v1/comments?select=id,name,body,reply,reply_at,created_at&post_id=eq.${encodeURIComponent(postId)}&status=eq.approved&order=created_at.asc`);
+      const commentRows = await supabaseGet(`/rest/v1/comments?select=id,post_id,status,name,body,reply,reply_at,created_at&post_id=eq.${encodeURIComponent(postId)}&status=eq.approved&order=created_at.asc`);
+      const comments = commentRows
+        .filter(comment => String(comment.post_id) === postId && comment.status === 'approved')
+        .map(({ id, name, body, reply, reply_at, created_at }) => ({
+          id,
+          name,
+          body,
+          reply,
+          reply_at,
+          created_at
+        }));
       return response(200, comments);
     }
 

@@ -315,7 +315,7 @@ test('admin database APIs still require the service-role binding', async () => {
   });
 });
 
-test('public comment reads use the anon key for published-post and approved-comment queries', async () => {
+test('public comment reads use anon for post validation and service role for approved comments only', async () => {
   const originalFetch = global.fetch;
   const originalUrl = process.env.SUPABASE_URL;
   const originalAnonKey = process.env.SUPABASE_ANON_KEY;
@@ -324,10 +324,53 @@ test('public comment reads use the anon key for published-post and approved-comm
 
   process.env.SUPABASE_URL = 'https://supabase.example';
   process.env.SUPABASE_ANON_KEY = 'test-anon-key';
-  delete process.env.SUPABASE_SERVICE_ROLE_KEY;
+  process.env.SUPABASE_SERVICE_ROLE_KEY = 'test-service-role-key';
   global.fetch = async (url, options) => {
     calls.push({ url: String(url), headers: options.headers });
-    const body = String(url).includes('/rest/v1/posts') ? [{ id: 1 }] : [];
+    const body = String(url).includes('/rest/v1/posts') ? [{ id: 1 }] : [
+      {
+        id: 1,
+        post_id: 1,
+        status: 'approved',
+        name: 'Approved visitor',
+        body: 'Public comment',
+        reply: null,
+        reply_at: null,
+        created_at: '2026-11-14T10:00:00.000Z',
+        email: 'private@example.com',
+        rate_limit_hash: 'private-rate-limit-value'
+      },
+      {
+        id: 2,
+        post_id: 1,
+        status: 'pending',
+        name: 'Pending visitor',
+        body: 'Pending comment',
+        reply: null,
+        reply_at: null,
+        created_at: '2026-11-14T10:01:00.000Z'
+      },
+      {
+        id: 3,
+        post_id: 1,
+        status: 'rejected',
+        name: 'Rejected visitor',
+        body: 'Rejected comment',
+        reply: null,
+        reply_at: null,
+        created_at: '2026-11-14T10:02:00.000Z'
+      },
+      {
+        id: 4,
+        post_id: 99,
+        status: 'approved',
+        name: 'Other-post visitor',
+        body: 'Comment for another post',
+        reply: null,
+        reply_at: null,
+        created_at: '2026-11-14T10:03:00.000Z'
+      }
+    ];
     return new Response(JSON.stringify(body), {
       status: 200,
       headers: { 'Content-Type': 'application/json' }
@@ -339,18 +382,34 @@ test('public comment reads use the anon key for published-post and approved-comm
       new Request('https://blogsphere.pages.dev/api/comments?post_id=1'),
       {
         SUPABASE_URL: process.env.SUPABASE_URL,
-        SUPABASE_ANON_KEY: process.env.SUPABASE_ANON_KEY
+        SUPABASE_ANON_KEY: process.env.SUPABASE_ANON_KEY,
+        SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY
       }
     );
     assert.equal(response.status, 200);
-    assert.deepEqual(await response.json(), []);
+    const comments = await response.json();
+    assert.deepEqual(comments, [{
+      id: 1,
+      name: 'Approved visitor',
+      body: 'Public comment',
+      reply: null,
+      reply_at: null,
+      created_at: '2026-11-14T10:00:00.000Z'
+    }]);
+    assert.equal(JSON.stringify(comments).includes('private@example.com'), false);
+    assert.equal(JSON.stringify(comments).includes('private-rate-limit-value'), false);
     assert.equal(calls.length, 2);
-    assert.ok(calls.every(call => call.headers.apikey === 'test-anon-key'));
-    assert.ok(calls.every(call => call.headers.Authorization === 'Bearer test-anon-key'));
+    assert.equal(calls[0].headers.apikey, 'test-anon-key');
+    assert.equal(calls[0].headers.Authorization, 'Bearer test-anon-key');
     assert.match(calls[0].url, /\/rest\/v1\/posts\?/);
     assert.match(calls[0].url, /status=eq\.published&deleted_at=is\.null&limit=1/);
+    assert.equal(calls[1].headers.apikey, 'test-service-role-key');
+    assert.equal(calls[1].headers.Authorization, 'Bearer test-service-role-key');
     assert.match(calls[1].url, /\/rest\/v1\/comments\?/);
+    assert.match(calls[1].url, /post_id=eq\.1/);
     assert.match(calls[1].url, /status=eq\.approved&order=created_at\.asc/);
+    const commentsUrl = new URL(calls[1].url);
+    assert.equal(commentsUrl.searchParams.get('select'), 'id,post_id,status,name,body,reply,reply_at,created_at');
   } finally {
     global.fetch = originalFetch;
     if (originalUrl === undefined) delete process.env.SUPABASE_URL;
