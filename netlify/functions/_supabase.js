@@ -3,8 +3,9 @@ const crypto = require('crypto');
 const allowedTags = new Set(['a', 'b', 'blockquote', 'br', 'caption', 'col', 'colgroup', 'div', 'em', 'figcaption', 'figure', 'font', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'hr', 'i', 'img', 'li', 'ol', 'p', 's', 'span', 'strike', 'strong', 'table', 'tbody', 'td', 'tfoot', 'th', 'thead', 'tr', 'u', 'ul']);
 const sessionCookieName = 'blogsphere_admin_session';
 const sessionMaxAge = 60 * 60 * 24 * 7;
+const sessionAuthTagLength = 16;
 const adminEmail = 'mnaveedca888@gmail.com';
-const safeDiagnosticErrorNames = new Set(['Error', 'TypeError', 'RangeError', 'ReferenceError', 'SyntaxError', 'URIError', 'EvalError']);
+const safeDiagnosticErrorNames = new Set(['Error', 'TypeError', 'RangeError', 'ReferenceError', 'SyntaxError', 'URIError', 'EvalError', 'OperationError', 'DataError', 'InvalidAccessError', 'NotSupportedError']);
 const safeSessionErrorMessages = new Map([
   ['SESSION_SECRET must contain at least 32 characters.', 'Session secret validation failed.'],
   ['Invalid key length', 'Cipher key length was rejected.'],
@@ -124,24 +125,35 @@ function sessionKey() {
   return crypto.createHash('sha256').update(secret).digest();
 }
 
-function encodeSession(session) {
+async function encodeSession(session) {
   let operation = 'IV generation';
   try {
     const iv = crypto.randomBytes(12);
     operation = 'session key derivation';
     const key = sessionKey();
-    operation = 'cipher initialization';
-    const cipher = crypto.createCipheriv('aes-256-gcm', key, iv);
+    operation = 'AES-GCM key import';
+    const cryptoKey = await globalThis.crypto.subtle.importKey(
+      'raw',
+      new Uint8Array(key),
+      { name: 'AES-GCM' },
+      false,
+      ['encrypt']
+    );
     operation = 'session serialization';
-    const serializedSession = JSON.stringify(session);
-    operation = 'cipher update';
-    const encryptedPart = cipher.update(serializedSession, 'utf8');
-    operation = 'cipher finalization';
-    const finalPart = cipher.final();
-    operation = 'ciphertext concatenation';
-    const encrypted = Buffer.concat([encryptedPart, finalPart]);
-    operation = 'authentication tag retrieval';
-    const authTag = cipher.getAuthTag();
+    const serializedSession = new TextEncoder().encode(JSON.stringify(session));
+    operation = 'AES-GCM encryption';
+    const encryptedWithTag = new Uint8Array(await globalThis.crypto.subtle.encrypt(
+      { name: 'AES-GCM', iv: new Uint8Array(iv), tagLength: sessionAuthTagLength * 8 },
+      cryptoKey,
+      serializedSession
+    ));
+    operation = 'authentication tag extraction';
+    if (encryptedWithTag.byteLength < sessionAuthTagLength) {
+      throw new Error('Invalid AES-GCM output length.');
+    }
+    const ciphertextEnd = encryptedWithTag.byteLength - sessionAuthTagLength;
+    const encrypted = Buffer.from(encryptedWithTag.subarray(0, ciphertextEnd));
+    const authTag = Buffer.from(encryptedWithTag.subarray(ciphertextEnd));
     operation = 'IV base64url encoding';
     const encodedIv = iv.toString('base64url');
     operation = 'authentication tag base64url encoding';
@@ -165,13 +177,30 @@ function encodeSession(session) {
   }
 }
 
-function decodeSession(value) {
+async function decodeSession(value) {
   try {
     const [ivValue, tagValue, encryptedValue] = String(value || '').split('.');
     if (!ivValue || !tagValue || !encryptedValue) return null;
-    const decipher = crypto.createDecipheriv('aes-256-gcm', sessionKey(), Buffer.from(ivValue, 'base64url'));
-    decipher.setAuthTag(Buffer.from(tagValue, 'base64url'));
-    return JSON.parse(Buffer.concat([decipher.update(Buffer.from(encryptedValue, 'base64url')), decipher.final()]).toString('utf8'));
+    const iv = Buffer.from(ivValue, 'base64url');
+    const authTag = Buffer.from(tagValue, 'base64url');
+    if (iv.byteLength !== 12 || authTag.byteLength !== sessionAuthTagLength) return null;
+    const encrypted = Buffer.concat([
+      Buffer.from(encryptedValue, 'base64url'),
+      authTag
+    ]);
+    const cryptoKey = await globalThis.crypto.subtle.importKey(
+      'raw',
+      new Uint8Array(sessionKey()),
+      { name: 'AES-GCM' },
+      false,
+      ['decrypt']
+    );
+    const decrypted = await globalThis.crypto.subtle.decrypt(
+      { name: 'AES-GCM', iv: new Uint8Array(iv), tagLength: sessionAuthTagLength * 8 },
+      cryptoKey,
+      new Uint8Array(encrypted)
+    );
+    return JSON.parse(new TextDecoder().decode(decrypted));
   } catch {
     return null;
   }
@@ -183,8 +212,8 @@ function readCookie(event, name) {
   return item ? decodeURIComponent(item.slice(name.length + 1)) : null;
 }
 
-function sessionCookie(session) {
-  return `${sessionCookieName}=${encodeURIComponent(encodeSession(session))}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${sessionMaxAge}`;
+async function sessionCookie(session) {
+  return `${sessionCookieName}=${encodeURIComponent(await encodeSession(session))}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${sessionMaxAge}`;
 }
 
 function clearSessionCookie() {
@@ -204,7 +233,7 @@ function publicAdminUser(profile) {
 }
 
 async function getAdminSession(event) {
-  const session = decodeSession(readCookie(event, sessionCookieName));
+  const session = await decodeSession(readCookie(event, sessionCookieName));
   if (!session?.accessToken) return null;
   let authUser = await getAuthUser(session.accessToken);
   let refreshed = null;
@@ -218,11 +247,14 @@ async function getAdminSession(event) {
   if (!authUser) return null;
   const profile = await getAdminProfile(authUser.id);
   if (!profile) return null;
+  const setCookie = refreshed
+    ? await sessionCookie({ accessToken: refreshed.access_token, refreshToken: refreshed.refresh_token || session.refreshToken })
+    : null;
   return {
     user: publicAdminUser(profile),
     profile,
     accessToken: refreshed?.access_token || session.accessToken,
-    setCookie: refreshed ? sessionCookie({ accessToken: refreshed.access_token, refreshToken: refreshed.refresh_token || session.refreshToken }) : null
+    setCookie
   };
 }
 

@@ -39,7 +39,7 @@ exports.handler = async event => {
     operation = 'login response construction';
     const response = jsonResponse(200, { user: publicAdminUser(profile) });
     operation = 'session-cookie creation';
-    const cookie = sessionCookie({ accessToken: result.data.access_token, refreshToken: result.data.refresh_token });
+    const cookie = await sessionCookie({ accessToken: result.data.access_token, refreshToken: result.data.refresh_token });
     response.headers = { 'Content-Type': 'application/json', 'Set-Cookie': cookie };
     return response;
   } catch (error) {
