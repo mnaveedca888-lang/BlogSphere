@@ -4,6 +4,15 @@ const allowedTags = new Set(['a', 'b', 'blockquote', 'br', 'caption', 'col', 'co
 const sessionCookieName = 'blogsphere_admin_session';
 const sessionMaxAge = 60 * 60 * 24 * 7;
 const adminEmail = 'mnaveedca888@gmail.com';
+const safeDiagnosticErrorNames = new Set(['Error', 'TypeError', 'RangeError', 'ReferenceError', 'SyntaxError', 'URIError', 'EvalError']);
+const safeSessionErrorMessages = new Map([
+  ['SESSION_SECRET must contain at least 32 characters.', 'Session secret validation failed.'],
+  ['Invalid key length', 'Cipher key length was rejected.'],
+  ['Invalid initialization vector', 'Cipher initialization vector was rejected.'],
+  ['Invalid authentication tag length', 'Cipher authentication tag length was rejected.'],
+  ['Unsupported state or unable to authenticate data', 'Authenticated encryption finalization failed.'],
+  ['Unknown encoding: base64url', 'Base64url encoding is unsupported.']
+]);
 
 function getConfig() {
   const url = String(process.env.SUPABASE_URL || '').trim();
@@ -116,10 +125,44 @@ function sessionKey() {
 }
 
 function encodeSession(session) {
-  const iv = crypto.randomBytes(12);
-  const cipher = crypto.createCipheriv('aes-256-gcm', sessionKey(), iv);
-  const encrypted = Buffer.concat([cipher.update(JSON.stringify(session), 'utf8'), cipher.final()]);
-  return [iv, cipher.getAuthTag(), encrypted].map(part => part.toString('base64url')).join('.');
+  let operation = 'IV generation';
+  try {
+    const iv = crypto.randomBytes(12);
+    operation = 'session key derivation';
+    const key = sessionKey();
+    operation = 'cipher initialization';
+    const cipher = crypto.createCipheriv('aes-256-gcm', key, iv);
+    operation = 'session serialization';
+    const serializedSession = JSON.stringify(session);
+    operation = 'cipher update';
+    const encryptedPart = cipher.update(serializedSession, 'utf8');
+    operation = 'cipher finalization';
+    const finalPart = cipher.final();
+    operation = 'ciphertext concatenation';
+    const encrypted = Buffer.concat([encryptedPart, finalPart]);
+    operation = 'authentication tag retrieval';
+    const authTag = cipher.getAuthTag();
+    operation = 'IV base64url encoding';
+    const encodedIv = iv.toString('base64url');
+    operation = 'authentication tag base64url encoding';
+    const encodedAuthTag = authTag.toString('base64url');
+    operation = 'ciphertext base64url encoding';
+    const encodedCiphertext = encrypted.toString('base64url');
+    operation = 'session token assembly';
+    return [encodedIv, encodedAuthTag, encodedCiphertext].join('.');
+  } catch (error) {
+    const errorName = error instanceof Error && safeDiagnosticErrorNames.has(error.name)
+      ? error.name
+      : 'Error';
+    const errorMessage = safeSessionErrorMessages.get(error instanceof Error ? error.message : '')
+      || `${operation} failed; error detail suppressed.`;
+    console.error('Admin session encoding diagnostic:', {
+      operation,
+      errorName,
+      errorMessage
+    });
+    throw error;
+  }
 }
 
 function decodeSession(value) {
