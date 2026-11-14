@@ -72,7 +72,11 @@ function createSupabaseMock({
   targetRows,
   authDeleteResponse = new Response(null, { status: 204 }),
   authDeleteError,
-  profileDeleteResponse
+  authUpdateResponse = jsonResponse(200, {}),
+  authUpdateError,
+  profileDeleteResponse,
+  profileUpdateResponse,
+  profileUpdateError
 } = {}) {
   const calls = [];
   const deletedProfile = target
@@ -85,7 +89,7 @@ function createSupabaseMock({
     const url = new URL(String(input));
     const method = options.method || 'GET';
     const headers = new Headers(options.headers);
-    calls.push({ url, method, headers });
+    calls.push({ url, method, headers, body: options.body });
 
     if (url.pathname === '/auth/v1/user') {
       assert.equal(headers.get('Authorization'), 'Bearer test-admin-access-token');
@@ -101,9 +105,23 @@ function createSupabaseMock({
       if (authDeleteError) throw authDeleteError;
       return authDeleteResponse;
     }
+    if (url.pathname.startsWith('/auth/v1/admin/users/') && method === 'PUT') {
+      assert.equal(headers.get('Authorization'), `Bearer ${TEST_ENV.SUPABASE_SERVICE_ROLE_KEY}`);
+      if (authUpdateError) throw authUpdateError;
+      return authUpdateResponse;
+    }
     if (url.pathname === '/rest/v1/users' && method === 'DELETE') {
       assert.equal(headers.get('Authorization'), `Bearer ${TEST_ENV.SUPABASE_SERVICE_ROLE_KEY}`);
       return profileDeleteResult;
+    }
+    if (url.pathname === '/rest/v1/users' && method === 'PATCH') {
+      assert.equal(headers.get('Authorization'), `Bearer ${TEST_ENV.SUPABASE_SERVICE_ROLE_KEY}`);
+      if (profileUpdateError) throw profileUpdateError;
+      if (profileUpdateResponse) return profileUpdateResponse;
+      return jsonResponse(200, [{
+        ...target,
+        ...JSON.parse(options.body)
+      }]);
     }
     throw new Error(`Unexpected mocked request: ${method} ${url.pathname}`);
   };
@@ -118,12 +136,28 @@ function deleteEvent(cookie, id = '42') {
   };
 }
 
-function suppressConsoleError(run) {
+function updateEvent(cookie, id, updates, cfRay = 'a5a65f51ff3ee8c7') {
+  return {
+    httpMethod: 'PATCH',
+    headers: cookie ? { cookie, 'cf-ray': cfRay } : {},
+    queryStringParameters: { id },
+    body: JSON.stringify(updates)
+  };
+}
+
+async function captureConsoleError(run) {
+  const entries = [];
   const originalConsoleError = console.error;
-  console.error = () => {};
-  return Promise.resolve()
-    .then(run)
-    .finally(() => { console.error = originalConsoleError; });
+  console.error = (...args) => entries.push(args);
+  try {
+    return { result: await run(), entries };
+  } finally {
+    console.error = originalConsoleError;
+  }
+}
+
+function suppressConsoleError(run) {
+  return captureConsoleError(run);
 }
 
 test('the local schema cascades profile deletion after linked Auth deletion', () => {
@@ -154,6 +188,257 @@ test('deleting a linked profile uses its exact profile ID and linked Auth ID', a
     );
     assert.equal(authDelete.url.pathname, `/auth/v1/admin/users/${targetProfile.auth_user_id}`);
     assert.equal(calls.some(call => call.method === 'DELETE' && call.url.pathname === '/rest/v1/users'), false);
+  });
+});
+
+test('deactivation updates the linked Auth user before the matching profile field', async () => {
+  const { calls, fetchMock } = createSupabaseMock();
+
+  await withSupabase(fetchMock, async cookie => {
+    const result = await adminUsers(updateEvent(cookie, '42', { is_active: false }));
+    assert.equal(result.statusCode, 200);
+    assert.deepEqual(JSON.parse(result.body).user.is_active, false);
+
+    const authUpdateIndex = calls.findIndex(call =>
+      call.method === 'PUT' && call.url.pathname === `/auth/v1/admin/users/${targetProfile.auth_user_id}`
+    );
+    const profileUpdateIndex = calls.findIndex(call =>
+      call.method === 'PATCH' && call.url.pathname === '/rest/v1/users'
+    );
+    assert.ok(authUpdateIndex >= 0);
+    assert.ok(profileUpdateIndex > authUpdateIndex);
+    assert.equal(calls[authUpdateIndex].method, 'PUT');
+    assert.deepEqual(JSON.parse(calls[authUpdateIndex].body), { ban_duration: '876000h' });
+    assert.equal(calls[authUpdateIndex].headers.get('Content-Type'), 'application/json');
+    assert.equal(calls[authUpdateIndex].headers.get('apikey'), TEST_ENV.SUPABASE_SERVICE_ROLE_KEY);
+    assert.equal(calls[profileUpdateIndex].url.searchParams.get('id'), 'eq.42');
+    assert.deepEqual(JSON.parse(calls[profileUpdateIndex].body), { is_active: false });
+  });
+});
+
+test('reactivation removes the Auth ban before marking the profile active', async () => {
+  const inactiveProfile = { ...targetProfile, is_active: false };
+  const { calls, fetchMock } = createSupabaseMock({ target: inactiveProfile });
+
+  await withSupabase(fetchMock, async cookie => {
+    const result = await adminUsers(updateEvent(cookie, '42', { is_active: true }));
+    assert.equal(result.statusCode, 200);
+    assert.deepEqual(JSON.parse(result.body).user.is_active, true);
+
+    const authUpdate = calls.find(call => call.method === 'PUT');
+    const profileUpdate = calls.find(call => call.method === 'PATCH');
+    assert.deepEqual(JSON.parse(authUpdate.body), { ban_duration: 'none' });
+    assert.deepEqual(JSON.parse(profileUpdate.body), { is_active: true });
+  });
+});
+
+for (const isActive of [false, true]) {
+  test(`profile without a linked Auth account can be marked ${isActive ? 'active' : 'inactive'}`, async () => {
+    const orphanProfile = {
+      ...targetProfile,
+      auth_user_id: null,
+      is_active: !isActive
+    };
+    const { calls, fetchMock } = createSupabaseMock({ target: orphanProfile });
+
+    await withSupabase(fetchMock, async cookie => {
+      const result = await adminUsers(updateEvent(cookie, '42', { is_active: isActive }));
+      assert.equal(result.statusCode, 200);
+      assert.equal(JSON.parse(result.body).user.is_active, isActive);
+      assert.equal(calls.some(call =>
+        call.method === 'PUT' && call.url.pathname.startsWith('/auth/v1/admin/users/')
+      ), false);
+      const profileUpdate = calls.find(call =>
+        call.method === 'PATCH' && call.url.pathname === '/rest/v1/users'
+      );
+      assert.equal(profileUpdate.url.searchParams.get('id'), 'eq.42');
+      assert.deepEqual(JSON.parse(profileUpdate.body), { is_active: isActive });
+    });
+  });
+}
+
+for (const [status, code, message] of [
+  [400, 'validation_failed', 'Invalid request.'],
+  [401, 'unauthorized', 'Unauthorized'],
+  [403, 'permission_denied', 'Forbidden'],
+  [404, 'user_not_found', 'User not found.'],
+  [429, 'rate_limited', 'Too many requests'],
+  [500, 'internal_error', 'Internal server error'],
+  [502, 'upstream_failure', 'Unexpected failure']
+]) {
+  test(`Auth update HTTP ${status} is logged safely and does not change profile status`, async () => {
+    const upstreamRequestId = 'c0ffee00-0000-4000-8000-000000000001';
+    const authUpdateResponse = new Response(JSON.stringify({ code, message }), {
+      status,
+      headers: {
+        'Content-Type': 'application/json',
+        'sb-request-id': upstreamRequestId
+      }
+    });
+    const { calls, fetchMock } = createSupabaseMock({ authUpdateResponse });
+
+    await withSupabase(fetchMock, async cookie => {
+      const { result, entries } = await captureConsoleError(() =>
+        adminUsers(updateEvent(cookie, '42', { is_active: false }))
+      );
+      assert.equal(result.statusCode, 502);
+      const body = JSON.parse(result.body);
+      assert.equal(body.error, 'Unable to update the authentication account. Request ID: a5a65f51ff3ee8c7');
+      assert.equal(body.request_id, 'a5a65f51ff3ee8c7');
+      assert.deepEqual(body.diagnostic, {
+        stage: 'auth_response',
+        upstream_status: status,
+        upstream_request_id: upstreamRequestId,
+        error_code: code,
+        error_message: message.toLowerCase().replace(/[.!]$/, '')
+      });
+      assert.equal(calls.some(call => call.method === 'PATCH'), false);
+
+      const log = entries.find(([label]) => label === 'Supabase Auth user update failed:')?.[1];
+      assert.deepEqual(log, {
+        requestId: 'a5a65f51ff3ee8c7',
+        upstreamRequestId,
+        upstreamStatus: status,
+        errorCode: code,
+        errorMessage: message.toLowerCase().replace(/[.!]$/, '')
+      });
+    });
+  });
+}
+
+test('unrecognized Auth error messages are redacted from diagnostics', async () => {
+  const authUpdateResponse = jsonResponse(400, {
+    code: 'targetuser123',
+    message: 'Failure for target@example.com, user 22222222-2222-4222-8222-222222222222, token eyJhbGciOi.test'
+  });
+  const { calls, fetchMock } = createSupabaseMock({ authUpdateResponse });
+
+  await withSupabase(fetchMock, async cookie => {
+    const { result, entries } = await captureConsoleError(() =>
+      adminUsers(updateEvent(cookie, '42', { is_active: false }))
+    );
+    assert.equal(result.statusCode, 502);
+    assert.equal(calls.some(call => call.method === 'PATCH'), false);
+    const logText = JSON.stringify(entries);
+    assert.doesNotMatch(logText, /targetuser123|target@example\.com|22222222-2222-4222-8222-222222222222|eyJhbGciOi/);
+    assert.match(logText, /Upstream error message redacted\./);
+    const body = JSON.parse(result.body);
+    assert.equal(body.diagnostic.error_code, 'unknown');
+    assert.doesNotMatch(JSON.stringify(body), /targetuser123|target@example\.com|22222222-2222-4222-8222-222222222222|eyJhbGciOi/);
+  });
+});
+
+test('non-JSON Auth errors are redacted and do not change profile status', async () => {
+  const { calls, fetchMock } = createSupabaseMock({
+    authUpdateResponse: new Response('<html>failure target@example.com</html>', { status: 502 })
+  });
+
+  await withSupabase(fetchMock, async cookie => {
+    const { result, entries } = await captureConsoleError(() =>
+      adminUsers(updateEvent(cookie, '42', { is_active: false }))
+    );
+    assert.equal(result.statusCode, 502);
+    assert.equal(calls.some(call => call.method === 'PATCH'), false);
+    const body = JSON.parse(result.body);
+    assert.equal(body.request_id, 'a5a65f51ff3ee8c7');
+    assert.equal(body.diagnostic.stage, 'auth_response');
+    assert.equal(body.diagnostic.upstream_status, 502);
+    const logText = JSON.stringify(entries);
+    assert.doesNotMatch(logText, /target@example\.com|<html>|failure/);
+    assert.match(logText, /"upstreamStatus":502/);
+  });
+});
+
+test('an Auth network failure returns a correlated gateway error without changing profile status', async () => {
+  const { calls, fetchMock } = createSupabaseMock({
+    authUpdateError: new TypeError('fetch failed for target@example.com')
+  });
+
+  await withSupabase(fetchMock, async cookie => {
+    const { result, entries } = await captureConsoleError(() =>
+      adminUsers(updateEvent(cookie, '42', { is_active: false }))
+    );
+    assert.equal(result.statusCode, 502);
+    const body = JSON.parse(result.body);
+    assert.equal(body.request_id, 'a5a65f51ff3ee8c7');
+    assert.deepEqual(body.diagnostic, {
+      stage: 'request',
+      failure_type: 'transport_error',
+      upstream_status: null
+    });
+    assert.equal(calls.some(call => call.method === 'PATCH'), false);
+    const logText = JSON.stringify(entries);
+    assert.match(logText, /a5a65f51ff3ee8c7/);
+    assert.doesNotMatch(logText, /target@example\.com|fetch failed/);
+  });
+});
+
+test('an Auth timeout returns a correlated gateway error without changing profile status', async () => {
+  const { calls, fetchMock } = createSupabaseMock({
+    authUpdateError: Object.assign(new Error('Request timed out for target@example.com'), {
+      name: 'AbortError'
+    })
+  });
+
+  await withSupabase(fetchMock, async cookie => {
+    const { result, entries } = await captureConsoleError(() =>
+      adminUsers(updateEvent(cookie, '42', { is_active: false }))
+    );
+    assert.equal(result.statusCode, 502);
+    const body = JSON.parse(result.body);
+    assert.equal(body.request_id, 'a5a65f51ff3ee8c7');
+    assert.deepEqual(body.diagnostic, {
+      stage: 'request',
+      failure_type: 'timeout',
+      upstream_status: null
+    });
+    assert.equal(calls.some(call => call.method === 'PATCH'), false);
+    const logText = JSON.stringify(entries);
+    assert.match(logText, /a5a65f51ff3ee8c7/);
+    assert.doesNotMatch(logText, /target@example\.com|Request timed out/);
+  });
+});
+
+test('an unreadable Auth response body is reported safely and does not change profile status', async () => {
+  const response = new Response(new ReadableStream({
+    start(controller) {
+      controller.error(new Error('body read failed for target@example.com'));
+    }
+  }), { status: 502 });
+  const { calls, fetchMock } = createSupabaseMock({ authUpdateResponse: response });
+
+  await withSupabase(fetchMock, async cookie => {
+    const { result, entries } = await captureConsoleError(() =>
+      adminUsers(updateEvent(cookie, '42', { is_active: false }))
+    );
+    assert.equal(result.statusCode, 502);
+    assert.equal(calls.some(call => call.method === 'PATCH'), false);
+    assert.deepEqual(JSON.parse(result.body).diagnostic, {
+      stage: 'response_body',
+      failure_type: 'response_read_error',
+      upstream_status: 502
+    });
+    const logText = JSON.stringify(entries);
+    assert.doesNotMatch(logText, /target@example\.com|body read failed/);
+    assert.match(logText, /response_body/);
+  });
+});
+
+test('a profile update failure after Auth success is not reported as success', async () => {
+  const { calls, fetchMock } = createSupabaseMock({
+    profileUpdateError: new Error('Supabase request failed with status 500.')
+  });
+
+  await withSupabase(fetchMock, async cookie => {
+    const { result } = await captureConsoleError(() =>
+      adminUsers(updateEvent(cookie, '42', { is_active: false }))
+    );
+    assert.equal(result.statusCode, 500);
+    assert.deepEqual(JSON.parse(result.body), {
+      error: 'Unable to complete user-management operation.'
+    });
+    assert.equal(calls.some(call => call.method === 'PUT'), true);
+    assert.equal(calls.some(call => call.method === 'PATCH'), true);
   });
 });
 

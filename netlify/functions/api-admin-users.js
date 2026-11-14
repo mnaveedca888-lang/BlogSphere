@@ -13,20 +13,163 @@ const {
 } = require('./_supabase');
 
 const roles = new Set(['administrator', 'editor', 'author', 'viewer']);
+const safeAuthErrorCodes = new Set([
+  'bad_jwt',
+  'bad_request',
+  'forbidden',
+  'internal_error',
+  'invalid_ban_duration',
+  'invalid_jwt',
+  'invalid_request',
+  'invalid_token',
+  'invalid_user',
+  'invalid_user_id',
+  'no_authorization',
+  'permission_denied',
+  'rate_limited',
+  'request_timeout',
+  'too_many_requests',
+  'unauthorized',
+  'unexpected_failure',
+  'upstream_failure',
+  'user_already_exists',
+  'user_not_allowed',
+  'user_not_found',
+  'validation_failed'
+]);
+
+function authAdminRequestError(stage, error, status) {
+  const failure = new Error('Supabase Auth request failed.');
+  failure.name = 'AuthAdminRequestError';
+  failure.authStage = stage;
+  failure.failureType = error?.name === 'AbortError'
+    ? 'timeout'
+    : stage === 'request'
+      ? 'transport_error'
+      : 'response_read_error';
+  if (Number.isInteger(status)) failure.status = status;
+  return failure;
+}
 
 async function authAdminRequest(path, method, body) {
   const { url, serviceRoleKey } = getConfig();
-  const response = await fetch(`${url}/auth/v1/admin/${path}`, {
-    method,
-    headers: {
-      apikey: serviceRoleKey,
-      Authorization: `Bearer ${serviceRoleKey}`,
-      'Content-Type': 'application/json'
-    },
-    ...(body ? { body: JSON.stringify(body) } : {})
-  });
-  const data = await response.json().catch(() => ({}));
+  let response;
+  try {
+    response = await fetch(`${url}/auth/v1/admin/${path}`, {
+      method,
+      headers: {
+        apikey: serviceRoleKey,
+        Authorization: `Bearer ${serviceRoleKey}`,
+        'Content-Type': 'application/json'
+      },
+      ...(body ? { body: JSON.stringify(body) } : {})
+    });
+  } catch (error) {
+    throw authAdminRequestError('request', error);
+  }
+  let text;
+  try {
+    text = await response.text();
+  } catch (error) {
+    throw authAdminRequestError('response_body', error, response.status);
+  }
+  let data = {};
+  try {
+    const parsed = text ? JSON.parse(text) : null;
+    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) data = parsed;
+  } catch {}
   return { response, data };
+}
+
+const safeAuthErrorMessages = new Set([
+  'bad request',
+  'database error saving user',
+  'failed to update user',
+  'forbidden',
+  'internal server error',
+  'invalid ban duration',
+  'invalid jwt',
+  'invalid request',
+  'invalid token',
+  'invalid user id',
+  'not authorized',
+  'permission denied',
+  'request timeout',
+  'too many requests',
+  'unauthorized',
+  'unable to update user',
+  'unexpected failure',
+  'user already exists',
+  'user not allowed',
+  'user not found'
+]);
+
+function getRequestId(headers = {}) {
+  const cfRay = Object.entries(headers)
+    .find(([name, value]) => name.toLowerCase() === 'cf-ray' && typeof value === 'string')?.[1];
+  return typeof cfRay === 'string' && /^[a-f\d]{16}(?:-[a-z]{3,4})?$/i.test(cfRay)
+    ? cfRay
+    : crypto.randomUUID();
+}
+
+function safeAuthErrorCode(value) {
+  const code = String(value || '').trim();
+  const normalized = code.toLowerCase();
+  return safeAuthErrorCodes.has(normalized) ? normalized : 'unknown';
+}
+
+function safeAuthErrorMessage(value) {
+  const message = String(value || '').trim().toLowerCase().replace(/[.!]$/, '');
+  return safeAuthErrorMessages.has(message) ? message : 'Upstream error message redacted.';
+}
+
+function safeUpstreamRequestId(value) {
+  return typeof value === 'string'
+    && (/^[a-f\d]{16}$/i.test(value)
+      || /^[a-f\d]{8}-[a-f\d]{4}-[a-f\d]{4}-[a-f\d]{4}-[a-f\d]{12}$/i.test(value))
+    ? value
+    : null;
+}
+
+function logAuthUpdateFailure(requestId, response, data) {
+  const diagnostic = {
+    stage: 'auth_response',
+    upstream_status: response.status,
+    upstream_request_id: safeUpstreamRequestId(
+      response.headers.get('x-request-id') || response.headers.get('sb-request-id')
+    ),
+    error_code: safeAuthErrorCode(data.code || data.error_code || data.error),
+    error_message: safeAuthErrorMessage(data.message || data.msg || data.error_description)
+  };
+  console.error('Supabase Auth user update failed:', {
+    requestId,
+    upstreamRequestId: diagnostic.upstream_request_id,
+    upstreamStatus: diagnostic.upstream_status,
+    errorCode: diagnostic.error_code,
+    errorMessage: diagnostic.error_message
+  });
+  return diagnostic;
+}
+
+function logAuthUpdateRequestFailure(requestId, error) {
+  const diagnostic = {
+    stage: error.authStage,
+    failure_type: error.failureType,
+    upstream_status: Number.isInteger(error.status) ? error.status : null
+  };
+  console.error('Supabase Auth user update request failed:', {
+    requestId,
+    ...diagnostic
+  });
+  return diagnostic;
+}
+
+function authUpdateFailure(requestId, session, diagnostic) {
+  return result(502, {
+    error: `Unable to update the authentication account. Request ID: ${requestId}`,
+    request_id: requestId,
+    diagnostic
+  }, session);
 }
 
 function result(status, body, session) {
@@ -92,6 +235,7 @@ exports.handler = async event => {
     return jsonResponse(405, { error: 'Method not allowed.' });
   }
 
+  const requestId = getRequestId(event.headers);
   try {
     const access = await requireAdmin(event);
     if (access.response) return access.response;
@@ -236,9 +380,19 @@ exports.handler = async event => {
     if (updates.is_active !== undefined) {
       authUpdates.ban_duration = updates.is_active ? 'none' : '876000h';
     }
-    if (Object.keys(authUpdates).length) {
-      const changed = await authAdminRequest(`users/${encodeURIComponent(user.auth_user_id)}`, 'PUT', authUpdates);
-      if (!changed.response.ok) return result(502, { error: 'Unable to update the authentication account.' }, access.session);
+    if (Object.keys(authUpdates).length && user.auth_user_id) {
+      let changed;
+      try {
+        changed = await authAdminRequest(`users/${encodeURIComponent(user.auth_user_id)}`, 'PUT', authUpdates);
+      } catch (error) {
+        if (error?.name !== 'AuthAdminRequestError') throw error;
+        const diagnostic = logAuthUpdateRequestFailure(requestId, error);
+        return authUpdateFailure(requestId, access.session, diagnostic);
+      }
+      if (!changed.response.ok) {
+        const diagnostic = logAuthUpdateFailure(requestId, changed.response, changed.data);
+        return authUpdateFailure(requestId, access.session, diagnostic);
+      }
     }
 
     const saved = await supabaseRequest(`/rest/v1/users?id=eq.${encodeURIComponent(id)}`, {
@@ -249,7 +403,12 @@ exports.handler = async event => {
     if (!Array.isArray(saved.body) || saved.body.length !== 1) return result(404, { error: 'User not found.' }, access.session);
     return result(200, { ok: true, user: publicUser(saved.body[0]) }, access.session);
   } catch (error) {
-    console.error('Admin user-management operation failed:', error.message);
+    console.error('Admin user-management operation failed:', {
+      requestId,
+      upstreamStatus: Number.isInteger(error?.status) ? error.status : null,
+      errorCode: safeAuthErrorCode(error?.supabaseError?.code),
+      errorMessage: safeAuthErrorMessage(error?.supabaseError?.message || error?.message)
+    });
     return jsonResponse(500, { error: 'Unable to complete user-management operation.' });
   }
 };
