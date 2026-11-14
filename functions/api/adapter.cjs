@@ -34,6 +34,8 @@ const publicReadRoutes = new Set([
   '/api/public-data'
 ]);
 
+const safeDiagnosticErrorNames = new Set(['Error', 'TypeError', 'RangeError', 'ReferenceError', 'SyntaxError', 'URIError', 'EvalError']);
+
 function hasPublicSupabaseConfig(env) {
   return ['SUPABASE_URL', 'SUPABASE_ANON_KEY']
     .every(name => typeof env[name] === 'string' && env[name].trim());
@@ -62,13 +64,36 @@ async function toNetlifyEvent(request) {
 }
 
 function toResponse(result) {
-  if (!result || !Number.isInteger(result.statusCode) || result.statusCode < 100 || result.statusCode > 599) {
-    throw new TypeError('Netlify handler returned an invalid response.');
-  }
+  let operation = 'response validation';
+  try {
+    if (!result || !Number.isInteger(result.statusCode) || result.statusCode < 100 || result.statusCode > 599) {
+      throw new TypeError('Netlify handler returned an invalid response.');
+    }
 
-  const headers = new Headers(result.headers || {});
-  const body = [204, 205, 304].includes(result.statusCode) ? null : result.body ?? null;
-  return new Response(body, { status: result.statusCode, headers });
+    operation = 'response header construction';
+    const headers = new Headers(result.headers || {});
+    const body = [204, 205, 304].includes(result.statusCode) ? null : result.body ?? null;
+    operation = 'Response construction';
+    return new Response(body, { status: result.statusCode, headers });
+  } catch (error) {
+    const errorName = error instanceof Error && safeDiagnosticErrorNames.has(error.name)
+      ? error.name
+      : 'Error';
+    const message = error instanceof Error ? error.message : '';
+    const safeMessages = new Set([
+      'Netlify handler returned an invalid response.',
+      'Invalid header name'
+    ]);
+    const safeMessage = safeMessages.has(message) || /^The status provided \(\d+\) is outside the range \[200, 599\]\.$/.test(message)
+      ? message
+      : 'Error message suppressed';
+    console.error('Pages response conversion diagnostic:', {
+      operation,
+      errorName,
+      errorMessage: safeMessage
+    });
+    throw error;
+  }
 }
 
 async function dispatch(request, env = {}) {
