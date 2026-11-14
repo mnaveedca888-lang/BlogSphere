@@ -35,7 +35,43 @@ function result(status, body, session) {
 
 async function findUser(id) {
   const rows = await supabaseGet(`/rest/v1/users?select=id,auth_user_id,name,email,role,is_active,must_change_password,created_at&id=eq.${encodeURIComponent(id)}&limit=1`);
-  return rows[0] || null;
+  if (!Array.isArray(rows) || rows.length !== 1) return null;
+  return sameNumericId(rows[0].id, id) ? rows[0] : null;
+}
+
+function sameNumericId(actual, expected) {
+  try {
+    return /^\d+$/.test(String(actual)) && BigInt(actual) === BigInt(expected);
+  } catch {
+    return false;
+  }
+}
+
+async function deleteProfile(profile) {
+  const missingAuthId = profile.auth_user_id === null || profile.auth_user_id === undefined;
+  const authIdFilter = missingAuthId ? 'is.null' : `eq.${encodeURIComponent(profile.auth_user_id)}`;
+  const query = new URLSearchParams({
+    id: `eq.${encodeURIComponent(profile.id)}`,
+    auth_user_id: authIdFilter,
+    select: 'id,auth_user_id'
+  });
+  const deleted = await supabaseRequest(`/rest/v1/users?${query}`, {
+    method: 'DELETE',
+    headers: { Prefer: 'return=representation' }
+  });
+  if (!Array.isArray(deleted.body) || deleted.body.length !== 1) return false;
+  const deletedProfile = deleted.body[0];
+  return sameNumericId(deletedProfile.id, profile.id)
+    && (missingAuthId
+      ? deletedProfile.auth_user_id === null || deletedProfile.auth_user_id === undefined
+      : deletedProfile.auth_user_id === profile.auth_user_id);
+}
+
+function isMissingAuthUser(response, data) {
+  if (response.status !== 404) return false;
+  const message = String(data?.message || '').trim().toLowerCase().replace(/[.!]$/, '');
+  return String(data?.code || '').toLowerCase() === 'user_not_found'
+    || message === 'user not found';
 }
 
 function publicUser(user) {
@@ -134,7 +170,7 @@ exports.handler = async event => {
     const id = String((event.queryStringParameters || {}).id || '');
     if (!/^\d+$/.test(id)) return result(400, { error: 'A valid user id is required.' }, access.session);
     const user = await findUser(id);
-    if (!user || !user.auth_user_id) return result(404, { error: 'User not found.' }, access.session);
+    if (!user) return result(404, { error: 'User not found.' }, access.session);
     const isMainTarget = user.email.toLowerCase() === adminEmail;
     const isSelf = String(user.id) === String(access.session.user.id);
 
@@ -149,7 +185,17 @@ exports.handler = async event => {
       if (isMainTarget || (user.role === 'administrator' && !isMainAdmin(access.session.user))) {
         return result(403, { error: 'Only the main administrator can delete administrator accounts, and the main account is protected.' }, access.session);
       }
+      if (!user.auth_user_id) {
+        const profileDeleted = await deleteProfile(user);
+        if (!profileDeleted) return result(404, { error: 'User not found.' }, access.session);
+        return result(200, { ok: true }, access.session);
+      }
       const deleted = await authAdminRequest(`users/${encodeURIComponent(user.auth_user_id)}`, 'DELETE');
+      if (isMissingAuthUser(deleted.response, deleted.data)) {
+        const profileDeleted = await deleteProfile(user);
+        if (!profileDeleted) return result(404, { error: 'User not found.' }, access.session);
+        return result(200, { ok: true }, access.session);
+      }
       if (!deleted.response.ok) return result(502, { error: 'Unable to delete the authentication account.' }, access.session);
       return result(200, { ok: true }, access.session);
     }
