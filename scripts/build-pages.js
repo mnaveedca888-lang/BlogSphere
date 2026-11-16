@@ -35,7 +35,17 @@ const publicFiles = [
 
 const redirects = [
   '/admin /admin-full.html 301',
-  '/admin.html /admin-full.html 301'
+  '/admin.html /admin-full.html 301',
+  // SEO fix (16 Nov 2026): clean slug / lowercase-category URLs that Google
+  // already found and reports as 404. Absolute destinations so a www request
+  // lands on the apex in one hop instead of chaining.
+  '/best-cardio-for-weight-loss https://blogsphere.info/article?id=best-cardio-for-weight-loss 301',
+  '/best-weight-loss-exercises-small-uk-flat https://blogsphere.info/article?id=best-weight-loss-exercises-small-uk-flat 301',
+  '/technology https://blogsphere.info/Technology 301',
+  '/business https://blogsphere.info/Business 301',
+  '/home-decor https://blogsphere.info/Home-Decor 301',
+  '/make-money-online https://blogsphere.info/Make-Money-Online 301',
+  '/health-fitness https://blogsphere.info/Health-Fitness 301'
 ].join('\n') + '\n';
 
 const baseHeaders = [
@@ -92,9 +102,13 @@ function buildPages() {
     ...(previewBuild ? ['/*', '  X-Robots-Tag: noindex, nofollow', ''] : []),
     baseHeaders
   ].join('\n'));
+  // SEO fix (16 Nov 2026): include '/*' so the root catch-all Function
+  // (functions/[[path]].js, www -> apex redirect) runs on every route.
+  // '/api/*' is covered by '/*'. Before this, only '/api/*' was included,
+  // so the www redirect Function never ran.
   fs.writeFileSync(path.join(output, '_routes.json'), JSON.stringify({
     version: 1,
-    include: ['/api/*'],
+    include: ['/*'],
     exclude: []
   }, null, 2) + '\n');
 }
