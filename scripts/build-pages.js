@@ -10,6 +10,7 @@ const publicFiles = [
   'Favicon_11zon.webp',
   'Health-Fitness.html',
   'Health-Fitness.jpeg',
+  'Health-Tools.html',
   'Home-Decor.html',
   'Home-Decor.webp',
   'Logo.webp',
@@ -22,6 +23,7 @@ const publicFiles = [
   'admin-full.html',
   'admin-full.js',
   'article.html',
+  'blogsphere-smartfit-health-fitness-tool-v3.html',
   'contact.html',
   'deployment-config.js',
   'index.html',
@@ -45,7 +47,9 @@ const redirects = [
   '/business https://blogsphere.info/Business 301',
   '/home-decor https://blogsphere.info/Home-Decor 301',
   '/make-money-online https://blogsphere.info/Make-Money-Online 301',
-  '/health-fitness https://blogsphere.info/Health-Fitness 301'
+  '/health-fitness https://blogsphere.info/Health-Fitness 301',
+  // Health Tools subpage (16 Nov 2026).
+  '/health-tools https://blogsphere.info/Health-Tools 301'
 ].join('\n') + '\n';
 
 const baseHeaders = [
