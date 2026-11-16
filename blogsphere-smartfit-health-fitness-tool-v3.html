@@ -411,17 +411,22 @@ input, select, button, textarea {
 </script>
 <script>
 /* BlogSphere embed: report this page's height to the parent Health Tools
-   page so the iframe grows/shrinks with each step and never cuts off. */
+   page so the iframe grows/shrinks with each step and never leaves empty
+   space below the tool. Measured on .bs-shell (the real content wrapper),
+   NOT on documentElement.scrollHeight: scrollHeight never drops below the
+   viewport height, so it could never shrink the frame, and observing the
+   root element fed each resize back into the next measurement. */
 (function () {
+  var shell = document.querySelector('.bs-shell');
   function postHeight() {
-    var h = document.documentElement.scrollHeight || document.body.scrollHeight;
+    var h = shell ? shell.offsetHeight : document.body.scrollHeight;
     if (window.parent && window.parent !== window) {
       window.parent.postMessage({ type: 'smartfit-height', height: h }, '*');
     }
   }
   window.addEventListener('load', postHeight);
-  if ('ResizeObserver' in window) {
-    new ResizeObserver(postHeight).observe(document.documentElement);
+  if ('ResizeObserver' in window && shell) {
+    new ResizeObserver(postHeight).observe(shell);
   }
   document.addEventListener('click', function () { setTimeout(postHeight, 60); });
   setTimeout(postHeight, 300);
