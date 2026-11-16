@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+<!-- Google Tag Manager -->
+<script async src="https://www.googletagmanager.com/gtm.js?id=GTM-PRLHQP2K"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+</script>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="BlogSphere's free SmartFit calculator checks your BMI, daily calorie needs and macros in under a minute. No sign-up, and your results stay in your browser." />
+    <title>Free BMI &amp; Calorie Calculator | BlogSphere Health Tools</title>
+    <link rel="canonical" href="https://blogsphere.info/Health-Tools" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Free BMI &amp; Calorie Calculator | BlogSphere Health Tools" />
+    <meta property="og:description" content="Check your BMI, daily calorie needs and macros with BlogSphere's free SmartFit calculator. No sign-up, results stay in your browser." />
+    <meta property="og:url" content="https://blogsphere.info/Health-Tools" />
+    <meta property="og:image" content="https://blogsphere.info/Health-Fitness.jpeg" />
+    <meta property="og:site_name" content="BlogSphere" />
+    <link rel="icon" type="image/webp" href="Favicon_11zon.webp" />
+    <link rel="stylesheet" href="style.css?v=20261111" />
+    <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "WebPage",
+      "@id": "https://blogsphere.info/Health-Tools",
+      "url": "https://blogsphere.info/Health-Tools",
+      "name": "Free BMI & Calorie Calculator | BlogSphere Health Tools",
+      "description": "BlogSphere's free SmartFit calculator checks your BMI, daily calorie needs and macros in under a minute. No sign-up, and your results stay in your browser.",
+      "isPartOf": { "@type": "WebSite", "name": "BlogSphere", "url": "https://blogsphere.info/" },
+      "inLanguage": "en-GB"
+    },
+    {
+      "@type": "WebApplication",
+      "name": "BlogSphere SmartFit Health & Fitness Calculator",
+      "applicationCategory": "HealthApplication",
+      "operatingSystem": "Any",
+      "url": "https://blogsphere.info/Health-Tools",
+      "offers": { "@type": "Offer", "price": "0", "priceCurrency": "GBP" },
+      "description": "A free calculator that estimates BMI, basal metabolic rate, daily calorie needs, a protein, carbohydrate and fat split, and a hydration range from age, sex, weight, height, activity level and goal."
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "What is BMI and how is it calculated?",
+          "acceptedAnswer": { "@type": "Answer", "text": "BMI, or body mass index, is your weight in kilograms divided by your height in metres squared. For adults, the World Health Organization classes a BMI of 18.5 to 24.9 as the healthy range. BMI is a screening measure, not a diagnosis, because it does not measure body composition." }
+        },
+        {
+          "@type": "Question",
+          "name": "How accurate is the SmartFit calorie estimate?",
+          "acceptedAnswer": { "@type": "Answer", "text": "SmartFit estimates your resting energy use with the Mifflin-St Jeor equation and multiplies it by an activity factor to give your total daily energy expenditure. It is a useful starting estimate, but real needs vary with muscle mass, body composition and day-to-day activity, so treat the number as a guide, not an exact target." }
+        },
+        {
+          "@type": "Question",
+          "name": "Do I need to sign up or share my data to use the calculator?",
+          "acceptedAnswer": { "@type": "Answer", "text": "No. The calculator runs entirely in your browser. Nothing you enter is sent to a server or stored, and there is no account or sign-up." }
+        },
+        {
+          "@type": "Question",
+          "name": "What is a healthy weight for my height?",
+          "acceptedAnswer": { "@type": "Answer", "text": "A healthy weight for an adult is the weight that puts their BMI between 18.5 and 24.9. Use the Ideal Weight Range Calculator further down this page: enter your height and it shows the matching weight range in kilograms." }
+        },
+        {
+          "@type": "Question",
+          "name": "Should I follow the calorie target exactly?",
+          "acceptedAnswer": { "@type": "Answer", "text": "No. The target is an illustrative starting point for a typical adult. If you have a medical condition, are pregnant or breastfeeding, are under 18, or take medication that affects weight, speak to a qualified healthcare professional or registered dietitian before changing how you eat." }
+        }
+      ]
+    }
+  ]
+}
+    </script>
+    <style>
+      /* Health Tools page only. Every rule is scoped under .tools-page or
+         #ideal-weight-tool, so nothing here can touch the rest of the site. */
+      .tools-page .tools-quick-answer {
+        background: var(--blue-soft);
+        border: 1px solid var(--line);
+        border-left: 4px solid var(--green);
+        border-radius: 12px;
+        padding: 16px 18px;
+        margin: 0 0 22px;
+        font-size: 15px;
+      }
+      .tools-page .tools-quick-answer strong { display: block; margin-bottom: 4px; }
+      .tools-page .tools-frame-wrap {
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        overflow: hidden;
+        background: #f3f7f5;
+        box-shadow: var(--shadow);
+        margin: 0 0 8px;
+      }
+      .tools-page #smartfit-frame {
+        display: block;
+        width: 100%;
+        height: 1500px;
+        border: 0;
+      }
+      .tools-page .tools-frame-note { font-size: 12px; color: var(--muted); margin: 0 0 22px; }
+      .tools-page .tools-note {
+        background: #fff8e9;
+        border: 1px solid #f4e8ca;
+        color: #765c2c;
+        border-radius: 12px;
+        padding: 14px 16px;
+        font-size: 13px;
+        margin: 0 0 22px;
+      }
+      .tools-page .tools-faq details {
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 12px 16px;
+        margin-bottom: 10px;
+        background: var(--panel);
+      }
+      .tools-page .tools-faq summary {
+        cursor: pointer;
+        font-weight: 700;
+        font-size: 15px;
+      }
+      .tools-page .tools-faq details p { margin: 8px 0 2px; }
+      .tools-page .tools-readmore {
+        border-top: 1px solid var(--line);
+        padding-top: 18px;
+        margin-top: 26px;
+      }
+      .tools-page .tools-readmore ul { margin: 8px 0 0; }
+      /* Suggested tool: Ideal Weight Range Calculator. Scoped by id. */
+      #ideal-weight-tool {
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        background: var(--panel-soft);
+        padding: 20px;
+        margin: 0 0 22px;
+      }
+      #ideal-weight-tool .iw-fields {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 16px;
+        margin-bottom: 16px;
+      }
+      #ideal-weight-tool .iw-field { display: flex; flex-direction: column; gap: 7px; min-width: 0; }
+      #ideal-weight-tool .iw-field label { font-size: 12px; font-weight: 800; color: #344a42; }
+      #ideal-weight-tool .iw-field input {
+        height: 49px; width: 100%;
+        border: 1px solid #dce6e0; border-radius: 13px;
+        padding: 0 14px; background: var(--input-bg); color: var(--input-text);
+        font: inherit; outline: none;
+      }
+      #ideal-weight-tool .iw-field input:focus { border-color: #479573; box-shadow: 0 0 0 4px #176b5014; }
+      #ideal-weight-tool .iw-unit-row { display: flex; gap: 5px; background: #f0f4f1; border-radius: 12px; padding: 4px; width: max-content; }
+      #ideal-weight-tool .iw-unit-btn {
+        border: 0; background: transparent; color: #687a71; border-radius: 9px;
+        padding: 8px 13px; font-size: 12px; font-weight: 800; cursor: pointer; font-family: inherit;
+      }
+      #ideal-weight-tool .iw-unit-btn[aria-pressed="true"] { background: #fff; color: #176b50; box-shadow: 0 2px 7px #173e2d12; }
+      #ideal-weight-tool .iw-height-ft { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+      #ideal-weight-tool .iw-hidden { display: none !important; }
+      #ideal-weight-tool .iw-hint { font-size: 11px; color: var(--muted); }
+      #ideal-weight-tool .iw-btn {
+        border: 0; border-radius: 13px; min-height: 48px; padding: 0 21px;
+        background: #176b50; color: #fff; font-weight: 800; font-size: 13px;
+        cursor: pointer; font-family: inherit;
+      }
+      #ideal-weight-tool .iw-btn:hover { background: #0f513d; }
+      #ideal-weight-tool .iw-error { min-height: 20px; color: #b33a2d; font-size: 12px; margin: 10px 0 0; }
+      #ideal-weight-tool .iw-result {
+        margin-top: 14px; padding: 16px;
+        border: 1px solid var(--line); border-radius: 13px; background: var(--panel);
+      }
+      #ideal-weight-tool .iw-range-label { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; font-weight: 800; color: var(--muted); margin: 0 0 4px; }
+      #ideal-weight-tool .iw-range { font-size: 26px; letter-spacing: -.03em; margin: 0; }
+      #ideal-weight-tool .iw-verdict { font-size: 13px; color: var(--muted); margin: 8px 0 0; }
+      @media (max-width: 640px) {
+        #ideal-weight-tool .iw-fields { grid-template-columns: 1fr; }
+        .tools-page #smartfit-frame { height: 1650px; }
+      }
+    </style>
+  </head>
+  <body class="article-page tools-page">
+    <header class="topbar article-topbar">
+      <div class="container header-inner">
+        <a href="index.html" class="logo" aria-label="BlogSphere home"><img src="Logo.webp" alt="BlogSphere logo" /></a>
+        <nav class="nav" aria-label="Main navigation"><a href="index.html">Home</a><a href="Technology.html">Technology</a><a href="Business.html">Business</a><a href="Home-Decor.html">Home Decor</a><a href="Make-Money-Online.html">Make Money Online</a><a class="active" href="Health-Fitness.html">Health &amp; Fitness</a><a href="about.html">About</a><a href="contact.html">Contact</a></nav>
+        <div class="header-actions"><button class="icon-button search-button" type="button" aria-label="Search articles"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10.5 3a7.5 7.5 0 015.93 12.75l4.77 4.77 1.41-1.41-4.77-4.77A7.5 7.5 0 1110.5 3zm0 2a5.5 5.5 0 100 11 5.5 5.5 0 000-11z"/></svg></button><button class="theme-toggle" type="button" aria-label="Switch to dark mode" aria-pressed="false"><span class="theme-toggle-icon" aria-hidden="true">☀</span></button><button class="icon-button menu-button" type="button" aria-label="Open navigation menu"><span></span><span></span><span></span></button></div>
+      </div>
+    </header>
+    <main class="container article-shell">
+      <div class="article-breadcrumbs"><a href="index.html">Home</a><span>›</span><a href="Health-Fitness.html">Health &amp; Fitness</a><span>›</span><span>Health Tools</span></div>
+      <article class="article-card">
+        <div class="article-tag-row"><span class="article-tag">Health Tools</span></div>
+        <h1>BMI &amp; Calorie Calculator — Free Health Tools on BlogSphere</h1>
+        <div class="article-content">
+          <p class="tools-quick-answer"><strong>Quick answer</strong> SmartFit is BlogSphere's free BMI and calorie calculator. Enter your age, sex, weight, height, activity level and goal, and it estimates your BMI, daily calorie needs and a protein, carb and fat split. It runs entirely in your browser, with no sign-up and no data sent anywhere.</p>
+          <p>Numbers alone do not tell the whole story of your health, but they are a useful starting point. Our free SmartFit calculator turns a few basic details into estimates you can actually use: your body mass index (BMI), how many calories your body uses at rest, how many you use in a typical day, and a simple split of protein, carbohydrates and fat for that daily target. It takes under a minute, and everything stays on your device.</p>
+
+          <h2 id="smartfit-calculator">Use the SmartFit calculator</h2>
+          <p>Answer the four short steps below. Your results appear on the final step, with an option to print or save them as a PDF.</p>
+          <div class="tools-frame-wrap">
+            <iframe id="smartfit-frame" src="/blogsphere-smartfit-health-fitness-tool-v3.html" title="BlogSphere SmartFit Health and Fitness Calculator" loading="eager"></iframe>
+          </div>
+          <p class="tools-frame-note">The calculator runs in its own frame, so it never overlaps the rest of this page. If it looks cut off, please reload the page.</p>
+
+          <h2 id="how-smartfit-works">How SmartFit works</h2>
+          <p>SmartFit uses the Mifflin-St Jeor equation, the formula most often used to estimate resting energy use in adults. It takes your weight, height, age and sex and estimates your basal metabolic rate (BMR), the calories your body uses at rest. It then multiplies that by an activity factor, from 1.2 for a mostly sedentary day up to 1.9 for very intense training or a physical job, to give your total daily energy expenditure (TDEE), the calories you use in a typical day.</p>
+          <p>Your goal then adjusts the target. Maintaining weight keeps the TDEE figure. Gradual weight loss subtracts 300 calories a day, and gradual weight gain adds 250. The macro split shown with your results is 25 percent protein, 45 percent carbohydrate and 30 percent fat. The hydration range is a starting estimate of 30 to 35 millilitres of water per kilogram of body weight per day.</p>
+
+          <h2 id="ideal-weight-calculator">Suggested tool: Ideal Weight Range Calculator</h2>
+          <p>Your BMI result is easier to use when you can see it as a weight range. This calculator shows the healthy weight range for your height, based on the adult BMI range of 18.5 to 24.9. If you add your current weight, it also tells you where you sit against that range.</p>
+          <div id="ideal-weight-tool">
+            <div class="iw-fields">
+              <div class="iw-field">
+                <label>Your height</label>
+                <div class="iw-unit-row" role="group" aria-label="Height unit">
+                  <button type="button" class="iw-unit-btn" data-iw-unit="cm" aria-pressed="true">Centimetres</button>
+                  <button type="button" class="iw-unit-btn" data-iw-unit="ft" aria-pressed="false">Feet &amp; inches</button>
+                </div>
+                <div id="iw-height-cm-wrap">
+                  <input id="iw-height-cm" type="number" min="120" max="230" step="0.1" value="170" inputmode="decimal" aria-label="Height in centimetres" />
+                  <span class="iw-hint">Example: 170 cm</span>
+                </div>
+                <div id="iw-height-ft-wrap" class="iw-hidden">
+                  <div class="iw-height-ft">
+                    <input id="iw-height-ft" type="number" min="3" max="7" step="1" value="5" inputmode="numeric" aria-label="Height in feet" />
+                    <input id="iw-height-in" type="number" min="0" max="11" step="1" value="7" inputmode="numeric" aria-label="Additional inches" />
+                  </div>
+                  <span class="iw-hint">Feet, then inches</span>
+                </div>
+              </div>
+              <div class="iw-field">
+                <label for="iw-weight">Your current weight (kg, optional)</label>
+                <input id="iw-weight" type="number" min="30" max="300" step="0.1" inputmode="decimal" placeholder="e.g. 70" />
+                <span class="iw-hint">Leave blank if you only want the range.</span>
+              </div>
+            </div>
+            <button type="button" class="iw-btn" id="iw-calc">Calculate my healthy weight range</button>
+            <p class="iw-error" id="iw-error" aria-live="polite"></p>
+            <div class="iw-result" id="iw-result" hidden>
+              <p class="iw-range-label">Healthy weight range for your height</p>
+              <p class="iw-range"><strong id="iw-range">—</strong></p>
+              <p class="iw-verdict" id="iw-verdict"></p>
+            </div>
+          </div>
+
+          <h2 id="what-your-results-mean">What your results mean</h2>
+          <p>BMI groups adults into four broad ranges. They are screening categories, not a diagnosis, and they do not account for muscle mass, age, sex or where fat is carried on the body.</p>
+          <table>
+            <thead><tr><th>BMI</th><th>Adult category</th></tr></thead>
+            <tbody>
+              <tr><td>Below 18.5</td><td>Below the healthy range</td></tr>
+              <tr><td>18.5 – 24.9</td><td>Healthy weight range</td></tr>
+              <tr><td>25.0 – 29.9</td><td>Above the healthy range</td></tr>
+              <tr><td>30.0 and above</td><td>High BMI range</td></tr>
+            </tbody>
+          </table>
+          <p>A calorie target is also a starting point, not a prescription. Two people with the same numbers can have quite different needs, because muscle mass and daily movement vary so much. If the number surprises you, or if you plan a big change to how you eat or train, it is worth checking in with a qualified professional first.</p>
+
+          <h2 id="faq">Frequently asked questions</h2>
+          <div class="tools-faq">
+            <details>
+              <summary>What is BMI and how is it calculated?</summary>
+              <p>BMI, or body mass index, is your weight in kilograms divided by your height in metres squared. For adults, the World Health Organization classes a BMI of 18.5 to 24.9 as the healthy range. BMI is a screening measure, not a diagnosis, because it does not measure body composition.</p>
+            </details>
+            <details>
+              <summary>How accurate is the SmartFit calorie estimate?</summary>
+              <p>SmartFit estimates your resting energy use with the Mifflin-St Jeor equation and multiplies it by an activity factor to give your total daily energy expenditure. It is a useful starting estimate, but real needs vary with muscle mass, body composition and day-to-day activity, so treat the number as a guide, not an exact target.</p>
+            </details>
+            <details>
+              <summary>Do I need to sign up or share my data to use the calculator?</summary>
+              <p>No. The calculator runs entirely in your browser. Nothing you enter is sent to a server or stored, and there is no account or sign-up.</p>
+            </details>
+            <details>
+              <summary>What is a healthy weight for my height?</summary>
+              <p>A healthy weight for an adult is the weight that puts their BMI between 18.5 and 24.9. Use the Ideal Weight Range Calculator further up this page: enter your height and it shows the matching weight range in kilograms.</p>
+            </details>
+            <details>
+              <summary>Should I follow the calorie target exactly?</summary>
+              <p>No. The target is an illustrative starting point for a typical adult. If you have a medical condition, are pregnant or breastfeeding, are under 18, or take medication that affects weight, speak to a qualified healthcare professional or registered dietitian before changing how you eat.</p>
+            </details>
+          </div>
+
+          <div class="tools-note">Educational estimates only, not medical advice. BMI is a screening measure and does not diagnose health or body composition. Calorie, macro and hydration estimates may not suit every person. Not intended for people under 18, pregnancy or breastfeeding, eating-disorder care, or medical conditions requiring individual nutrition advice. Consult a qualified healthcare professional or registered dietitian before making significant changes.</div>
+
+          <div class="tools-readmore">
+            <h2>Keep reading in Health &amp; Fitness</h2>
+            <ul>
+              <li><a href="/article?id=best-weight-loss-exercises-small-uk-flat">Best Weight Loss Exercises You Can Do in a Small UK Flat</a></li>
+              <li><a href="/article?id=best-cardio-for-weight-loss">Best Cardio for Weight Loss: A Realistic UK Guide</a></li>
+              <li><a href="/article?id=30-30-30-rule">The 30-30-30 Rule: Does This Morning Routine Work?</a></li>
+              <li><a href="/Health-Fitness">Browse all Health &amp; Fitness articles →</a></li>
+            </ul>
+          </div>
+        </div>
+      </article>
+    </main>
+    <footer class="site-footer article-footer"><div class="container footer-grid"><div class="footer-branding"><div class="logo footer-logo"><img src="Logo.webp" alt="BlogSphere logo" /></div></div><div class="footer-links"><div><h4>Quick Links</h4><ul><li><a href="index.html">Home</a></li><li><a href="Technology.html">Technology</a></li><li><a href="Business.html">Business</a></li><li><a href="Home-Decor.html">Home Decor</a></li><li><a href="Make-Money-Online.html">Make Money Online</a></li><li><a href="Health-Fitness.html">Health &amp; Fitness</a></li></ul></div><div><h4>About</h4><ul><li><a href="about.html">About Us</a></li><li><a href="contact.html">Contact</a></li><li><a href="privacy-policy.html">Privacy Policy</a></li><li><a href="terms-and-conditions.html">Terms &amp; Conditions</a></li></ul></div></div><div class="footer-socials"><h4>Follow Us</h4><div class="social-icons" aria-label="Social media links"><a href="https://www.facebook.com" aria-label="Facebook">f</a><a href="https://x.com" aria-label="X">x</a><a href="https://www.instagram.com" aria-label="Instagram">◎</a><a href="https://www.linkedin.com" aria-label="LinkedIn">in</a></div></div></div><div class="container footer-bottom"><p>© 2026 BlogSphere. All rights reserved.</p><p>Designed for curious minds.</p></div></footer>
+    <script src="script.js?v=20261116"></script>
+    <script>
+    (function () {
+      'use strict';
+      /* SmartFit iframe: grow or shrink with the tool so it never overlaps
+         the page or leaves a cut-off result. The tool posts its height. */
+      var frame = document.getElementById('smartfit-frame');
+      if (frame) {
+        window.addEventListener('message', function (event) {
+          if (!event.data || event.data.type !== 'smartfit-height') return;
+          var h = parseInt(event.data.height, 10);
+          if (h > 400 && h < 6000) frame.style.height = (h + 12) + 'px';
+        });
+      }
+      /* Suggested tool: Ideal Weight Range Calculator (BMI 18.5 - 24.9). */
+      var $ = function (id) { return document.getElementById(id); };
+      var unit = 'cm';
+      function heightCm() {
+        if (unit === 'cm') return Number($('iw-height-cm').value);
+        return (Number($('iw-height-ft').value) * 12 + Number($('iw-height-in').value)) * 2.54;
+      }
+      function setUnit(next) {
+        if (next === unit) return;
+        var cm = heightCm();
+        unit = next;
+        document.querySelectorAll('[data-iw-unit]').forEach(function (b) {
+          b.setAttribute('aria-pressed', String(b.dataset.iwUnit === unit));
+        });
+        $('iw-height-cm-wrap').classList.toggle('iw-hidden', unit !== 'cm');
+        $('iw-height-ft-wrap').classList.toggle('iw-hidden', unit !== 'ft');
+        if (unit === 'cm') {
+          $('iw-height-cm').value = Number.isFinite(cm) && cm > 0 ? cm.toFixed(1) : '170';
+        } else {
+          var totalIn = (Number.isFinite(cm) && cm > 0 ? cm : 170) / 2.54;
+          $('iw-height-ft').value = Math.floor(totalIn / 12);
+          $('iw-height-in').value = Math.round(totalIn - Math.floor(totalIn / 12) * 12);
+        }
+      }
+      document.querySelectorAll('[data-iw-unit]').forEach(function (b) {
+        b.addEventListener('click', function () { setUnit(b.dataset.iwUnit); });
+      });
+      $('iw-calc').addEventListener('click', function () {
+        var err = $('iw-error');
+        err.textContent = '';
+        var cm = heightCm();
+        if (!Number.isFinite(cm) || cm < 120 || cm > 230) {
+          err.textContent = 'Please enter a height between 120 and 230 cm.';
+          $('iw-result').hidden = true;
+          return;
+        }
+        var m = cm / 100;
+        var low = 18.5 * m * m;
+        var high = 24.9 * m * m;
+        $('iw-range').textContent = low.toFixed(1) + ' – ' + high.toFixed(1) + ' kg';
+        var weight = Number($('iw-weight').value);
+        var verdict = 'This is the weight range that puts an adult BMI between 18.5 and 24.9 for a height of ' + cm.toFixed(0) + ' cm.';
+        if ($('iw-weight').value !== '' && Number.isFinite(weight)) {
+          if (weight < 30 || weight > 300) {
+            err.textContent = 'Please enter a weight between 30 and 300 kg, or leave it blank.';
+            $('iw-result').hidden = true;
+            return;
+          }
+          if (weight < low) verdict = 'Your weight of ' + weight + ' kg is below the healthy range for your height.';
+          else if (weight > high) verdict = 'Your weight of ' + weight + ' kg is above the healthy range for your height.';
+          else verdict = 'Your weight of ' + weight + ' kg is within the healthy range for your height.';
+        }
+        $('iw-verdict').textContent = verdict;
+        $('iw-result').hidden = false;
+      });
+    })();
+    </script>
+  </body>
+</html>

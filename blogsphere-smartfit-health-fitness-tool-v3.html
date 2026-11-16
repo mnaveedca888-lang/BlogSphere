@@ -1,0 +1,431 @@
+
+<!--
+BLOGSPHERE EMBED (deployed 16 Nov 2026):
+The calculator runs inside an iframe on the Health Tools subpage
+(/Health-Tools) so its styles and scripts stay isolated and can never
+overlap the site layout. The page below reports its own height to the
+parent, which resizes the frame automatically.
+<iframe id="smartfit-frame" src="/blogsphere-smartfit-health-fitness-tool-v3.html"
+        title="BlogSphere SmartFit Health and Fitness Calculator"></iframe>
+-->
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="BlogSphere SmartFit — a free, responsive health, fitness and nutrition calculator.">
+<meta name="theme-color" content="#102b25">
+<title>BlogSphere SmartFit Health &amp; Fitness Calculator</title>
+<style>
+:root{
+ --ink:#152a25;--muted:#6c7d76;--line:#e5ece8;--paper:#fff;--canvas:#f3f7f5;
+ --green:#176b50;--green2:#0f513d;--mint:#e7f4ed;--lime:#c9ef83;--gold:#f3bd69;
+ --shadow:0 24px 70px rgba(16,43,37,.10);--radius:25px;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--canvas);color:var(--ink);font:15px/1.55 Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",Arial,sans-serif}
+button,input,select{font:inherit}
+.bs-shell{max-width:1120px;margin:0 auto;padding:22px 18px 50px}
+.bs-topbar{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:5px 2px 20px}
+.bs-brand{display:flex;align-items:center;gap:11px;font-weight:850;letter-spacing:-.03em;font-size:19px}
+.bs-brandmark{width:39px;height:39px;border-radius:13px;background:var(--green);display:grid;place-items:center;color:#fff;font-size:21px;box-shadow:0 8px 18px #176b5033}
+.bs-brand small{display:block;color:var(--muted);font-size:10px;letter-spacing:.12em;text-transform:uppercase;font-weight:750;margin-top:-2px}
+.bs-topnote{font-size:12px;color:var(--muted);display:flex;align-items:center;gap:7px}
+.bs-topnote i{width:7px;height:7px;background:#48a879;border-radius:50%;display:inline-block}
+.bs-app{background:var(--paper);border:1px solid #e7eeea;border-radius:30px;box-shadow:var(--shadow);overflow:hidden}
+.bs-hero{position:relative;min-height:245px;padding:34px 42px;color:#fff;background:linear-gradient(105deg,rgba(9,42,32,.96),rgba(15,76,55,.82)),url('https://images.unsplash.com/photo-1494597564530-871f2b93ac55?auto=format&fit=crop&w=1800&q=85') center 48%/cover;display:flex;align-items:center}
+.bs-hero-content{max-width:640px;position:relative;z-index:1}
+.bs-eyebrow{display:inline-flex;align-items:center;gap:8px;background:#ffffff18;border:1px solid #ffffff35;border-radius:99px;padding:7px 12px;font-size:11px;text-transform:uppercase;letter-spacing:.12em;font-weight:800}
+.bs-eyebrow span{color:var(--lime)}
+.bs-hero h1{font-size:clamp(30px,5vw,48px);line-height:1.06;letter-spacing:-.055em;margin:16px 0 10px}
+.bs-hero p{color:#e0eee7;max-width:570px;margin:0;font-size:15px}
+.bs-hero-art{position:absolute;right:5%;bottom:-1px;width:245px;height:210px;object-fit:cover;object-position:center;border-radius:100px 100px 0 0;opacity:.9;mask-image:linear-gradient(to bottom,#000 70%,transparent)}
+.bs-main{padding:28px 34px 34px}
+.bs-progress-head{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:10px}
+.bs-step-label{font-size:12px;color:var(--muted);font-weight:750}
+.bs-step-count{font-size:12px;color:var(--green);font-weight:800}
+.bs-progress{height:7px;background:#edf2ef;border-radius:99px;overflow:hidden;margin-bottom:27px}
+.bs-progress span{display:block;height:100%;width:25%;background:linear-gradient(90deg,var(--green),#69ae80);border-radius:99px;transition:width .25s ease}
+.bs-page{display:none;animation:rise .25s ease}
+.bs-page.active{display:block}
+@keyframes rise{from{opacity:.35;transform:translateY(7px)}to{opacity:1;transform:none}}
+.bs-page-grid{display:grid;grid-template-columns:minmax(0,1fr) 290px;gap:30px;align-items:start}
+.bs-page h2{font-size:clamp(23px,3vw,29px);letter-spacing:-.04em;line-height:1.15;margin:0 0 7px}
+.bs-lead{color:var(--muted);margin:0 0 23px;font-size:14px}
+.bs-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.bs-field{display:flex;flex-direction:column;gap:7px;min-width:0}
+.bs-field.full{grid-column:1/-1}
+.bs-field label,.bs-label{font-size:12px;font-weight:800;color:#344a42}
+.bs-field input,.bs-field select{height:49px;width:100%;border:1px solid #dce6e0;border-radius:13px;padding:0 14px;background:#fff;color:var(--ink);outline:none;transition:.2s}
+.bs-field input:focus,.bs-field select:focus{border-color:#479573;box-shadow:0 0 0 4px #176b5014}
+.bs-hint{font-size:11px;color:var(--muted)}
+.bs-choice{display:flex;flex-wrap:wrap;gap:9px}
+.bs-choice label{cursor:pointer}
+.bs-choice input{position:absolute;opacity:0;pointer-events:none}
+.bs-choice span{display:inline-flex;align-items:center;justify-content:center;min-height:43px;padding:9px 15px;border:1px solid #dce6e0;border-radius:12px;font-size:13px;font-weight:700;color:#52665d;transition:.2s}
+.bs-choice input:checked+span{border-color:var(--green);background:var(--mint);color:var(--green2);box-shadow:inset 0 0 0 1px var(--green)}
+.bs-unit-switch{display:flex;gap:5px;background:#f0f4f1;border-radius:12px;padding:4px;width:max-content}
+.bs-unit-switch button{border:0;background:transparent;color:#687a71;border-radius:9px;padding:8px 13px;font-size:12px;font-weight:800;cursor:pointer}
+.bs-unit-switch button[aria-pressed="true"]{background:#fff;color:var(--green);box-shadow:0 2px 7px #173e2d12}
+.bs-height-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.bs-aside{background:#f4f8f5;border:1px solid #e7eee9;border-radius:20px;padding:19px;overflow:hidden}
+.bs-aside img{width:100%;height:142px;object-fit:cover;border-radius:13px;margin-bottom:14px}
+.bs-aside h3{font-size:15px;margin:0 0 6px;letter-spacing:-.02em}
+.bs-aside p{font-size:12px;color:var(--muted);margin:0}
+.bs-tip{margin-top:14px;padding:12px;border-radius:12px;background:#fff;border:1px solid #e5ece7;font-size:11px;color:#60736a}
+.bs-nav{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:27px;padding-top:20px;border-top:1px solid var(--line)}
+.bs-btn{border:0;border-radius:13px;min-height:48px;padding:0 21px;background:var(--green);color:#fff;font-weight:800;font-size:13px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:9px;transition:.2s}
+.bs-btn:hover{background:var(--green2);transform:translateY(-1px)}
+.bs-btn:disabled{opacity:.4;cursor:not-allowed;transform:none}
+.bs-btn.ghost{background:#f0f4f1;color:#42574d}
+.bs-btn.ghost:hover{background:#e5ede8}
+.bs-error{min-height:20px;color:#b33a2d;font-size:12px;margin:10px 0 0}
+.bs-result-hero{background:linear-gradient(115deg,#123d2f,#1b6b4d);color:#fff;border-radius:20px;padding:23px;margin-bottom:17px;display:flex;justify-content:space-between;align-items:center;gap:20px}
+.bs-result-hero small{color:#d5e9dc;font-weight:750;text-transform:uppercase;letter-spacing:.1em;font-size:10px}
+.bs-result-hero strong{display:block;font-size:38px;letter-spacing:-.05em;line-height:1.2;margin-top:4px}
+.bs-result-hero span{font-size:12px;color:#e0eee5}
+.bs-result-hero img{width:105px;height:105px;object-fit:cover;border-radius:50%;border:4px solid #ffffff30}
+.bs-metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:11px}
+.bs-metric{border:1px solid var(--line);border-radius:15px;padding:15px;min-width:0}
+.bs-metric small{display:block;font-size:10px;text-transform:uppercase;letter-spacing:.08em;font-weight:800;color:var(--muted)}
+.bs-metric strong{display:block;font-size:24px;letter-spacing:-.04em;margin:5px 0 0;overflow-wrap:anywhere}
+.bs-metric em{font-style:normal;color:var(--muted);font-size:10px}
+.bs-result-columns{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:15px}
+.bs-result-card{border:1px solid var(--line);border-radius:17px;padding:17px}
+.bs-result-card h3{font-size:14px;margin:0 0 13px}
+.bs-macrobar{display:flex;height:11px;border-radius:99px;overflow:hidden;background:#edf1ee;margin-bottom:13px}
+.bs-macrobar span:nth-child(1){background:#287c5c}.bs-macrobar span:nth-child(2){background:#e6ad55}.bs-macrobar span:nth-child(3){background:#6c92c8}
+.bs-macro-list{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}
+.bs-macro-list div{font-size:11px;color:var(--muted)}
+.bs-macro-list b{display:block;color:var(--ink);font-size:17px}
+.bs-result-card p{font-size:12px;color:var(--muted);margin:0}
+.bs-disclaimer{margin-top:18px;padding:13px 15px;background:#fff8e9;border:1px solid #f4e8ca;color:#765c2c;border-radius:13px;font-size:11px}
+.bs-footer{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:17px 4px 0;color:#819088;font-size:11px}
+.bs-hidden{display:none!important}
+@media(max-width:800px){.bs-page-grid{grid-template-columns:1fr}.bs-aside{display:grid;grid-template-columns:120px 1fr;gap:13px;align-items:center}.bs-aside img{height:105px;margin:0;grid-row:span 2}.bs-aside h3{align-self:end}.bs-aside p{align-self:start}.bs-aside .bs-tip{grid-column:1/-1}.bs-hero-art{right:2%;width:180px;opacity:.48}.bs-metrics{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:560px){.bs-shell{padding:10px 9px 28px}.bs-topbar{padding:6px 3px 13px}.bs-topnote{display:none}.bs-app{border-radius:22px}.bs-hero{padding:26px 22px;min-height:220px}.bs-hero-art{display:none}.bs-main{padding:22px 18px 23px}.bs-fields{grid-template-columns:1fr}.bs-field.full{grid-column:auto}.bs-result-columns{grid-template-columns:1fr}.bs-result-hero{padding:18px}.bs-result-hero strong{font-size:32px}.bs-result-hero img{width:78px;height:78px}.bs-nav .bs-btn{padding:0 15px}.bs-aside{grid-template-columns:90px 1fr}.bs-aside img{height:90px}}
+@media print{body{background:#fff}.bs-shell{padding:0}.bs-topbar,.bs-hero,.bs-progress-head,.bs-progress,.bs-page:not(#page-results),.bs-nav,.bs-footer{display:none!important}.bs-app{box-shadow:none;border:0}.bs-main{padding:0}.bs-page#page-results{display:block!important}.bs-result-hero{print-color-adjust:exact;-webkit-print-color-adjust:exact}.bs-disclaimer{break-inside:avoid}}
+</style>
+<style>
+
+/* BlogSphere embed safety + uncropped imagery */
+img, picture img, .hero img, .image-container img, .photo img {
+  object-fit: contain !important;
+  object-position: center center !important;
+  max-width: 100%;
+}
+.hero, .image-container, .photo, .image-wrap {
+  overflow: hidden;
+}
+#app, .app, .calculator, main {
+  box-sizing: border-box;
+  max-width: 100%;
+}
+html {
+  width: 100%;
+  min-width: 0;
+  overflow-x: hidden;
+}
+body {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: hidden;
+  margin: 0;
+}
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+input, select, button, textarea {
+  max-width: 100%;
+}
+@media (max-width: 640px) {
+  .container, .shell, .wrapper, .app, .calculator, main {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin-left: auto !important;
+    margin-right: auto !important;
+  }
+}
+
+
+/* Final layout refinements requested */
+.bs-topbar {
+  display: none !important;
+}
+
+/* Show complete photos inside their image areas; never crop the subject. */
+.bs-hero-art,
+.bs-aside img,
+.bs-result-hero img,
+.bs-page img {
+  object-fit: contain !important;
+  object-position: center center !important;
+}
+
+/* Give photo areas a neutral backing so letterboxed images still look intentional. */
+.bs-aside img,
+.bs-result-hero img,
+.bs-page img {
+  background: #f3f7f5;
+}
+
+/* Keep fixed image frames while displaying the entire image. */
+.bs-aside img {
+  width: 100%;
+  height: 142px;
+}
+.bs-result-hero img {
+  width: 105px;
+  height: 105px;
+}
+.bs-hero-art {
+  object-fit: contain !important;
+}
+
+</style>
+</head>
+<body>
+<div class="bs-shell">
+ <header class="bs-topbar">
+  <div class="bs-brand"><div class="bs-brandmark" aria-hidden="true">✳</div><div>BlogSphere<small>Wellness tools</small></div></div>
+  <div class="bs-topnote"><i></i> Free interactive health tool</div>
+ </header>
+ <main class="bs-app">
+  <section class="bs-hero">
+   <div class="bs-hero-content">
+    <div class="bs-eyebrow"><span>✦</span> BlogSphere presents</div>
+    <h1>SmartFit Health &amp;<br>Fitness Calculator</h1>
+    <p>A simple, thoughtful starting point for understanding your body metrics, daily energy needs and nutrition targets.</p>
+   </div>
+   <img class="bs-hero-art" src="https://images.unsplash.com/photo-1490645935967-10de6ba17061?auto=format&fit=crop&w=500&q=80" alt="A balanced healthy meal" loading="lazy">
+  </section>
+  <div class="bs-main">
+   <div class="bs-progress-head"><span class="bs-step-label" id="step-label">STEP 1 · ABOUT YOU</span><span class="bs-step-count" id="step-count">1 of 4</span></div>
+   <div class="bs-progress" role="progressbar" aria-label="Form progress" aria-valuemin="1" aria-valuemax="4" aria-valuenow="1" id="progress"><span id="progress-fill"></span></div>
+   <form id="smartfit-form" novalidate>
+    <section class="bs-page active" id="page-1">
+     <div class="bs-page-grid">
+      <div>
+       <h2>Let's start with you</h2><p class="bs-lead">A few basics help us estimate your daily energy requirements.</p>
+       <div class="bs-fields">
+        <div class="bs-field full"><label>Sex used by the energy equation</label><div class="bs-choice">
+         <label><input type="radio" name="sex" value="male" checked><span>Male</span></label>
+         <label><input type="radio" name="sex" value="female"><span>Female</span></label>
+        </div><span class="bs-hint">The selected coefficient is used in the Mifflin–St Jeor equation.</span></div>
+        <div class="bs-field"><label for="age">Age</label><input id="age" type="number" min="18" max="100" value="28" inputmode="numeric" required><span class="bs-hint">Adults aged 18–100</span></div>
+        <div class="bs-field"><label for="weight">Current weight (kg)</label><input id="weight" type="number" min="30" max="300" step=".1" value="70" inputmode="decimal" required><span class="bs-hint">Enter weight in kilograms</span></div>
+       </div>
+      </div>
+      <aside class="bs-aside">
+       <img src="https://images.unsplash.com/photo-1538805060514-97d9cc17730c?auto=format&fit=crop&w=500&q=80" alt="Person jogging outdoors" loading="lazy">
+       <h3>Small steps, useful insights</h3><p>Your results are estimates to help you explore your wellness goals.</p>
+       <div class="bs-tip">Your information stays in this browser page. This calculator does not send it to a server.</div>
+      </aside>
+     </div>
+     <div class="bs-error" id="error-1" aria-live="polite"></div>
+     <div class="bs-nav"><span></span><button class="bs-btn" type="button" data-next="2">Continue <span aria-hidden="true">→</span></button></div>
+    </section>
+
+    <section class="bs-page" id="page-2">
+     <div class="bs-page-grid">
+      <div>
+       <h2>Your height &amp; activity</h2><p class="bs-lead">Choose the height format you prefer. We'll convert it automatically for the calculations.</p>
+       <div class="bs-fields">
+        <div class="bs-field full"><label>Height unit</label><div class="bs-unit-switch" role="group" aria-label="Height unit">
+         <button type="button" data-unit="cm" aria-pressed="true">Centimetres</button><button type="button" data-unit="ft" aria-pressed="false">Feet &amp; inches</button>
+        </div></div>
+        <div class="bs-field full" id="height-cm-wrap"><label for="height-cm">Height (cm)</label><input id="height-cm" type="number" min="120" max="230" step=".1" value="170" inputmode="decimal"><span class="bs-hint">Example: 170 cm</span></div>
+        <div class="bs-field full bs-hidden" id="height-ft-wrap"><label>Height (feet and inches)</label><div class="bs-height-row">
+         <div class="bs-field"><input id="height-ft" aria-label="Height in feet" type="number" min="3" max="7" step="1" value="5" inputmode="numeric"><span class="bs-hint">Feet</span></div>
+         <div class="bs-field"><input id="height-in" aria-label="Additional inches" type="number" min="0" max="11" step="1" value="7" inputmode="numeric"><span class="bs-hint">Inches</span></div>
+        </div></div>
+        <div class="bs-field full"><label for="activity">Daily activity level</label><select id="activity">
+         <option value="1.2">Sedentary — mostly sitting, little exercise</option>
+         <option value="1.375" selected>Light — light exercise 1–3 days/week</option>
+         <option value="1.55">Moderate — exercise 3–5 days/week</option>
+         <option value="1.725">Very active — exercise 6–7 days/week</option>
+         <option value="1.9">Extra active — intense training or physical job</option>
+        </select><span class="bs-hint">Choose the description closest to a typical week.</span></div>
+       </div>
+      </div>
+      <aside class="bs-aside">
+       <img src="https://images.unsplash.com/photo-1517836357463-d25dfeac3438?auto=format&fit=crop&w=500&q=80" alt="Strength training in a gym" loading="lazy">
+       <h3>Movement matters</h3><p>Activity level helps estimate the energy you use across an average day.</p>
+       <div class="bs-tip" id="height-preview">Height entered: 170 cm</div>
+      </aside>
+     </div>
+     <div class="bs-error" id="error-2" aria-live="polite"></div>
+     <div class="bs-nav"><button class="bs-btn ghost" type="button" data-prev="1">← Back</button><button class="bs-btn" type="button" data-next="3">Continue →</button></div>
+    </section>
+
+    <section class="bs-page" id="page-3">
+     <div class="bs-page-grid">
+      <div>
+       <h2>Choose your wellness goal</h2><p class="bs-lead">This changes the illustrative calorie target shown in your summary.</p>
+       <div class="bs-fields">
+        <div class="bs-field full"><label for="goal">Your primary goal</label><select id="goal">
+         <option value="maintain">Maintain my current weight</option>
+         <option value="lose">Gradual weight loss (illustrative −300 kcal/day)</option>
+         <option value="gain">Gradual weight gain (illustrative +250 kcal/day)</option>
+        </select></div>
+        <div class="bs-field full"><label for="diet">Food preference</label><select id="diet">
+         <option value="balanced">Balanced / no preference</option><option value="pakistani">Pakistani / South Asian foods</option><option value="vegetarian">Vegetarian</option><option value="vegan">Vegan</option><option value="highprotein">Higher-protein preference</option>
+        </select><span class="bs-hint">Used as a preference label only; this version does not generate a meal plan.</span></div>
+       </div>
+      </div>
+      <aside class="bs-aside">
+       <img src="https://images.unsplash.com/photo-1490645935967-10de6ba17061?auto=format&fit=crop&w=500&q=80" alt="Nutritious meal with vegetables and grains" loading="lazy">
+       <h3>Make it sustainable</h3><p>Healthy routines are personal. Your preferences and circumstances matter.</p>
+       <div class="bs-tip">For clinical nutrition needs, use an individualized assessment with a qualified professional.</div>
+      </aside>
+     </div>
+     <div class="bs-error" id="error-3" aria-live="polite"></div>
+     <div class="bs-nav"><button class="bs-btn ghost" type="button" data-prev="2">← Back</button><button class="bs-btn" type="submit">Calculate my results ✦</button></div>
+    </section>
+
+    <section class="bs-page" id="page-results">
+     <h2>Your SmartFit snapshot</h2><p class="bs-lead">A quick summary based on the information you entered.</p>
+     <div class="bs-result-hero"><div><small>Your estimated daily target</small><strong id="out-target">—</strong><span>kilocalories per day · illustrative estimate</span></div><img src="https://images.unsplash.com/photo-1490645935967-10de6ba17061?auto=format&fit=crop&w=300&q=80" alt="Healthy meal" loading="lazy"></div>
+     <div class="bs-metrics">
+      <div class="bs-metric"><small>BMI</small><strong id="out-bmi">—</strong><em id="out-bmi-label">Adult screening category</em></div>
+      <div class="bs-metric"><small>BMR</small><strong id="out-bmr">—</strong><em>kcal/day at rest (estimated)</em></div>
+      <div class="bs-metric"><small>Maintenance</small><strong id="out-tdee">—</strong><em>kcal/day (estimated)</em></div>
+      <div class="bs-metric"><small>Hydration range</small><strong id="out-water">—</strong><em>litres/day starting estimate</em></div>
+     </div>
+     <div class="bs-result-columns">
+      <div class="bs-result-card"><h3>Illustrative macro distribution</h3><div class="bs-macrobar"><span style="width:25%"></span><span style="width:45%"></span><span style="width:30%"></span></div><div class="bs-macro-list"><div>Protein<b id="out-protein">—</b></div><div>Carbs<b id="out-carbs">—</b></div><div>Fat<b id="out-fat">—</b></div></div></div>
+      <div class="bs-result-card"><h3>Your selected preferences</h3><p id="out-preferences">—</p><p style="margin-top:10px" id="out-goal">—</p></div>
+     </div>
+     <div class="bs-disclaimer">Educational estimates only, not medical advice or a prescribed diet. BMI is a screening measure and does not diagnose health or body composition. Calorie, macro and hydration estimates may not suit every person. Not intended for people under 18, pregnancy or breastfeeding, eating-disorder care, or medical conditions requiring individualized nutrition advice. Consult a qualified healthcare professional or registered dietitian before making significant changes.</div>
+     <div class="bs-nav"><button class="bs-btn ghost" type="button" id="edit-btn">← Edit answers</button><div style="display:flex;gap:9px;flex-wrap:wrap"><button class="bs-btn ghost" type="button" id="restart-btn">Start again</button><button class="bs-btn" type="button" id="print-btn">Print / Save PDF ↓</button></div></div>
+    </section>
+   </form>
+  </div>
+ </main>
+ <footer class="bs-footer"><span>© <span id="year"></span> BlogSphere · SmartFit Health &amp; Fitness Tool</span><span>Free wellness calculator · Estimates are not a diagnosis</span></footer>
+</div>
+<script>
+(function(){
+ 'use strict';
+ const $=id=>document.getElementById(id);
+ const form=$('smartfit-form');
+ let current=1, heightUnit='cm';
+ const labels={1:'ABOUT YOU',2:'HEIGHT & ACTIVITY',3:'YOUR GOAL',4:'YOUR RESULTS'};
+ function showPage(n){
+  current=n;
+  document.querySelectorAll('.bs-page').forEach(p=>p.classList.remove('active'));
+  if(n===4){$('page-results').classList.add('active');}
+  else{$('page-'+n).classList.add('active');}
+  $('step-label').textContent='STEP '+n+' · '+labels[n];
+  $('step-count').textContent=n+' of 4';
+  $('progress-fill').style.width=(n*25)+'%';
+  $('progress').setAttribute('aria-valuenow',String(n));
+  window.scrollTo({top:0,behavior:'smooth'});
+ }
+ function getHeightCm(){
+  if(heightUnit==='cm') return Number($('height-cm').value);
+  return (Number($('height-ft').value)*12+Number($('height-in').value))*2.54;
+ }
+ function updateHeightPreview(){
+  const cm=getHeightCm();
+  if(Number.isFinite(cm)&&cm>0){
+   const totalIn=cm/2.54,ft=Math.floor(totalIn/12),inch=Math.round(totalIn-ft*12);
+   $('height-preview').textContent='Height: '+cm.toFixed(1)+' cm · '+ft+' ft '+inch+' in';
+  }else $('height-preview').textContent='Enter your height to see the conversion.';
+ }
+ function setHeightUnit(unit){
+  if(unit===heightUnit)return;
+  const cm=getHeightCm();
+  heightUnit=unit;
+  document.querySelectorAll('[data-unit]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.unit===unit)));
+  $('height-cm-wrap').classList.toggle('bs-hidden',unit!=='cm');
+  $('height-ft-wrap').classList.toggle('bs-hidden',unit!=='ft');
+  if(unit==='cm') $('height-cm').value=Number.isFinite(cm)?cm.toFixed(1):'170';
+  else{
+   const totalIn=(Number.isFinite(cm)?cm:170)/2.54;
+   const ft=Math.floor(totalIn),inch=Math.round((totalIn-ft*12)*10)/10;
+   $('height-ft').value=Math.floor(totalIn/12);
+   $('height-in').value=Math.round(totalIn-Math.floor(totalIn/12)*12);
+  }
+  updateHeightPreview();
+ }
+ document.querySelectorAll('[data-unit]').forEach(b=>b.addEventListener('click',()=>setHeightUnit(b.dataset.unit)));
+ ['height-cm','height-ft','height-in'].forEach(id=>$(id).addEventListener('input',updateHeightPreview));
+ function validate(step){
+  const err=$('error-'+step);err.textContent='';
+  if(step===1){
+   const age=Number($('age').value),weight=Number($('weight').value);
+   if(!Number.isFinite(age)||age<18||age>100){err.textContent='Please enter an age between 18 and 100. This calculator is for adults only.';return false;}
+   if(!Number.isFinite(weight)||weight<30||weight>300){err.textContent='Please enter a weight between 30 and 300 kg.';return false;}
+  }
+  if(step===2){
+   const cm=getHeightCm();
+   if(heightUnit==='cm'&&(!Number.isFinite(cm)||cm<120||cm>230)){err.textContent='Please enter a height between 120 and 230 cm.';return false;}
+   if(heightUnit==='ft'){
+    const ft=Number($('height-ft').value),inch=Number($('height-in').value);
+    if(!Number.isInteger(ft)||ft<3||ft>7||!Number.isFinite(inch)||inch<0||inch>11){err.textContent='Please enter a valid height: feet from 3–7 and inches from 0–11.';return false;}
+    if(cm<120||cm>230){err.textContent='The converted height must be between 120 and 230 cm.';return false;}
+   }
+  }
+  return true;
+ }
+ document.querySelectorAll('[data-next]').forEach(b=>b.addEventListener('click',()=>{if(validate(current))showPage(Number(b.dataset.next));}));
+ document.querySelectorAll('[data-prev]').forEach(b=>b.addEventListener('click',()=>showPage(Number(b.dataset.prev))));
+ function bmiLabel(bmi){if(bmi<18.5)return 'Below adult reference range';if(bmi<25)return 'Within adult reference range';if(bmi<30)return 'Above adult reference range';return 'High BMI range';}
+ function calculate(e){
+  e.preventDefault();
+  if(!validate(1)){showPage(1);return;}
+  if(!validate(2)){showPage(2);return;}
+  const age=Number($('age').value),weight=Number($('weight').value),height=getHeightCm();
+  const sex=form.querySelector('input[name="sex"]:checked').value;
+  const activity=Number($('activity').value),goal=$('goal').value;
+  const bmi=weight/Math.pow(height/100,2);
+  const bmr=10*weight+6.25*height-5*age+(sex==='male'?5:-161);
+  const tdee=bmr*activity;
+  const target=Math.max(0,tdee+(goal==='lose'?-300:goal==='gain'?250:0));
+  const protein=target*.25/4,carbs=target*.45/4,fat=target*.30/9;
+  $('out-target').textContent=Math.round(target).toLocaleString();
+  $('out-bmi').textContent=bmi.toFixed(1);
+  $('out-bmi-label').textContent=bmiLabel(bmi);
+  $('out-bmr').textContent=Math.round(bmr).toLocaleString();
+  $('out-tdee').textContent=Math.round(tdee).toLocaleString();
+  $('out-water').textContent=(weight*.03).toFixed(1)+'–'+(weight*.035).toFixed(1);
+  $('out-protein').textContent=Math.round(protein)+' g';
+  $('out-carbs').textContent=Math.round(carbs)+' g';
+  $('out-fat').textContent=Math.round(fat)+' g';
+  const diets={balanced:'Balanced / no preference',pakistani:'Pakistani / South Asian foods',vegetarian:'Vegetarian',vegan:'Vegan',highprotein:'Higher-protein preference'};
+  const goals={maintain:'Maintain current weight',lose:'Gradual weight loss estimate',gain:'Gradual weight gain estimate'};
+  $('out-preferences').textContent=diets[$('diet').value];
+  $('out-goal').textContent='Goal: '+goals[goal]+'. Height used: '+height.toFixed(1)+' cm.';
+  showPage(4);
+ }
+ form.addEventListener('submit',calculate);
+ $('edit-btn').addEventListener('click',()=>showPage(1));
+ $('restart-btn').addEventListener('click',()=>{form.reset();$('age').value=28;$('weight').value=70;$('height-cm').value=170;$('height-ft').value=5;$('height-in').value=7;setHeightUnit('cm');document.querySelector('input[name="sex"][value="male"]').checked=true;showPage(1);});
+ $('print-btn').addEventListener('click',()=>window.print());
+ $('year').textContent=new Date().getFullYear();
+ updateHeightPreview();
+})();
+</script>
+<script>
+/* BlogSphere embed: report this page's height to the parent Health Tools
+   page so the iframe grows/shrinks with each step and never cuts off. */
+(function () {
+  function postHeight() {
+    var h = document.documentElement.scrollHeight || document.body.scrollHeight;
+    if (window.parent && window.parent !== window) {
+      window.parent.postMessage({ type: 'smartfit-height', height: h }, '*');
+    }
+  }
+  window.addEventListener('load', postHeight);
+  if ('ResizeObserver' in window) {
+    new ResizeObserver(postHeight).observe(document.documentElement);
+  }
+  document.addEventListener('click', function () { setTimeout(postHeight, 60); });
+  setTimeout(postHeight, 300);
+})();
+</script>
+</body>
+</html>
