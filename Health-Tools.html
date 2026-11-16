@@ -147,6 +147,7 @@
         margin-bottom: 16px;
       }
       #ideal-weight-tool .iw-field { display: flex; flex-direction: column; gap: 7px; min-width: 0; }
+      #ideal-weight-tool .iw-label-row { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; min-height: 43px; }
       #ideal-weight-tool .iw-field label { font-size: 12px; font-weight: 800; color: #344a42; }
       #ideal-weight-tool .iw-field input {
         height: 49px; width: 100%;
@@ -212,43 +213,6 @@
           <p>SmartFit uses the Mifflin-St Jeor equation, the formula most often used to estimate resting energy use in adults. It takes your weight, height, age and sex and estimates your basal metabolic rate (BMR), the calories your body uses at rest. It then multiplies that by an activity factor, from 1.2 for a mostly sedentary day up to 1.9 for very intense training or a physical job, to give your total daily energy expenditure (TDEE), the calories you use in a typical day.</p>
           <p>Your goal then adjusts the target. Maintaining weight keeps the TDEE figure. Gradual weight loss subtracts 300 calories a day, and gradual weight gain adds 250. The macro split shown with your results is 25 percent protein, 45 percent carbohydrate and 30 percent fat. The hydration range is a starting estimate of 30 to 35 millilitres of water per kilogram of body weight per day.</p>
 
-          <h2 id="ideal-weight-calculator">Suggested tool: Ideal Weight Range Calculator</h2>
-          <p>Your BMI result is easier to use when you can see it as a weight range. This calculator shows the healthy weight range for your height, based on the adult BMI range of 18.5 to 24.9. If you add your current weight, it also tells you where you sit against that range.</p>
-          <div id="ideal-weight-tool">
-            <div class="iw-fields">
-              <div class="iw-field">
-                <label>Your height</label>
-                <div class="iw-unit-row" role="group" aria-label="Height unit">
-                  <button type="button" class="iw-unit-btn" data-iw-unit="cm" aria-pressed="true">Centimetres</button>
-                  <button type="button" class="iw-unit-btn" data-iw-unit="ft" aria-pressed="false">Feet &amp; inches</button>
-                </div>
-                <div id="iw-height-cm-wrap">
-                  <input id="iw-height-cm" type="number" min="120" max="230" step="0.1" value="170" inputmode="decimal" aria-label="Height in centimetres" />
-                  <span class="iw-hint">Example: 170 cm</span>
-                </div>
-                <div id="iw-height-ft-wrap" class="iw-hidden">
-                  <div class="iw-height-ft">
-                    <input id="iw-height-ft" type="number" min="3" max="7" step="1" value="5" inputmode="numeric" aria-label="Height in feet" />
-                    <input id="iw-height-in" type="number" min="0" max="11" step="1" value="7" inputmode="numeric" aria-label="Additional inches" />
-                  </div>
-                  <span class="iw-hint">Feet, then inches</span>
-                </div>
-              </div>
-              <div class="iw-field">
-                <label for="iw-weight">Your current weight (kg, optional)</label>
-                <input id="iw-weight" type="number" min="30" max="300" step="0.1" inputmode="decimal" placeholder="e.g. 70" />
-                <span class="iw-hint">Leave blank if you only want the range.</span>
-              </div>
-            </div>
-            <button type="button" class="iw-btn" id="iw-calc">Calculate my healthy weight range</button>
-            <p class="iw-error" id="iw-error" aria-live="polite"></p>
-            <div class="iw-result" id="iw-result" hidden>
-              <p class="iw-range-label">Healthy weight range for your height</p>
-              <p class="iw-range"><strong id="iw-range">—</strong></p>
-              <p class="iw-verdict" id="iw-verdict"></p>
-            </div>
-          </div>
-
           <h2 id="what-your-results-mean">What your results mean</h2>
           <p>BMI groups adults into four broad ranges. They are screening categories, not a diagnosis, and they do not account for muscle mass, age, sex or where fat is carried on the body.</p>
           <table>
@@ -278,7 +242,7 @@
             </details>
             <details>
               <summary>What is a healthy weight for my height?</summary>
-              <p>A healthy weight for an adult is the weight that puts their BMI between 18.5 and 24.9. Use the Ideal Weight Range Calculator further up this page: enter your height and it shows the matching weight range in kilograms.</p>
+              <p>A healthy weight for an adult is the weight that puts their BMI between 18.5 and 24.9. Use the Ideal Weight Range Calculator further down this page: enter your height and it shows the matching weight range in kilograms.</p>
             </details>
             <details>
               <summary>Should I follow the calorie target exactly?</summary>
@@ -288,7 +252,48 @@
 
           <div class="tools-note">Educational estimates only, not medical advice. BMI is a screening measure and does not diagnose health or body composition. Calorie, macro and hydration estimates may not suit every person. Not intended for people under 18, pregnancy or breastfeeding, eating-disorder care, or medical conditions requiring individual nutrition advice. Consult a qualified healthcare professional or registered dietitian before making significant changes.</div>
 
-          <div class="tools-readmore">
+<h2 id="ideal-weight-calculator">Suggested tool: Ideal Weight Range Calculator</h2>
+          <p>Your BMI result is easier to use when you can see it as a weight range. This calculator shows the healthy weight range for your height, based on the adult BMI range of 18.5 to 24.9. If you add your current weight, it also tells you where you sit against that range.</p>
+          <div id="ideal-weight-tool">
+            <div class="iw-fields">
+              <div class="iw-field">
+                <div class="iw-label-row">
+                  <label for="iw-height-cm">Your height</label>
+                  <div class="iw-unit-row" role="group" aria-label="Height unit">
+                    <button type="button" class="iw-unit-btn" data-iw-unit="cm" aria-pressed="true">Centimetres</button>
+                    <button type="button" class="iw-unit-btn" data-iw-unit="ft" aria-pressed="false">Feet &amp; inches</button>
+                  </div>
+                </div>
+                <div id="iw-height-cm-wrap">
+                  <input id="iw-height-cm" type="number" min="120" max="230" step="0.1" value="170" inputmode="decimal" aria-label="Height in centimetres" />
+                  <span class="iw-hint">Example: 170 cm</span>
+                </div>
+                <div id="iw-height-ft-wrap" class="iw-hidden">
+                  <div class="iw-height-ft">
+                    <input id="iw-height-ft" type="number" min="3" max="7" step="1" value="5" inputmode="numeric" aria-label="Height in feet" />
+                    <input id="iw-height-in" type="number" min="0" max="11" step="1" value="7" inputmode="numeric" aria-label="Additional inches" />
+                  </div>
+                  <span class="iw-hint">Feet, then inches</span>
+                </div>
+              </div>
+              <div class="iw-field">
+                <div class="iw-label-row">
+                  <label for="iw-weight">Your current weight (kg, optional)</label>
+                </div>
+                <input id="iw-weight" type="number" min="30" max="300" step="0.1" inputmode="decimal" placeholder="e.g. 70" />
+                <span class="iw-hint">Leave blank if you only want the range.</span>
+              </div>
+            </div>
+            <button type="button" class="iw-btn" id="iw-calc">Calculate my healthy weight range</button>
+            <p class="iw-error" id="iw-error" aria-live="polite"></p>
+            <div class="iw-result" id="iw-result" hidden>
+              <p class="iw-range-label">Healthy weight range for your height</p>
+              <p class="iw-range"><strong id="iw-range">—</strong></p>
+              <p class="iw-verdict" id="iw-verdict"></p>
+            </div>
+          </div>
+
+                    <div class="tools-readmore">
             <h2>Keep reading in Health &amp; Fitness</h2>
             <ul>
               <li><a href="/article?id=best-weight-loss-exercises-small-uk-flat">Best Weight Loss Exercises You Can Do in a Small UK Flat</a></li>
