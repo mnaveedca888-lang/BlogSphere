@@ -1,29 +1,18 @@
-# Proxy BlogSphere API calls to the Netlify Functions backend.
-# Cloudflare Pages serves only static files from this repo, so /api/*
-# is forwarded (200 = proxy, not redirect) to the live Netlify functions.
-# This keeps posts, comments, contact and health working on Pages deploys.
-/api/health https://blogggsphere.netlify.app/.netlify/functions/api-health 200
-/api/public-data https://blogggsphere.netlify.app/.netlify/functions/api-public-data 200
-/api/comments https://blogggsphere.netlify.app/.netlify/functions/api-comments 200
-/api/contact https://blogggsphere.netlify.app/.netlify/functions/api-contact 200
-# Also proxy the admin's Netlify-function calls (/.netlify/functions/* returns
-# 404 on Pages today, so the admin cannot save posts either).
-/.netlify/functions/* https://blogggsphere.netlify.app/.netlify/functions/:splat 200
-
-# SEO fix (16 Nov 2026): send all www traffic to the apex domain.
-# www serves the same pages with HTTP 200 and a canonical to the apex,
-# so Google reports the www copies as "Alternative page with proper
-# canonical tag". A 301 removes the duplicate.
-https://www.blogsphere.info/* https://blogsphere.info/:splat 301
+# NOTE: this file is NOT deployed directly. The build (scripts/build-pages.js)
+# regenerates dist/_redirects from its own list — keep the two in sync.
+# Admin routes (original):
+/admin /admin-full.html 301
+/admin.html /admin-full.html 301
 
 # SEO fix (16 Nov 2026): the clean slug / lowercase-category URLs that
 # Google already found and reports as 404. They never existed as pages,
 # but they were linked from the cardio article (fixed 15 Nov) and from
 # old category links. 301 them to the working forms instead of 404.
-/best-cardio-for-weight-loss /article?id=best-cardio-for-weight-loss 301
-/best-weight-loss-exercises-small-uk-flat /article?id=best-weight-loss-exercises-small-uk-flat 301
-/technology /Technology 301
-/business /Business 301
-/home-decor /Home-Decor 301
-/make-money-online /Make-Money-Online 301
-/health-fitness /Health-Fitness 301
+# Absolute destinations so a www request lands on the apex in one hop.
+/best-cardio-for-weight-loss https://blogsphere.info/article?id=best-cardio-for-weight-loss 301
+/best-weight-loss-exercises-small-uk-flat https://blogsphere.info/article?id=best-weight-loss-exercises-small-uk-flat 301
+/technology https://blogsphere.info/Technology 301
+/business https://blogsphere.info/Business 301
+/home-decor https://blogsphere.info/Home-Decor 301
+/make-money-online https://blogsphere.info/Make-Money-Online 301
+/health-fitness https://blogsphere.info/Health-Fitness 301
