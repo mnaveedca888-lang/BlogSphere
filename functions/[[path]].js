@@ -15,6 +15,7 @@ const CLEAN_REDIRECTS = {
   '/home-decor': '/Home-Decor',
   '/make-money-online': '/Make-Money-Online',
   '/health-fitness': '/Health-Fitness',
+  '/health-tools': '/Health-Tools',
 };
 
 export async function onRequest(context) {
