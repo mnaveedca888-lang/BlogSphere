@@ -9,3 +9,21 @@
 # Also proxy the admin's Netlify-function calls (/.netlify/functions/* returns
 # 404 on Pages today, so the admin cannot save posts either).
 /.netlify/functions/* https://blogggsphere.netlify.app/.netlify/functions/:splat 200
+
+# SEO fix (16 Nov 2026): send all www traffic to the apex domain.
+# www serves the same pages with HTTP 200 and a canonical to the apex,
+# so Google reports the www copies as "Alternative page with proper
+# canonical tag". A 301 removes the duplicate.
+https://www.blogsphere.info/* https://blogsphere.info/:splat 301
+
+# SEO fix (16 Nov 2026): the clean slug / lowercase-category URLs that
+# Google already found and reports as 404. They never existed as pages,
+# but they were linked from the cardio article (fixed 15 Nov) and from
+# old category links. 301 them to the working forms instead of 404.
+/best-cardio-for-weight-loss /article?id=best-cardio-for-weight-loss 301
+/best-weight-loss-exercises-small-uk-flat /article?id=best-weight-loss-exercises-small-uk-flat 301
+/technology /Technology 301
+/business /Business 301
+/home-decor /Home-Decor 301
+/make-money-online /Make-Money-Online 301
+/health-fitness /Health-Fitness 301

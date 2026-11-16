@@ -73,7 +73,7 @@ const findArticlePost = (articleId) => {
   }) || null;
 };
 
-const getArticleHref = (post) => `article.html?id=${encodeURIComponent(String(post.slug || post.id))}`;
+const getArticleHref = (post) => `article?id=${encodeURIComponent(String(post.slug || post.id))}`;
 
 const buildStoryCard = (post) => {
   const categoryClass = post.category === 'Business' ? 'business-pill' : post.category === 'Home Decor' ? 'decor-pill' : post.category === 'Make Money Online' ? 'money-pill' : post.category === 'Health & Fitness' ? 'health-pill' : '';
@@ -618,7 +618,7 @@ const renderArticlePage = () => {
 const updateArticleMeta = (post) => {
   const title = post.meta_title || post.title;
   const description = post.meta_description || post.excerpt || post.summary || '';
-  const url = `${window.location.origin}/article.html?id=${encodeURIComponent(String(post.slug || post.id))}`;
+  const url = `${window.location.origin}/article?id=${encodeURIComponent(String(post.slug || post.id))}`;
   const image = post.image || post.thumb || '';
   document.title = `${title} | BlogSphere`;
   const setMeta = (selector, value) => {
@@ -643,7 +643,7 @@ const updateArticleMeta = (post) => {
 };
 
 const bindArticleShare = (post) => {
-  const url = `${window.location.origin}/article.html?id=${encodeURIComponent(String(post.slug || post.id))}`;
+  const url = `${window.location.origin}/article?id=${encodeURIComponent(String(post.slug || post.id))}`;
   const text = encodeURIComponent(post.title);
   const encodedUrl = encodeURIComponent(url);
   const links = {
@@ -1030,6 +1030,28 @@ const initializePage = async () => {
     refreshRelativeTimeRender();
   }, 60000);
 };
+
+
+// SEO (16 Nov 2026): set the article canonical as soon as the page loads,
+// before the API call returns, so crawlers see the correct canonical even
+// if the post data is slow. updateArticleMeta() refines it (title, og tags)
+// once the post arrives.
+const setEarlyArticleCanonical = () => {
+  if (getPageName() !== 'article.html') return;
+  const slug = getArticleRequestValue();
+  if (!slug) return;
+  const url = `${window.location.origin}/article?id=${encodeURIComponent(slug)}`;
+  let canonical = document.querySelector('link[rel="canonical"]');
+  if (!canonical) {
+    canonical = document.createElement('link');
+    canonical.setAttribute('rel', 'canonical');
+    document.head.appendChild(canonical);
+  }
+  canonical.setAttribute('href', url);
+  const ogUrl = document.querySelector('meta[property="og:url"]');
+  if (ogUrl) ogUrl.setAttribute('content', url);
+};
+setEarlyArticleCanonical();
 
 bindTheme();
 bindMobileMenu();
