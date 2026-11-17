@@ -31,6 +31,7 @@ const publicFiles = [
   'privacy-policy.html',
   'robots.txt',
   'script.js',
+  'sitemap-articles.xml',
   'sitemap.xml',
   'style.css',
   'terms-and-conditions.html'
