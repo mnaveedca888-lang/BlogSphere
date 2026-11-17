@@ -516,7 +516,7 @@ const buildArticleContent = (post) => {
 // Perf (17 Nov 2026): decorate stored post-body images at render time.
 // Stored HTML has bare <img> tags, so lazy-load every image after the
 // first, and add width/height from the image URL's own w/h params when
-// present (Pexels thumbs carry them). The 16/10 .article-content img CSS
+// present (Pexels thumbs carry them). The 3/2 .article-content img CSS
 // box already reserves layout space; these attributes are audit hygiene
 // and a pre-CSS fallback, not the layout mechanism. Stored post bodies
 // are never edited — this runs on the rendered HTML only.
