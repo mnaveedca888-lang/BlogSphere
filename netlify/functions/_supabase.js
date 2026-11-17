@@ -392,12 +392,38 @@ async function getPublicCategories() {
   return supabasePublicGet('/rest/v1/categories?select=*&order=name.asc');
 }
 
-async function getPublishedPosts() {
-  return supabasePublicGet('/rest/v1/posts?select=*&status=eq.published&deleted_at=is.null&order=published_at.desc.nullslast,created_at.desc.nullslast,id.desc');
+// Perf (17 Nov 2026, Batch B-2): the public list/single-post paths only ever
+// read the fields mapPublicPost() emits, so fetch exactly those columns from
+// Supabase instead of select=* — the full article bodies (~1.4 MB across
+// 107 posts) were being pulled on every list call even in lite mode, where
+// the mapper already dropped them. The admin uses its own queries
+// (api-admin-posts.js) and is unaffected by this trim.
+const PUBLIC_POST_COLUMNS = [
+  'id',
+  'slug',
+  'title',
+  'category_id',
+  'category',
+  'published_at',
+  'created_at',
+  'featured_image',
+  'excerpt',
+  'tags',
+  'author',
+  'status',
+  'meta_title',
+  'meta_description',
+  'updated_at'
+];
+const PUBLIC_POST_COLUMNS_WITH_CONTENT = [...PUBLIC_POST_COLUMNS, 'content'];
+
+async function getPublishedPosts(options = {}) {
+  const columns = options.lite ? PUBLIC_POST_COLUMNS : PUBLIC_POST_COLUMNS_WITH_CONTENT;
+  return supabasePublicGet(`/rest/v1/posts?select=${columns.join(',')}&status=eq.published&deleted_at=is.null&order=published_at.desc.nullslast,created_at.desc.nullslast,id.desc`);
 }
 
 async function getPublicData(options = {}) {
-  const [categories, posts] = await Promise.all([getPublicCategories(), getPublishedPosts()]);
+  const [categories, posts] = await Promise.all([getPublicCategories(), getPublishedPosts({ lite: options.lite })]);
   const categoriesById = new Map(categories.map(category => [String(category.id), category.name]));
   return { posts: posts.map(post => mapPublicPost(post, categoriesById, options)), categories };
 }
@@ -406,6 +432,21 @@ async function getPublicPost(lookup) {
   const wanted = String(lookup || '').trim();
   if (!wanted) return null;
   const normalized = wanted.toLowerCase();
+  // Fast path (Batch B-2): fetch just the one post instead of the whole list.
+  // Numeric lookups match the id, anything else matches the (lowercase) slug.
+  const byId = /^\d+$/.test(wanted);
+  const filter = byId
+    ? `id=eq.${encodeURIComponent(wanted)}`
+    : `slug=eq.${encodeURIComponent(normalized)}`;
+  const direct = await supabasePublicGet(`/rest/v1/posts?select=${PUBLIC_POST_COLUMNS_WITH_CONTENT.join(',')}&status=eq.published&deleted_at=is.null&${filter}&limit=1`);
+  const found = Array.isArray(direct) ? direct[0] : null;
+  if (found) {
+    const categories = await getPublicCategories();
+    const categoriesById = new Map(categories.map(category => [String(category.id), category.name]));
+    return mapPublicPost(found, categoriesById);
+  }
+  // Fallback: previous behaviour (full list + find) — covers lookups that
+  // match neither a numeric id nor a lowercase slug exactly.
   const posts = await getPublishedPosts();
   const post = posts.find(item => String(item.id) === wanted || String(item.slug || '').toLowerCase() === normalized);
   if (!post) return null;

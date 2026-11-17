@@ -287,7 +287,7 @@ test('public post APIs use only the anon key', async () => {
       2
     );
     assert.ok(calls.filter(call => call.url.includes('/rest/v1/posts?')).every(call =>
-      call.url.includes('/rest/v1/posts?select=*&status=eq.published&deleted_at=is.null&order=published_at.desc.nullslast,created_at.desc.nullslast,id.desc')
+      call.url.includes('/rest/v1/posts?select=id,slug,title,category_id,category,published_at,created_at,featured_image,excerpt,tags,author,status,meta_title,meta_description,updated_at,content&status=eq.published&deleted_at=is.null&order=published_at.desc.nullslast,created_at.desc.nullslast,id.desc')
     ));
   } finally {
     global.fetch = originalFetch;
