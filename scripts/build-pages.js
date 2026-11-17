@@ -32,6 +32,7 @@ const publicFiles = [
   'robots.txt',
   'script.js',
   'sitemap-articles.xml',
+  'sitemap-pages.xml',
   'sitemap.xml',
   'style.css',
   'terms-and-conditions.html'
