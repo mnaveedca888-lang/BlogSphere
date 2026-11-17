@@ -531,7 +531,6 @@ const renderArticlePage = () => {
     if (featureSrc) {
       featureImage.src = featureSrc;
       featureImage.alt = `Featured image for ${post.title}`;
-      featureImage.style.aspectRatio = 'auto';
       featureImage.onerror = () => { featureImage.style.display = 'none'; };
     } else {
       featureImage.style.display = 'none';
