@@ -27,6 +27,7 @@ const publicFiles = [
   'contact.html',
   'deployment-config.js',
   'index.html',
+  'llms.txt',
   'privacy-policy.html',
   'robots.txt',
   'script.js',
@@ -81,6 +82,47 @@ function isCloudflarePreviewBuild() {
   return process.env.CF_PAGES === '1' && process.env.CF_PAGES_BRANCH !== 'master';
 }
 
+// Perf (17 Nov 2026): dependency-free CSS minifier, used for dist only.
+// The Cloudflare Pages build command is set in the dashboard (not in this
+// repo), so a real minifier package cannot be relied on here. This
+// conservative pass only strips comments (quote-aware) and collapses
+// whitespace; it never touches spacing around + / - so calc() expressions
+// stay valid. JS is deliberately NOT minified by hand (too risky without
+// terser); add terser as a devDependency only once the dashboard build
+// command is confirmed to run `npm install`.
+function minifyCss(css) {
+  let out = '';
+  let i = 0;
+  let quote = null;
+  while (i < css.length) {
+    const ch = css[i];
+    if (quote) {
+      out += ch;
+      if (ch === quote) quote = null;
+      i += 1;
+      continue;
+    }
+    if (ch === '"' || ch === "'") {
+      quote = ch;
+      out += ch;
+      i += 1;
+      continue;
+    }
+    if (ch === '/' && css[i + 1] === '*') {
+      const end = css.indexOf('*/', i + 2);
+      i = end === -1 ? css.length : end + 2;
+      continue;
+    }
+    out += ch;
+    i += 1;
+  }
+  return out
+    .replace(/\s+/g, ' ')
+    .replace(/\s*([{}:;,])\s*/g, '$1')
+    .replace(/;}/g, '}')
+    .trim();
+}
+
 function buildPages() {
   if (path.dirname(output) !== root || path.basename(output) !== 'dist') {
     throw new Error('Refusing to build outside the repository dist directory.');
@@ -92,7 +134,12 @@ function buildPages() {
   for (const file of publicFiles) {
     const source = path.join(root, file);
     if (!fs.statSync(source).isFile()) throw new Error(`Public asset is not a file: ${file}`);
-    fs.copyFileSync(source, path.join(output, file));
+    // Minified CSS is emitted into dist/ only; the source stays readable.
+    if (file === 'style.css') {
+      fs.writeFileSync(path.join(output, file), minifyCss(fs.readFileSync(source, 'utf8')));
+    } else {
+      fs.copyFileSync(source, path.join(output, file));
+    }
   }
 
   const previewBuild = isCloudflarePreviewBuild();
@@ -122,4 +169,4 @@ if (require.main === module) {
   console.log(`Built ${publicFiles.length} allowlisted Pages assets in dist.`);
 }
 
-module.exports = { buildPages, publicFiles };
+module.exports = { buildPages, publicFiles, minifyCss };

@@ -75,11 +75,23 @@ const findArticlePost = (articleId) => {
 
 const getArticleHref = (post) => `article?id=${encodeURIComponent(String(post.slug || post.id))}`;
 
+// Perf (17 Nov 2026): card slots display thumbs at ~180px tall / ~350px
+// wide, so request Pexels thumbs at w=800 instead of the desktop
+// w=1260&h=750&dpr=1 (measured: same photo 151,872 B -> 80,445 B, -47%).
+// Hero/featured images and OG images keep the original URL. Supabase
+// thumbs are left untouched: image transformation is not enabled on that
+// bucket (tested 17 Nov 2026 — transform params return the original file
+// unchanged), so rewriting them would only add a useless query string.
+const cardThumbUrl = (url) => {
+  if (typeof url !== 'string' || !url.includes('images.pexels.com')) return url;
+  return url.replace(/^([^?]+)\?.*$/, '$1?auto=compress&cs=tinysrgb&w=800');
+};
+
 const buildStoryCard = (post) => {
   const categoryClass = post.category === 'Business' ? 'business-pill' : post.category === 'Home Decor' ? 'decor-pill' : post.category === 'Make Money Online' ? 'money-pill' : post.category === 'Health & Fitness' ? 'health-pill' : '';
   return `
     <article class="story-card" data-post-id="${post.id}" data-post-url="${getArticleHref(post)}" role="link" tabindex="0">
-      <div class="story-image lazy-bg" data-bg="${post.thumb}"></div>
+      <div class="story-image lazy-bg" data-bg="${cardThumbUrl(post.thumb)}"></div>
       <div class="story-body">
         <span class="pill ${categoryClass}">${post.category}</span>
         <h3>${post.title}</h3>
@@ -97,7 +109,7 @@ const buildMiniFeature = (post) => {
   const categoryClass = post.category === 'Business' ? 'business-pill' : post.category === 'Home Decor' ? 'decor-pill' : post.category === 'Make Money Online' ? 'money-pill' : post.category === 'Health & Fitness' ? 'health-pill' : '';
   return `
     <article class="mini-feature" data-post-id="${post.id}" data-post-url="${getArticleHref(post)}" role="link" tabindex="0">
-      <div class="mini-image lazy-bg" data-bg="${post.thumb}"></div>
+      <div class="mini-image lazy-bg" data-bg="${cardThumbUrl(post.thumb)}"></div>
       <div class="mini-copy">
         <span class="pill ${categoryClass}">${post.category}</span>
         <h3>${post.title}</h3>
@@ -113,7 +125,7 @@ const buildMiniFeature = (post) => {
 
 const buildTechArticleCard = (post) => `
   <a class="tech-article" href="${getArticleHref(post)}" data-post-id="${post.id}" data-post-url="${getArticleHref(post)}">
-    <div class="article-thumb lazy-bg" data-bg="${post.thumb}"></div>
+    <div class="article-thumb lazy-bg" data-bg="${cardThumbUrl(post.thumb)}"></div>
     <div class="article-copy">
       <span class="article-label">${post.category}</span>
       <h3>${post.title}</h3>
@@ -131,7 +143,7 @@ const buildTechArticleCard = (post) => `
 const buildPopularCard = (post) => `
   <li>
     <a href="${getArticleHref(post)}">
-      <span class="mini-thumb lazy-bg" data-bg="${post.thumb}"></span>
+      <span class="mini-thumb lazy-bg" data-bg="${cardThumbUrl(post.thumb)}"></span>
       <span class="popular-copy">
         <strong>${post.title}</strong>
         <small class="rel-time" data-ts="${post.published_at || post.created_at || post.date || ''}">${formatPostDate(post)}</small>
@@ -276,7 +288,7 @@ const refreshRelativeTimeRender = () => {
 
 const setFeaturedPostContent = (element, post) => {
   const label = element.querySelector('.pill');
-  const title = element.querySelector('h1, h3');
+  const title = element.querySelector('h2, h3');
   const summary = element.querySelector('.feature-content p');
   const meta = element.querySelector('.meta-row');
   const metaItems = meta ? meta.querySelectorAll('span:not(.meta-divider):not(.meta-icon)') : [];
@@ -495,10 +507,40 @@ const buildArticleContent = (post) => {
   if (post.content && /<(?:h[1-6]|p|ul|ol|blockquote|img)\b/i.test(post.content)) {
     // The page template already shows the title as its H1; drop the body's
     // duplicate opening H1 so the page has a single top-level heading.
-    return post.content.replace(/^\s*<h1[^>]*>.*?<\/h1>/is, '');
+    return decorateArticleImages(post.content.replace(/^\s*<h1[^>]*>.*?<\/h1>/is, ''));
   }
-  if (post.content && post.content.trim()) return post.content;
+  if (post.content && post.content.trim()) return decorateArticleImages(post.content);
   return '<p>This post is unavailable.</p>';
+};
+
+// Perf (17 Nov 2026): decorate stored post-body images at render time.
+// Stored HTML has bare <img> tags, so lazy-load every image after the
+// first, and add width/height from the image URL's own w/h params when
+// present (Pexels thumbs carry them). The 16/10 .article-content img CSS
+// box already reserves layout space; these attributes are audit hygiene
+// and a pre-CSS fallback, not the layout mechanism. Stored post bodies
+// are never edited — this runs on the rendered HTML only.
+const decorateArticleImages = (html) => {
+  let seen = 0;
+  return html.replace(/<img\b[^>]*>/gi, (tag) => {
+    seen += 1;
+    let out = tag;
+    if (seen > 1 && !/\bloading\s*=/.test(out)) {
+      out = out.replace(/<img\b/i, '<img loading="lazy"');
+    }
+    if (!/\bwidth\s*=/.test(out) || !/\bheight\s*=/.test(out)) {
+      const src = out.match(/\bsrc\s*=\s*"([^"]*)"/i);
+      if (src) {
+        const w = src[1].match(/[?&;]w=(\d+)/);
+        const h = src[1].match(/[?&;]h=(\d+)/);
+        if (w && h) {
+          if (!/\bwidth\s*=/.test(out)) out = out.replace(/<img\b/i, `<img width="${w[1]}"`);
+          if (!/\bheight\s*=/.test(out)) out = out.replace(/<img\b/i, `<img height="${h[1]}"`);
+        }
+      }
+    }
+    return out;
+  });
 };
 
 const renderArticlePage = () => {
@@ -591,7 +633,7 @@ const renderArticlePage = () => {
     if (relatedPosts.length) {
       relatedList.innerHTML = relatedPosts.map((item) => `
       <li>
-        <span class="related-thumb lazy-bg" data-bg="${item.thumb}"></span>
+        <span class="related-thumb lazy-bg" data-bg="${cardThumbUrl(item.thumb)}"></span>
         <a href="${getArticleHref(item)}">${item.title}</a>
         <span class="related-arrow">›</span>
       </li>

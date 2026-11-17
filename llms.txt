@@ -1,0 +1,26 @@
+# BlogSphere
+
+> BlogSphere is an independent blog publishing practical guides on technology, business, home decor, health & fitness, and making money online, in English, French, and Spanish.
+
+## Key pages
+
+- Home: https://blogsphere.info/
+- Technology: https://blogsphere.info/Technology
+- Business: https://blogsphere.info/Business
+- Home Decor: https://blogsphere.info/Home-Decor
+- Health & Fitness: https://blogsphere.info/Health-Fitness
+- Make Money Online: https://blogsphere.info/Make-Money-Online
+- Health Tools (BMI, BMR, TDEE, macros, hydration, ideal weight): https://blogsphere.info/Health-Tools
+- About: https://blogsphere.info/about.html
+- Contact: https://blogsphere.info/contact.html
+
+## Content
+
+- All articles: https://blogsphere.info/sitemap.xml
+- Article pages use the form https://blogsphere.info/article?id=<slug>
+- The public article feed is available at https://blogsphere.info/api/public-data
+
+## Notes
+
+- Articles are written for readers in the UK, USA, France, and Spain, and include buying guides, how-to instructions, and price ranges in local currency where relevant.
+- The site is a static frontend with a small API backend; there is no paywall and no account is needed to read articles.
