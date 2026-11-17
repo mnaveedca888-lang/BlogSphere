@@ -2185,9 +2185,27 @@ body.home-page .site-footer {
 }
 
 .article-content figure img {
-  max-width: 100%;
+  width: 100%;
   height: auto;
+  aspect-ratio: 16 / 10;
+  object-fit: contain;
+  object-position: center;
   display: block;
+  background: linear-gradient(135deg, #e9eef3 0%, #dde5ec 100%);
+  border-radius: 8px;
+}
+
+/* In-article images: same fixed 16/10 container as the featured image,
+   so portrait and landscape photos render at one uniform size with the
+   whole image visible — no crop, no stretch. */
+.article-content img {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 16 / 10;
+  object-fit: contain;
+  object-position: center;
+  display: block;
+  background: linear-gradient(135deg, #e9eef3 0%, #dde5ec 100%);
   border-radius: 8px;
 }
 
