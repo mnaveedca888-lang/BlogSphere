@@ -420,6 +420,10 @@ body.home-page .categories-card {
   order: 4;
 }
 
+body.home-page .what-is-blogsphere-card {
+  order: 5;
+}
+
 body.home-page .popular-card {
   order: 3;
 }
@@ -1072,6 +1076,28 @@ body.home-page .site-footer {
   margin: 0 0 14px;
   font-size: 1.1rem;
   letter-spacing: -0.05em;
+}
+
+.what-is-blogsphere-card h2 {
+  margin: 0 0 12px;
+  color: var(--text);
+  font-size: 1.1rem;
+  letter-spacing: -0.05em;
+}
+
+.what-is-blogsphere-card p {
+  margin: 0 0 12px;
+  color: var(--muted);
+  font-size: 0.82rem;
+  line-height: 1.7;
+}
+
+.what-is-blogsphere-card p:last-child {
+  margin-bottom: 0;
+}
+
+.what-is-blogsphere-card a {
+  color: var(--link);
 }
 
 .popular-list,
