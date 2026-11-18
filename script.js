@@ -803,6 +803,62 @@ const bindTheme = () => {
   }
 };
 
+const bindHomeFaqAccordion = () => {
+  const accordion = document.querySelector('.home-faq-list');
+  if (!accordion) return;
+
+  const setExpanded = (button, expanded) => {
+    const panel = document.getElementById(button.getAttribute('aria-controls'));
+    if (!panel) return;
+
+    button.setAttribute('aria-expanded', String(expanded));
+    panel.setAttribute('aria-hidden', String(!expanded));
+    panel.toggleAttribute('inert', !expanded);
+    button.closest('.home-faq-item')?.classList.toggle('is-open', expanded);
+
+    const icon = button.querySelector('.home-faq-toggle');
+    if (icon) icon.textContent = expanded ? '−' : '+';
+
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (expanded) {
+      if (reduceMotion) {
+        panel.style.height = 'auto';
+        return;
+      }
+
+      panel.style.height = `${panel.scrollHeight}px`;
+      panel.addEventListener('transitionend', (event) => {
+        if (event.target === panel && event.propertyName === 'height' && button.getAttribute('aria-expanded') === 'true') {
+          panel.style.height = 'auto';
+        }
+      }, { once: true });
+      return;
+    }
+
+    if (reduceMotion) {
+      panel.style.height = '0px';
+      return;
+    }
+
+    panel.style.height = `${panel.getBoundingClientRect().height}px`;
+    panel.getBoundingClientRect();
+    window.requestAnimationFrame(() => {
+      if (button.getAttribute('aria-expanded') === 'false') panel.style.height = '0px';
+    });
+  };
+
+  accordion.addEventListener('click', (event) => {
+    const button = event.target instanceof Element ? event.target.closest('.home-faq-question') : null;
+    if (!button || !accordion.contains(button)) return;
+
+    const shouldExpand = button.getAttribute('aria-expanded') !== 'true';
+    accordion.querySelectorAll('.home-faq-question[aria-expanded="true"]').forEach((openButton) => {
+      setExpanded(openButton, false);
+    });
+    if (shouldExpand) setExpanded(button, true);
+  });
+};
+
 const bindMobileMenu = () => {
   if (!nav || !menuButton) return;
 
@@ -1095,6 +1151,7 @@ const setEarlyArticleCanonical = () => {
 setEarlyArticleCanonical();
 
 bindTheme();
+bindHomeFaqAccordion();
 bindMobileMenu();
 bindSearchFocus();
 bindSearchInputs();
