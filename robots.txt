@@ -1,3 +1,5 @@
 User-agent: *
 Allow: /
 Sitemap: https://blogsphere.info/sitemap.xml
+Sitemap: https://blogsphere.info/sitemap-articles.xml
+Sitemap: https://blogsphere.info/sitemap-pages.xml
