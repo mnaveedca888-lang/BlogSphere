@@ -260,25 +260,65 @@ const renderPagination = (container, currentPage, totalPages, buildPageUrl) => {
     return;
   }
   container.hidden = false;
-  const pageLink = (page, label, { active = false, disabled = false } = {}) => {
+  container.setAttribute('role', 'navigation');
+  const pageLink = (page, label, { active = false, disabled = false, ariaLabel, className = '' } = {}) => {
     const classes = ['page-number'];
+    if (className) classes.push(className);
     if (active) classes.push('active');
     if (disabled) classes.push('disabled');
-    const aria = active ? ' aria-current="page"' : '';
+    const aria = `${ariaLabel ? ` aria-label="${ariaLabel}"` : ''}${active ? ' aria-current="page"' : ''}`;
     return disabled
       ? `<span class="${classes.join(' ')}" aria-disabled="true"${aria}>${label}</span>`
       : `<a class="${classes.join(' ')}" href="${buildPageUrl(page)}"${aria}>${label}</a>`;
   };
   const pages = [];
-  const windowStart = Math.max(1, Math.min(currentPage - 2, totalPages - 4));
-  const windowEnd = Math.min(totalPages, windowStart + 4);
-  for (let page = windowStart; page <= windowEnd; page += 1) {
-    pages.push(pageLink(page, String(page), { active: page === currentPage }));
+  const addPage = (page, edge = false) => {
+    pages.push(pageLink(page, String(page), {
+      active: page === currentPage,
+      ariaLabel: `Page ${page}`,
+      className: `pagination-page${edge ? ' pagination-page--edge' : ''}`
+    }));
+  };
+  const addEllipsis = () => {
+    pages.push('<span class="pagination-ellipsis" aria-hidden="true">…</span>');
+  };
+
+  if (totalPages <= 7) {
+    for (let page = 1; page <= totalPages; page += 1) {
+      addPage(page, page === 1 || page === totalPages);
+    }
+  } else if (currentPage <= 3) {
+    for (let page = 1; page <= 4; page += 1) addPage(page, page === 1);
+    addEllipsis();
+    addPage(totalPages, true);
+  } else if (currentPage >= totalPages - 2) {
+    addPage(1, true);
+    addEllipsis();
+    for (let page = totalPages - 3; page <= totalPages; page += 1) {
+      addPage(page, page === totalPages);
+    }
+  } else {
+    addPage(1, true);
+    addEllipsis();
+    for (let page = currentPage - 1; page <= currentPage + 1; page += 1) addPage(page);
+    addEllipsis();
+    addPage(totalPages, true);
   }
+
+  const previousIcon = '<svg class="pagination-chevron" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><path d="m12 4-6 6 6 6"/></svg>';
+  const nextIcon = '<svg class="pagination-chevron" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><path d="m8 4 6 6-6 6"/></svg>';
   container.innerHTML = [
-    pageLink(currentPage - 1, '‹ Prev', { disabled: currentPage <= 1 }),
+    pageLink(currentPage - 1, `${previousIcon}<span class="pagination-label">Prev</span>`, {
+      disabled: currentPage <= 1,
+      ariaLabel: 'Previous page',
+      className: 'pagination-previous'
+    }),
     ...pages,
-    pageLink(currentPage + 1, 'Next ›', { disabled: currentPage >= totalPages })
+    pageLink(currentPage + 1, `<span class="pagination-label">Next</span>${nextIcon}`, {
+      disabled: currentPage >= totalPages,
+      ariaLabel: 'Next page',
+      className: 'pagination-next'
+    })
   ].join('');
 };
 
