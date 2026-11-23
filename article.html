@@ -17,6 +17,12 @@
   });
   gtag('js', new Date());
 </script>
+<!-- AdSense prep (Phase 5, item 32) — PLACEHOLDER ONLY. AdSense is NOT
+     active and no ad request is made. After AdSense approval, replace
+     ca-pub-XXXXXXXXXXXXXXXX with the real publisher ID and uncomment the
+     script below. The script must only load after advertising consent is
+     granted (see the Consent Mode v2 gating in script.js). -->
+<!-- <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-XXXXXXXXXXXXXXXX" crossorigin="anonymous"></script> -->
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="description" content="BlogSphere article" />
@@ -33,6 +39,8 @@
     <link rel="canonical" href="https://blogsphere.info/" />
     <title>Article | BlogSphere</title>
     <link rel="icon" type="image/webp" href="/Favicon_11zon.webp" />
+    <link rel="preconnect" href="https://images.pexels.com" crossorigin />
+    <link rel="preconnect" href="https://acmhgxoyddzurgljvsrb.supabase.co" crossorigin />
     <link rel="stylesheet" href="/style.css?v=20261123" />
   </head>
   <body class="article-page">
@@ -105,6 +113,14 @@
 
           <div id="article-content" class="article-content"></div>
 
+          <!-- Ad slot (Phase 5, item 32) — PREP ONLY. Empty and hidden until
+               AdSense is approved and the user says to activate. To activate:
+               remove the hidden attribute, add the <ins class="adsbygoogle">
+               markup for this slot inside the div, and uncomment the AdSense
+               script placeholder in <head>. Ads must only load after
+               advertising consent is granted. -->
+          <div class="ad-slot ad-slot-in-article" data-ad-slot="in-article" hidden aria-hidden="true"></div>
+
           <div class="related-wrap">
             <h3>Related Articles</h3>
             <ul class="related-list"></ul>
@@ -153,6 +169,14 @@
             </button>
           </div>
 
+          <!-- Ad slot (Phase 5, item 32) — PREP ONLY. Empty and hidden until
+               AdSense is approved and the user says to activate. To activate:
+               remove the hidden attribute, add the <ins class="adsbygoogle">
+               markup for this slot inside the div, and uncomment the AdSense
+               script placeholder in <head>. Ads must only load after
+               advertising consent is granted. -->
+          <div class="ad-slot ad-slot-sidebar" data-ad-slot="sidebar" hidden aria-hidden="true"></div>
+
           <div class="sidebar-card article-sidebar-card popular-card">
             <h3>Popular Posts</h3>
             <ul class="popular-list"></ul>
@@ -184,6 +208,14 @@
         </aside>
       </div>
     </main>
+
+    <!-- Ad slot (Phase 5, item 32) — PREP ONLY. Empty and hidden until
+         AdSense is approved and the user says to activate. To activate:
+         remove the hidden attribute, add the <ins class="adsbygoogle">
+         markup for this slot inside the div, and uncomment the AdSense
+         script placeholder in <head>. Ads must only load after
+         advertising consent is granted. -->
+    <div class="container"><div class="ad-slot ad-slot-footer" data-ad-slot="footer" hidden aria-hidden="true"></div></div>
 
     <footer class="site-footer article-footer">
       <div class="container footer-grid">

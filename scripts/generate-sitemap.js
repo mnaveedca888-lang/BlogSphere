@@ -1,5 +1,8 @@
 // Regenerate all three sitemaps from the live public API (full
-// regeneration, 23 Nov 2026, Phase 1).
+// regeneration, 23 Nov 2026, Phase 1). Since Phase 5 (23 Nov 2026) the
+// page build (scripts/build-pages.js) calls main() automatically before
+// copying the sitemaps into dist/, so category lastmods always match the
+// newest post date in each category — do not hand-edit sitemap dates.
 //
 // Usage: node scripts/generate-sitemap.js
 //   BLOGSPHERE_API_URL=https://blogsphere.info/api/public-data?lite=1

@@ -2335,7 +2335,17 @@ async function buildPages() {
 }
 
 if (require.main === module) {
-  buildPages()
+  // Phase 5, item 31: regenerate the sitemaps from the same content the
+  // pages are built from BEFORE buildPages() copies them into dist/, so
+  // the category lastmods always match the newest post date in each
+  // category (and the homepage lastmod the newest post overall).
+  // generate-sitemap reads the same source as buildPages
+  // (BLOGSPHERE_CONTENT_JSON or the live API). This runs only when
+  // invoked as the build command, not when tests require this module
+  // and call buildPages() directly.
+  const { main: regenerateSitemaps } = require('./generate-sitemap');
+  regenerateSitemaps()
+    .then(() => buildPages())
     .then(({ posts, langCounts, counts }) => {
       console.log(
         `Built ${posts} static article pages (${langCounts.fr} fr, ${langCounts.es} es, ${langCounts.en} en), ` +

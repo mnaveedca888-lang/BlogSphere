@@ -17,6 +17,12 @@
   });
   gtag('js', new Date());
 </script>
+<!-- AdSense prep (Phase 5, item 32) — PLACEHOLDER ONLY. AdSense is NOT
+     active and no ad request is made. After AdSense approval, replace
+     ca-pub-XXXXXXXXXXXXXXXX with the real publisher ID and uncomment the
+     script below. The script must only load after advertising consent is
+     granted (see the Consent Mode v2 gating in script.js). -->
+<!-- <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-XXXXXXXXXXXXXXXX" crossorigin="anonymous"></script> -->
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="description" content="Health and fitness guides from BlogSphere: workouts, weight loss, nutrition and healthy habits, plus free BMI and calorie calculators." />
@@ -33,6 +39,7 @@
     <title>Health &amp; Fitness | BlogSphere</title>
     <link rel="canonical" href="https://blogsphere.info/Health-Fitness" />
     <link rel="icon" type="image/webp" href="/Favicon_11zon.webp" />
+    <link rel="preconnect" href="https://images.pexels.com" crossorigin />
     <link rel="stylesheet" href="/style.css?v=20261123" />
     <style>
       /* Health Tools promo (16 Nov 2026). Scoped to this page only. */
@@ -186,6 +193,14 @@
         </aside>
       </section>
     </main>
+
+    <!-- Ad slot (Phase 5, item 32) — PREP ONLY. Empty and hidden until
+         AdSense is approved and the user says to activate. To activate:
+         remove the hidden attribute, add the <ins class="adsbygoogle">
+         markup for this slot inside the div, and uncomment the AdSense
+         script placeholder in <head>. Ads must only load after
+         advertising consent is granted. -->
+    <div class="container"><div class="ad-slot ad-slot-footer" data-ad-slot="footer" hidden aria-hidden="true"></div></div>
 
     <footer class="site-footer">
       <div class="container footer-grid">

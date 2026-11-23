@@ -2465,6 +2465,25 @@ body.home-page .site-footer {
   text-decoration: underline;
 }
 
+/* Phase 5 (23 Nov 2026), item 32 — Ad slots: PREP ONLY, AdSense is NOT
+   active. The slots are empty and hidden (the hidden attribute) until
+   AdSense is approved and the user says to activate, so they take no
+   space and make no ad request. The min-heights reserve space when a
+   slot is activated, so enabling ads does not shift the layout (CLS).
+   To activate a slot: remove its hidden attribute, add the
+   <ins class="adsbygoogle"> markup inside it, and uncomment the AdSense
+   script placeholder in <head>. Ads must only load after advertising
+   consent is granted (see the Consent Mode v2 gating in script.js).
+   Max 3 ad units per page: sidebar + in-article + footer on article
+   pages, footer only on the homepage and category pages. */
+.ad-slot {
+  min-height: 250px;
+  margin: 24px 0;
+}
+.ad-slot-footer {
+  min-height: 90px;
+}
+
 /* In-article images: same fixed 3/2 container as the featured image,
    so portrait and landscape photos render at one uniform size with the
    whole image visible — no crop, no stretch. */
