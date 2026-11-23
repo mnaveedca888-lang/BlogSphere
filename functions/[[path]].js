@@ -40,6 +40,27 @@ const CLEAN_REDIRECTS = {
   '/editorial-policy.html': '/editorial-policy'
 };
 
+// GTA 6 merge (23 Nov 2026, items 22/23, APPROVED by the user): the 8
+// merged slugs have no generated page, so they 301 here to the surviving
+// guide in the same language. The stored Supabase content still lists all
+// 11 posts; a permanent admin cleanup (deleting the 8 in the admin) is a
+// follow-up. Checked (a) in the /article?id= handler below, BEFORE the
+// slugs.json check (the merged slugs are no longer in slugs.json, so
+// without this /article?id=<merged> would 404 instead of redirecting),
+// and (b) for clean URL paths in BOTH slash forms (/slug and /slug/),
+// since the merged slugs have no static page and the slash form would
+// otherwise fall through to a 404.
+const GTA6_MERGED_REDIRECTS = {
+  'gta-6-release-date-us-guide': '/gta-6-release-date-uk-guide/',
+  'gta-6-platforms-uk-guide': '/gta-6-release-date-uk-guide/',
+  'gta-6-platforms-us-guide': '/gta-6-release-date-uk-guide/',
+  'gta-6-ps5-frame-rate-guide': '/gta-6-release-date-uk-guide/',
+  'gta-6-ps5-frame-rate-us-guide': '/gta-6-release-date-uk-guide/',
+  'gta-6-ps5-frame-rate-guide-france': '/gta-6-release-date-guide-france/',
+  'gta-6-platforms-guia-espana': '/gta-6-release-date-guia-espana/',
+  'gta-6-ps5-frame-rate-guia-espana': '/gta-6-release-date-guia-espana/'
+};
+
 let slugSetPromise = null;
 
 async function loadSlugSet(context, origin) {
@@ -113,6 +134,12 @@ export async function onRequest(context) {
   if (url.pathname === '/article' || url.pathname === '/article.html') {
     const slug = (url.searchParams.get('id') || url.searchParams.get('slug') || '').trim();
     if (slug) {
+      // GTA 6 merge (23 Nov 2026): a merged slug 301s straight to its
+      // language survivor in one hop, instead of 404ing (the merged slugs
+      // are no longer in slugs.json).
+      if (GTA6_MERGED_REDIRECTS[slug]) {
+        return Response.redirect(new URL(GTA6_MERGED_REDIRECTS[slug], url.origin).toString(), 301);
+      }
       const slugs = await loadSlugSet(context, url.origin);
       if (slugs && !slugs.has(slug)) return notFoundResponse(context, url.origin);
       return Response.redirect(new URL(`/${encodeURIComponent(slug)}/`, url.origin).toString(), 301);
@@ -124,6 +151,15 @@ export async function onRequest(context) {
   const target = CLEAN_REDIRECTS[url.pathname];
   if (target) {
     return Response.redirect(new URL(target, url.origin).toString(), 301);
+  }
+
+  // GTA 6 merge (23 Nov 2026): merged slugs have no static page, so both
+  // the no-slash and slash forms 301 to the language survivor here.
+  // (The no-slash form is not in CLEAN_REDIRECTS — those keys only catch
+  // the no-slash form for pages that exist — so this map is checked after.)
+  const mergedSlug = url.pathname.replace(/^\/|\/$/g, '');
+  if (GTA6_MERGED_REDIRECTS[mergedSlug]) {
+    return Response.redirect(new URL(GTA6_MERGED_REDIRECTS[mergedSlug], url.origin).toString(), 301);
   }
 
   return context.next();

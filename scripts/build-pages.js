@@ -699,6 +699,100 @@ const SOURCES_BY_SLUG = {
       }
     ]
   },
+  // GTA 6 merge (23 Nov 2026, items 22/23) — EN guide. Launch facts
+  // verified 23 Nov 2026; all 5 URLs returned HTTP 200 (subagent check).
+  'gta-6-release-date-uk-guide': {
+    note: '<strong>Launch facts, confirmed.</strong> GTA 6 launched on <strong>19 November 2026</strong> for PlayStation 5 and Xbox Series X|S, at a <strong>30 FPS</strong> target with no performance mode. Metacritic: <strong>99</strong> from 150+ critics. Take-Two: <strong>$3.79 billion</strong> in preorders plus first-day retail sales. Standard edition <strong>$79.99 / €79.99</strong>; Ultimate Edition <strong>$99.99</strong>. No PC version announced.',
+    links: [
+      {
+        label: 'Rockstar Games — Grand Theft Auto VI (official page)',
+        url: 'https://www.rockstargames.com/VI',
+        note: 'Official GTA VI page: release date, platforms, trailers.'
+      },
+      {
+        label: 'Metacritic — Grand Theft Auto VI (PS5)',
+        url: 'https://www.metacritic.com/game/grand-theft-auto-vi/',
+        note: 'Metascore 99 from 150+ critics; user score mixed at 5.4/10.'
+      },
+      {
+        label: 'Expertistan — "GTA VI is here: Reviews, tech, sales and videos" (20 Nov 2026)',
+        url: 'https://www.expertistan.ch/en/2026/11/20/gta-6-launch-review-tech-sales-videos/',
+        note: 'Launch timeline, review scores, 1440p/30 FPS tech, sales and viewership.'
+      },
+      {
+        label: 'Daily Star — "GTA VI takes record $3.8b on first day" (20 Nov 2026)',
+        url: 'https://www.thedailystar.net/news/world/united-states/news/gta-vi-takes-record-38b-first-day-4329986',
+        note: '$3.79bn day-one retail sales; biggest entertainment launch ever.'
+      },
+      {
+        label: 'NME — "Grand Theft Auto 6 day-one sales record" (20 Nov 2026)',
+        url: 'https://www.nme.com/news/gaming-news/grand-theft-auto-6-day-one-sales-record-break-movie-odyssey-3976517',
+        note: 'Day-one sales record; 32.5m units sold before release.'
+      }
+    ]
+  },
+  // GTA 6 merge (23 Nov 2026, items 22/23) — FR guide. Same 5 sources.
+  'gta-6-release-date-guide-france': {
+    note: '<strong>Faits de lancement, confirmés.</strong> GTA 6 est sorti le <strong>19 novembre 2026</strong> sur PlayStation 5 et Xbox Series X|S, avec un objectif de <strong>30 FPS</strong> et aucun mode performance. Metacritic : <strong>99</strong> pour plus de 150 critiques. Take-Two : <strong>3,79 milliards de dollars</strong> en précommandes et ventes au détail le premier jour. Édition standard <strong>79,99 €</strong> ; édition Ultimate <strong>99,99 $</strong>. Aucune version PC annoncée.',
+    links: [
+      {
+        label: 'Rockstar Games — Grand Theft Auto VI (page officielle)',
+        url: 'https://www.rockstargames.com/VI',
+        note: 'Page officielle de GTA VI : date de sortie, plateformes, bandes-annonces.'
+      },
+      {
+        label: 'Metacritic — Grand Theft Auto VI (PS5)',
+        url: 'https://www.metacritic.com/game/grand-theft-auto-vi/',
+        note: 'Metascore de 99 pour plus de 150 critiques ; score des utilisateurs mitigé à 5,4/10.'
+      },
+      {
+        label: 'Expertistan — "GTA VI is here: Reviews, tech, sales and videos" (20 nov. 2026)',
+        url: 'https://www.expertistan.ch/en/2026/11/20/gta-6-launch-review-tech-sales-videos/',
+        note: 'Chronologie du lancement, scores, technique 1440p/30 FPS, ventes et audience.'
+      },
+      {
+        label: 'Daily Star — "GTA VI takes record $3.8b on first day" (20 nov. 2026)',
+        url: 'https://www.thedailystar.net/news/world/united-states/news/gta-vi-takes-record-38b-first-day-4329986',
+        note: '3,79 milliards de dollars le premier jour ; plus gros lancement de l’histoire du divertissement.'
+      },
+      {
+        label: 'NME — "Grand Theft Auto 6 day-one sales record" (20 nov. 2026)',
+        url: 'https://www.nme.com/news/gaming-news/grand-theft-auto-6-day-one-sales-record-break-movie-odyssey-3976517',
+        note: 'Record de ventes le premier jour ; 32,5 millions d’exemplaires vendus avant la sortie.'
+      }
+    ]
+  },
+  // GTA 6 merge (23 Nov 2026, items 22/23) — ES guide. Same 5 sources.
+  'gta-6-release-date-guia-espana': {
+    note: '<strong>Datos del lanzamiento, confirmados.</strong> GTA 6 salió el <strong>19 de noviembre de 2026</strong> para PlayStation 5 y Xbox Series X|S, con un objetivo de <strong>30 FPS</strong> y sin modo rendimiento. Metacritic: <strong>99</strong> con más de 150 críticas. Take-Two: <strong>3.790 millones de dólares</strong> en reservas y ventas minoristas el primer día. Edición estándar <strong>79,99 €</strong>; edición Ultimate <strong>99,99 $</strong>. No se ha anunciado versión para PC.',
+    links: [
+      {
+        label: 'Rockstar Games — Grand Theft Auto VI (página oficial)',
+        url: 'https://www.rockstargames.com/VI',
+        note: 'Página oficial de GTA VI: fecha de lanzamiento, plataformas, tráilers.'
+      },
+      {
+        label: 'Metacritic — Grand Theft Auto VI (PS5)',
+        url: 'https://www.metacritic.com/game/grand-theft-auto-vi/',
+        note: 'Nota de 99 con más de 150 críticas; nota de los usuarios mixta, de 5,4/10.'
+      },
+      {
+        label: 'Expertistan — "GTA VI is here: Reviews, tech, sales and videos" (20 nov. 2026)',
+        url: 'https://www.expertistan.ch/en/2026/11/20/gta-6-launch-review-tech-sales-videos/',
+        note: 'Cronología del lanzamiento, notas, tecnología 1440p/30 FPS, ventas y audiencia.'
+      },
+      {
+        label: 'Daily Star — "GTA VI takes record $3.8b on first day" (20 nov. 2026)',
+        url: 'https://www.thedailystar.net/news/world/united-states/news/gta-vi-takes-record-38b-first-day-4329986',
+        note: '3.790 millones de dólares el primer día; el lanzamiento de entretenimiento más grande de la historia.'
+      },
+      {
+        label: 'NME — "Grand Theft Auto 6 day-one sales record" (20 nov. 2026)',
+        url: 'https://www.nme.com/news/gaming-news/grand-theft-auto-6-day-one-sales-record-break-movie-odyssey-3976517',
+        note: 'Récord de ventas el primer día; 32,5 millones de unidades vendidas antes del lanzamiento.'
+      }
+    ]
+  },
   // Item 16b — Christmas decor. Prices in the article are planning ranges
   // checked in autumn 2026, not live quotes (the article says so); these
   // are the authoritative safety/environmental sources it relies on.
@@ -1424,7 +1518,7 @@ const TITLE_OVERRIDES = {
   "how-to-make-money-on-youtube-uk": "How to Make Money on YouTube in the UK in 2026",
   "how-to-make-money-from-home": "How to Make Money From Home in 2026",
   "how-to-make-passive-income-online": "How to Make Passive Income Online in the UK in 2026",
-  "ai-and-finance": "AI and Finance: Practical Tools for Professionals",
+  "ai-and-finance": "AI Tools Finance Professionals Actually Use",
   "how-to-earn-extra-money-at-home": "How to Earn Extra Money at Home in the UK in 2026",
   "make-money-online-statistics-2026": "Make Money Online Statistics 2026: The Numbers",
   "ai-in-business": "AI in Business: How Companies Are Using AI in 2026",
@@ -1552,6 +1646,11 @@ const FEMALES_PARAGRAPH_REPLACEMENTS = [
 // title (the Phase 4 rewrite where the target has one), so the box
 // always agrees with the page it points to.
 const INTERNAL_LINKS_BY_SLUG = {
+  // Item 22, family 11 (23 Nov 2026, APPROVED retitle): ai-and-finance and
+  // ai-in-finance are distinct articles (zero shared paragraphs) that did
+  // not link to each other; each now links to the other via this box.
+  "ai-and-finance": [{ slug: "ai-in-finance", text: "AI in Finance: Banking, Trading and Wealth in 2026" }, { slug: "ai-agents-explained-small-business-2026", text: "AI Agents Explained: What They Are and How to Use Them" }, { slug: "best-ai-tools-small-business-2026", text: "Best AI Tools for Small Business in 2026: Top Picks" }],
+  "ai-in-finance": [{ slug: "ai-and-finance", text: "AI Tools Finance Professionals Actually Use" }, { slug: "ai-in-business", text: "AI in Business: How Companies Are Using AI in 2026" }, { slug: "ai-agents-explained-small-business-2026", text: "AI Agents Explained: What They Are and How to Use Them" }],
   "bedroom-decorating-ideas": [{ slug: "minimalist-home-interior-design", text: "Minimalist Home Interior Design: A Calm, Clutter-Free Home" }, { slug: "budget-friendly-home-decor-ideas", text: "Budget-Friendly Home Decor Ideas That Look Expensive" }, { slug: "modern-home-decor-ideas", text: "Modern Home Decor Ideas for a Stylish, Liveable Home" }],
   "best-accounting-software-small-business-uk": [{ slug: "how-to-fund-a-small-business", text: "How to Fund a Small Business: SBA Loans, Grants and Bootstrapping" }, { slug: "best-business-tools-small-business", text: "Best Business Tools for Small Business" }, { slug: "vat-registration-threshold-uk-small-business", text: "VAT Registration Threshold UK Small Business" }],
   "best-ai-tools-uk-small-business-2026": [{ slug: "best-ai-tools-small-business-2026", text: "Best AI Tools for Small Business in 2026: Top Picks" }, { slug: "microsoft-copilot-vs-chatgpt-uk-small-business", text: "Microsoft Copilot vs ChatGPT for Small Business UK" }, { slug: "free-ai-tools-uk-small-business", text: "Free AI Tools for UK Small Business" }],
@@ -1576,17 +1675,13 @@ const INTERNAL_LINKS_BY_SLUG = {
   "franchise-buying-guide-us": [{ slug: "franchise-buying-guide-uk", text: "Franchise: What Buying One Really Involves in the UK" }, { slug: "business-for-sale-us-buying-guide", text: "Business for Sale: How to Buy One in the US Without Overpaying" }, { slug: "how-to-start-a-small-business-usa", text: "How to Start a Small Business in the USA" }],
   "franchise-guia-emprendedores-espana": [{ slug: "franchise-guide-entrepreneurs-france", text: "Franchise : ce qu'ouvrir une enseigne implique vraiment" }, { slug: "business-for-sale-comprar-negocio-espana", text: "Business for sale: comprar un negocio en España sin pagar de más" }, { slug: "franchise-buying-guide-uk", text: "Franchise: What Buying One Really Involves in the UK" }],
   "franchise-guide-entrepreneurs-france": [{ slug: "franchise-guia-emprendedores-espana", text: "Franchise: qué implica de verdad abrir una en España" }, { slug: "business-for-sale-reprendre-entreprise-france", text: "Business for sale : reprendre une entreprise en France sans surpayer" }, { slug: "franchise-buying-guide-uk", text: "Franchise: What Buying One Really Involves in the UK" }],
-  "gta-6-platforms-guia-espana": [{ slug: "gta-6-release-date-guia-espana", text: "GTA 6 release date: el 19 de noviembre de 2026, confirmado" }, { slug: "gta-6-ps5-frame-rate-guia-espana", text: "GTA 6 PS5 frame rate: 30 FPS confirmados, sin modo rendimiento" }, { slug: "gta-6-platforms-uk-guide", text: "GTA 6 Platforms: PS5 and Xbox Series X|S, and Nothing Else Yet" }],
-  "gta-6-platforms-uk-guide": [{ slug: "gta-6-release-date-uk-guide", text: "GTA 6 Release Date: 19 November 2026, Confirmed at Last" }, { slug: "gta-6-ps5-frame-rate-guide", text: "GTA 6 PS5 Frame Rate: 30 FPS Confirmed, No Performance Mode" }, { slug: "gta-6-platforms-us-guide", text: "GTA 6 Platforms: PS5 and Xbox Series X|S Are the Whole List" }],
-  "gta-6-platforms-us-guide": [{ slug: "gta-6-release-date-us-guide", text: "GTA 6 Release Date: November 19, 2026 Is the Day" }, { slug: "gta-6-ps5-frame-rate-us-guide", text: "GTA 6 PS5 Frame Rate: 30 FPS Is the Target, No 60 FPS Mode" }, { slug: "gta-6-platforms-uk-guide", text: "GTA 6 Platforms: PS5 and Xbox Series X|S, and Nothing Else Yet" }],
-  "gta-6-ps5-frame-rate-guia-espana": [{ slug: "gta-6-release-date-guia-espana", text: "GTA 6 release date: el 19 de noviembre de 2026, confirmado" }, { slug: "gta-6-platforms-guia-espana", text: "GTA 6 platforms: PS5 y Xbox Series X|S, y nada más por ahora" }, { slug: "gta-6-ps5-frame-rate-guide-france", text: "GTA 6 PS5 frame rate : 30 FPS confirmés, aucun mode performance" }],
-  "gta-6-ps5-frame-rate-guide": [{ slug: "gta-6-release-date-uk-guide", text: "GTA 6 Release Date: 19 November 2026, Confirmed at Last" }, { slug: "gta-6-platforms-uk-guide", text: "GTA 6 Platforms: PS5 and Xbox Series X|S, and Nothing Else Yet" }, { slug: "gta-6-ps5-frame-rate-us-guide", text: "GTA 6 PS5 Frame Rate: 30 FPS Is the Target, No 60 FPS Mode" }],
-  "gta-6-ps5-frame-rate-guide-france": [{ slug: "gta-6-release-date-guide-france", text: "GTA 6 release date : le 19 novembre 2026, enfin confirmé" }, { slug: "gta-6-platforms-guia-espana", text: "GTA 6 platforms: PS5 y Xbox Series X|S, y nada más por ahora" }, { slug: "gta-6-ps5-frame-rate-guia-espana", text: "GTA 6 PS5 frame rate: 30 FPS confirmados, sin modo rendimiento" }],
-  "gta-6-ps5-frame-rate-us-guide": [{ slug: "gta-6-release-date-us-guide", text: "GTA 6 Release Date: November 19, 2026 Is the Day" }, { slug: "gta-6-platforms-us-guide", text: "GTA 6 Platforms: PS5 and Xbox Series X|S Are the Whole List" }, { slug: "gta-6-ps5-frame-rate-guide", text: "GTA 6 PS5 Frame Rate: 30 FPS Confirmed, No Performance Mode" }],
-  "gta-6-release-date-guia-espana": [{ slug: "gta-6-platforms-guia-espana", text: "GTA 6 platforms: PS5 y Xbox Series X|S, y nada más por ahora" }, { slug: "gta-6-ps5-frame-rate-guia-espana", text: "GTA 6 PS5 frame rate: 30 FPS confirmados, sin modo rendimiento" }, { slug: "gta-6-release-date-guide-france", text: "GTA 6 release date : le 19 novembre 2026, enfin confirmé" }],
-  "gta-6-release-date-guide-france": [{ slug: "gta-6-platforms-guia-espana", text: "GTA 6 platforms: PS5 y Xbox Series X|S, y nada más por ahora" }, { slug: "gta-6-ps5-frame-rate-guide-france", text: "GTA 6 PS5 frame rate : 30 FPS confirmés, aucun mode performance" }, { slug: "gta-6-release-date-guia-espana", text: "GTA 6 release date: el 19 de noviembre de 2026, confirmado" }],
-  "gta-6-release-date-uk-guide": [{ slug: "gta-6-platforms-uk-guide", text: "GTA 6 Platforms: PS5 and Xbox Series X|S, and Nothing Else Yet" }, { slug: "gta-6-ps5-frame-rate-guide", text: "GTA 6 PS5 Frame Rate: 30 FPS Confirmed, No Performance Mode" }, { slug: "gta-6-release-date-us-guide", text: "GTA 6 Release Date: November 19, 2026 Is the Day" }],
-  "gta-6-release-date-us-guide": [{ slug: "gta-6-platforms-us-guide", text: "GTA 6 Platforms: PS5 and Xbox Series X|S Are the Whole List" }, { slug: "gta-6-ps5-frame-rate-us-guide", text: "GTA 6 PS5 Frame Rate: 30 FPS Is the Target, No 60 FPS Mode" }, { slug: "gta-6-release-date-uk-guide", text: "GTA 6 Release Date: 19 November 2026, Confirmed at Last" }],
+  // GTA 6 merge (23 Nov 2026, items 22/23): the 8 merged slugs are gone
+  // (no generated page, 301 in functions/[[path]].js), so the 3 survivors
+  // link to each other (other-language versions) + one Technology post.
+  // The merged posts' entries were removed.
+  "gta-6-release-date-guia-espana": [{ slug: "gta-6-release-date-uk-guide", text: "GTA 6: The Complete Guide — Release, Platforms, Frame Rate" }, { slug: "gta-6-release-date-guide-france", text: "GTA 6 : le guide complet — sortie, plateformes, 30 FPS" }, { slug: "jensen-huang-affair-nvidia-investigation", text: "Jensen Huang Affair: Nvidia CEO Faces FBI Spy Probe" }],
+  "gta-6-release-date-guide-france": [{ slug: "gta-6-release-date-uk-guide", text: "GTA 6: The Complete Guide — Release, Platforms, Frame Rate" }, { slug: "gta-6-release-date-guia-espana", text: "GTA 6: la guía completa — fecha, plataformas y 30 FPS" }, { slug: "jensen-huang-affair-nvidia-investigation", text: "Jensen Huang Affair: Nvidia CEO Faces FBI Spy Probe" }],
+  "gta-6-release-date-uk-guide": [{ slug: "gta-6-release-date-guide-france", text: "GTA 6 : le guide complet — sortie, plateformes, 30 FPS" }, { slug: "gta-6-release-date-guia-espana", text: "GTA 6: la guía completa — fecha, plataformas y 30 FPS" }, { slug: "jensen-huang-affair-nvidia-investigation", text: "Jensen Huang Affair: Nvidia CEO Faces FBI Spy Probe" }],
   "health-insurance-uk-guide": [{ slug: "health-insurance-us-guide", text: "Health Insurance in the US: Plans, Networks and Costs" }, { slug: "private-medical-insurance-us-guide", text: "Private Medical Insurance in the US: Costs and Choices" }, { slug: "medicare-supplement-plans-us-guide", text: "Medicare Supplement Plans: How Medigap Fills the Gaps" }],
   "health-insurance-us-guide": [{ slug: "health-insurance-uk-guide", text: "Health Insurance in the UK: What Private Cover Pays For" }, { slug: "private-medical-insurance-us-guide", text: "Private Medical Insurance in the US: Costs and Choices" }, { slug: "medicare-advantage-plans-us-guide", text: "Medicare Advantage Plans: How Part C Works and What It Costs" }],
   "how-to-fund-a-small-business": [{ slug: "business-line-of-credit-uk-guide", text: "Business Line of Credit: How Revolving Credit Works in the UK" }, { slug: "how-to-get-an-ein-small-business", text: "How to Get an EIN for a Small Business" }, { slug: "best-accounting-software-small-business-uk", text: "Best Accounting Software for Small Business UK" }],
@@ -1639,9 +1734,9 @@ const TRANSLATION_GROUPS = [
   { langs: { 'en-GB': 'business-line-of-credit-uk-guide', 'en-US': 'business-line-of-credit-us-guide', fr: 'business-line-of-credit-ligne-credit-france', es: 'business-line-of-credit-poliza-credito-espana' }, xDefault: 'business-line-of-credit-uk-guide' },
   { langs: { 'en-GB': 'business-for-sale-uk-buying-guide', 'en-US': 'business-for-sale-us-buying-guide', fr: 'business-for-sale-reprendre-entreprise-france', es: 'business-for-sale-comprar-negocio-espana' }, xDefault: 'business-for-sale-uk-buying-guide' },
   { langs: { 'en-GB': 'franchise-buying-guide-uk', 'en-US': 'franchise-buying-guide-us', fr: 'franchise-guide-entrepreneurs-france', es: 'franchise-guia-emprendedores-espana' }, xDefault: 'franchise-buying-guide-uk' },
-  { langs: { 'en-GB': 'gta-6-release-date-uk-guide', 'en-US': 'gta-6-release-date-us-guide', fr: 'gta-6-release-date-guide-france', es: 'gta-6-release-date-guia-espana' }, xDefault: 'gta-6-release-date-uk-guide' },
-  { langs: { 'en-GB': 'gta-6-platforms-uk-guide', 'en-US': 'gta-6-platforms-us-guide', es: 'gta-6-platforms-guia-espana' }, xDefault: 'gta-6-platforms-uk-guide' },
-  { langs: { en: 'gta-6-ps5-frame-rate-guide', 'en-US': 'gta-6-ps5-frame-rate-us-guide', fr: 'gta-6-ps5-frame-rate-guide-france', es: 'gta-6-ps5-frame-rate-guia-espana' }, xDefault: 'gta-6-ps5-frame-rate-guide' },
+  // GTA 6 merge (23 Nov 2026, items 22/23): the 11 GTA 6 posts are now 3
+  // guides, one per language, so the three old groups are one group.
+  { langs: { 'en-GB': 'gta-6-release-date-uk-guide', fr: 'gta-6-release-date-guide-france', es: 'gta-6-release-date-guia-espana' }, xDefault: 'gta-6-release-date-uk-guide' },
   { langs: { 'en-GB': 'make-money-from-your-phone-uk-guide', 'en-US': 'make-money-from-your-phone-us-guide', fr: 'make-money-from-your-phone-guide-france', es: 'make-money-from-your-phone-guia-espana' }, xDefault: 'make-money-from-your-phone-uk-guide' },
   { langs: { 'en-GB': 'christmas-decor-uk', fr: 'decoration-de-noel' }, xDefault: 'christmas-decor-uk' },
   { langs: { fr: 'sapin-noel-artificiel-france', es: 'arbol-navidad-artificial-espana' }, xDefault: 'sapin-noel-artificiel-france' },
@@ -1872,6 +1967,90 @@ function categoryCounts(posts) {
 }
 
 // ---------------------------------------------------------------------------
+// GTA 6 merge (23 Nov 2026, items 22/23 — APPROVED by the user).
+//
+// READ THIS BEFORE EDITING. The stored Supabase content still lists all 11
+// GTA 6 posts (the repo has NO Supabase write access), so the merge is
+// implemented at BUILD time, the same approach as Phases 3–5: the 3
+// surviving guides are rewritten from scripts/gta6-merged-guides.json, the
+// 8 merged slugs are dropped from the generated pages/sitemap/lists, and
+// the 8 x 301 redirects live in functions/[[path]].js. The stored content
+// is NEVER modified here. A permanent admin cleanup (deleting the 8 merged
+// posts in the admin) is a follow-up, not part of this change. Nothing here
+// invents a fact, statistic, source, quote, date or price: every launch
+// fact in the merged guides comes from the verified sources in
+// phase4_gta6_proposal.md (Rockstar, Metacritic, Expertistan, Daily Star,
+// NME — all 5 URLs returned HTTP 200 on 23 Nov 2026).
+//
+// The merge: 11 posts -> 3 guides, 8 x 301.
+//   EN survivor: gta-6-release-date-uk-guide (complete English guide)
+//   FR survivor: gta-6-release-date-guide-france (complete French guide)
+//   ES survivor: gta-6-release-date-guia-espana (complete Spanish guide)
+//   Merged (no generated page, 301 to the survivor in the same language):
+//     -> EN: gta-6-release-date-us-guide, gta-6-platforms-uk-guide,
+//            gta-6-platforms-us-guide, gta-6-ps5-frame-rate-guide,
+//            gta-6-ps5-frame-rate-us-guide
+//     -> FR: gta-6-ps5-frame-rate-guide-france
+//     -> ES: gta-6-platforms-guia-espana, gta-6-ps5-frame-rate-guia-espana
+// The 3 survivors keep their stored publish dates; their dateModified is
+// overridden to 2026-11-23 in generateArticlePage (see below).
+// ---------------------------------------------------------------------------
+
+const GTA6_MERGED_SLUGS = new Set([
+  'gta-6-release-date-us-guide',
+  'gta-6-platforms-uk-guide',
+  'gta-6-platforms-us-guide',
+  'gta-6-ps5-frame-rate-guide',
+  'gta-6-ps5-frame-rate-us-guide',
+  'gta-6-ps5-frame-rate-guide-france',
+  'gta-6-platforms-guia-espana',
+  'gta-6-ps5-frame-rate-guia-espana'
+]);
+
+const GTA6_SURVIVOR_SLUGS = new Set([
+  'gta-6-release-date-uk-guide',
+  'gta-6-release-date-guide-france',
+  'gta-6-release-date-guia-espana'
+]);
+
+// The merged guides (title/meta/summary/tags/readTime/content) live in a
+// separate data file so ~5,000 words of guide text are not inlined here.
+let GTA6_MERGED_GUIDES = null;
+function loadGta6MergedGuides() {
+  if (GTA6_MERGED_GUIDES) return GTA6_MERGED_GUIDES;
+  const raw = fs.readFileSync(path.join(__dirname, 'gta6-merged-guides.json'), 'utf8');
+  GTA6_MERGED_GUIDES = JSON.parse(raw).guides;
+  return GTA6_MERGED_GUIDES;
+}
+
+// Apply the merge to the loaded posts (mutates the array in place, so
+// buildPages() needs no reassignment): rewrite the 3 survivors from the
+// data file, then drop the 8 merged slugs. Filtering here (right after
+// loadPosts + the Phase 3/4 overrides) automatically excludes the merged
+// slugs from article pages, homepage, category pages, counts, slugs.json
+// and the related/popular sidebar lists. Technology drops 39 -> 31.
+function applyGta6Merge(posts) {
+  const guides = loadGta6MergedGuides();
+  for (const post of posts) {
+    const slug = String(post.slug || '');
+    if (guides[slug]) {
+      const g = guides[slug];
+      post.title = g.title;
+      post.meta_title = g.meta_title;
+      post.meta_description = g.meta_description;
+      post.summary = g.summary;
+      post.tags = g.tags;
+      post.readTime = g.readTime;
+      post.content = g.content;
+    }
+  }
+  for (let i = posts.length - 1; i >= 0; i -= 1) {
+    if (GTA6_MERGED_SLUGS.has(String(posts[i].slug))) posts.splice(i, 1);
+  }
+  return posts;
+}
+
+// ---------------------------------------------------------------------------
 // Page generators
 // ---------------------------------------------------------------------------
 
@@ -1886,7 +2065,9 @@ function generateArticlePage(template, post, posts, counts) {
   // build time (Huang resignation update, Anthropic final IPO terms, Riemann
   // status note), so their dateModified is the build date. The stored
   // publish dates are never changed.
-  const dateModified = PHASE3_DATE_MODIFIED_SLUGS.has(String(post.slug))
+  // GTA 6 merge (23 Nov 2026, items 22/23): the 3 surviving guides were
+  // rewritten at build time, so their dateModified is the build date too.
+  const dateModified = (PHASE3_DATE_MODIFIED_SLUGS.has(String(post.slug)) || GTA6_SURVIVOR_SLUGS.has(String(post.slug)))
     ? `${PHASE3_DATE}T00:00:00.000Z`
     : (post.updated_at || post.published_at || post.created_at || post.date || '');
   const author = post.author || 'Admin';
@@ -2253,6 +2434,11 @@ async function buildPages() {
   // Phase 4 (23 Nov 2026), items 27 + 29: title/description/tag overrides
   // so homepage, category pages and article page all agree.
   applyPhase4Overrides(posts);
+  // GTA 6 merge (23 Nov 2026, items 22/23, APPROVED): rewrite the 3
+  // survivors from scripts/gta6-merged-guides.json and drop the 8 merged
+  // slugs (11 posts -> 3 guides). Runs after the Phase 3/4 overrides so
+  // the merged guides win over the stored content.
+  applyGta6Merge(posts);
   const counts = categoryCounts(posts);
   const langCounts = { fr: 0, es: 0, en: 0 };
   for (const post of posts) langCounts[detectLanguage(post)] += 1;

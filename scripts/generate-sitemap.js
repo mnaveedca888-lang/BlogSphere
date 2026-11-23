@@ -91,7 +91,12 @@ async function loadPosts() {
 function normalizePosts(data) {
   const posts = Array.isArray(data) ? data : data.posts || data.data || [];
   return posts
-    .filter((p) => p && p.slug && p.status === 'published' && !p.deleted_at)
+    // GTA 6 merge (23 Nov 2026, items 22/23, APPROVED): the 8 merged slugs
+    // have no generated page (301 in functions/[[path]].js), so they stay
+    // out of the sitemaps; the 3 survivors stay in. The stored Supabase
+    // content still lists all 11 posts; a permanent admin cleanup
+    // (deleting the 8 in the admin) is a follow-up.
+    .filter((p) => p && p.slug && p.status === 'published' && !p.deleted_at && !GTA6_MERGED_SLUGS.has(p.slug))
     .sort((a, b) => {
       const da = a.published_at || a.created_at || '';
       const db = b.published_at || b.created_at || '';
@@ -99,6 +104,18 @@ function normalizePosts(data) {
       return String(b.id || '').localeCompare(String(a.id || ''));
     });
 }
+
+// GTA 6 merge (23 Nov 2026, items 22/23): slugs with no generated page.
+const GTA6_MERGED_SLUGS = new Set([
+  'gta-6-release-date-us-guide',
+  'gta-6-platforms-uk-guide',
+  'gta-6-platforms-us-guide',
+  'gta-6-ps5-frame-rate-guide',
+  'gta-6-ps5-frame-rate-us-guide',
+  'gta-6-ps5-frame-rate-guide-france',
+  'gta-6-platforms-guia-espana',
+  'gta-6-ps5-frame-rate-guia-espana'
+]);
 
 function urlEntry(loc, lastmod, changefreq, priority) {
   return [
