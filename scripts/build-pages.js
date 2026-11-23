@@ -413,7 +413,20 @@ function buildArticleContent(post) {
     // duplicate opening H1 so the page has a single top-level heading.
     body = body.replace(/^\s*<h1[^>]*>.*?<\/h1>/is, '');
   }
+  // Phase 4 (23 Nov 2026), item 26: demote any H1 left in the body to H2,
+  // so the generated page has exactly one H1 (the post title in the
+  // template). Runs before the Phase 3 boxes are appended, so their
+  // headings are unaffected.
+  body = body.replace(/<h1(\s[^>]*)?>/gi, '<h2$1>').replace(/<\/h1>/gi, '</h2>');
   body = rewriteInternalLinks(decorateArticleImages(body));
+  // Phase 4, item 29: descriptive alt text for images that had none.
+  body = applyImageAltOverrides(post, body);
+  // Phase 4, item 24: rewrite the shared paragraphs in the females post.
+  body = applyPhase4Replacements(post, body);
+  // Phase 4, item 25: "Related guides" box for posts whose stored content
+  // has no internal links. Appended before the Phase 3 Sources sections,
+  // so the order is: body, related guides, sources.
+  body += relatedLinksBox(post);
   // Phase 3 (23 Nov 2026): build-time E-E-A-T enhancements (see below).
   return applyPhase3Enhancements(post, body);
 }
@@ -1357,6 +1370,360 @@ function applyPhase3TitleOverrides(posts) {
 }
 
 // ---------------------------------------------------------------------------
+// Phase 4 (23 Nov 2026) — content-quality build-time enhancements
+// (items 24, 25, 26, 27, 28, 29).
+//
+// READ THIS BEFORE EDITING. Article body/meta content lives in Supabase
+// (the API) and this repo has NO Supabase write access, so every
+// enhancement below is applied at BUILD time in this file, at static-page
+// generation. The stored content is NEVER modified: it stays the source of
+// truth, and every change here is reversible by removing this section.
+// Slugs are listed explicitly so the behaviour is auditable. Nothing here
+// invents an author, credential, statistic, source, quote or date, and no
+// post is merged, removed, unpublished or redirected (items 22 and 23 are
+// proposal-only and live in phase4_duplicate_families.md /
+// phase4_gta6_proposal.md in the backup folder — NOT in this file).
+//
+// What this section does, by item:
+//   24 — Rewrites the 3 paragraphs that ways-for-females-to-make-money-
+//        online shared verbatim with how-to-earn-extra-money-at-home
+//        (two 30-day-plan steps + the HMRC FAQ answer). Only the females
+//        post is rewritten, in its own voice; the facts are unchanged
+//        (the £1,000 trading allowance, Self Assessment above it).
+//   25 — A "Related guides" box appended to the 71 posts whose stored
+//        content has no internal links (INTERNAL_LINKS_BY_SLUG below:
+//        3 topically relevant clean /<slug>/ links each, same language
+//        first). The 63 posts that already link internally are untouched.
+//   26 — Any <h1> left inside an article body is demoted to <h2>, so
+//        every generated page has exactly one H1 (the post title).
+//   27 — Real rewrites (not truncation) of the 18 titles over 60 chars
+//        and the 17 descriptions outside 120-155 chars. Applied to the
+//        loaded posts in buildPages() (applyPhase4Overrides) so the
+//        homepage, category pages and article page all agree. Stored
+//        meta_title/meta_description are never changed.
+//   28 — Reciprocal hreflang + x-default for the 14 translation groups
+//        whose members are genuinely the same article in another language
+//        (verified: same heading count and parallel headings, e.g. LLC
+//        16 headings in EN/FR/ES). UK/US English variants use en-GB /
+//        en-US; the generic English version uses plain en. Posts with no
+//        true translation get correct lang + self-canonical only, no
+//        hreflang. No redirect/removal is proposed (question f unanswered).
+//   29 — Tags for the 6 tag-less posts (same lowercase-phrase style as
+//        the rest of the site) and descriptive alt text for the 4 in-body
+//        images that had none (2 in medicare-advantage, 2 empty alt=""
+//        in the Spanish phone guide), verified against Pexels.
+// ---------------------------------------------------------------------------
+
+// Item 27: title rewrites — every value is 60 chars or fewer.
+const TITLE_OVERRIDES = {
+  "riemann-hypothesis-solved-claude-ai-stanford": "Riemann Hypothesis: Two Proof Claims Explained",
+  "ai-in-finance": "AI in Finance: Banking, Trading and Wealth in 2026",
+  "ai-tools-for-uk-small-business-book": "AI Tools for UK Small Business: The Book",
+  "ways-for-females-to-make-money-online": "Ways for Females to Make Money Online in the UK",
+  "real-ways-to-make-money-from-home-for-free": "Real Ways to Make Money From Home for Free in the UK",
+  "how-to-make-money-on-youtube-uk": "How to Make Money on YouTube in the UK in 2026",
+  "how-to-make-money-from-home": "How to Make Money From Home in 2026",
+  "how-to-make-passive-income-online": "How to Make Passive Income Online in the UK in 2026",
+  "ai-and-finance": "AI and Finance: Practical Tools for Professionals",
+  "how-to-earn-extra-money-at-home": "How to Earn Extra Money at Home in the UK in 2026",
+  "make-money-online-statistics-2026": "Make Money Online Statistics 2026: The Numbers",
+  "ai-in-business": "AI in Business: How Companies Are Using AI in 2026",
+  "health-insurance-uk-guide": "Health Insurance in the UK: What Private Cover Pays For",
+  "make-money-from-your-phone-guia-espana": "Make Money From Your Phone: ganar dinero en España",
+  "make-money-from-your-phone-guide-france": "Gagner de l'argent avec son mobile en France",
+  "short-term-disability-insurance-us-guide": "Short Term Disability Insurance: Protect Your Paycheck",
+  "private-medical-insurance-us-guide": "Private Medical Insurance in the US: Costs and Choices",
+  "health-insurance-us-guide": "Health Insurance in the US: Plans, Networks and Costs"
+};
+
+// Item 27: description rewrites — every value is 120-155 chars.
+const DESCRIPTION_OVERRIDES = {
+  "riemann-hypothesis-solved-claude-ai-stanford": "Two claims say the Riemann Hypothesis is solved — Levent Alpöge with Claude AI, and Stanford’s Alessandro Masullo. What is verified, and what is not.",
+  "how-to-make-money-on-youtube-uk": "How to make money on YouTube in the UK in 2026: real RPM figures by niche, Partner Programme rules, the 2027 threshold change, UK tax and a starter plan.",
+  "ways-for-females-to-make-money-online": "Ways for females to make money online in the UK in 2026: flexible work that fits school hours and childcare, real hourly rates and a 30-day plan.",
+  "how-to-make-passive-income-online": "How to make passive income online in the UK in 2026: affiliate marketing, digital products, courses, YouTube and print on demand, with honest timelines.",
+  "how-to-earn-extra-money-at-home": "How to earn extra money at home in the UK in 2026: 12 evening and weekend ways, realistic hourly rates, UK tax rules and a 30-day plan.",
+  "ai-tools-for-uk-small-business-book": "AI Tools for UK Small Business by Abdul Daim: the practical, no-jargon guide for UK owners — real £ prices, MTD, UK GDPR and a 90-day plan.",
+  "how-to-make-money-from-home": "How to make money from home in 2026: real remote jobs, freelance gigs and free platforms that pay, with honest earnings and scam warnings.",
+  "ai-in-business": "AI in business in 2026: 88% of firms use AI, but only 6% see big EBIT gains. Real adoption stats, ROI evidence and a roadmap for US and UK companies.",
+  "sapin-noel-artificiel-france": "Acheter un sapin de Noël artificiel en France ? Comparez Nordmann, pré-éclairé, givré et slim, avec des prix en euros et des conseils d’achat.",
+  "ai-agents-explained-small-business-2026": "AI agents can now book, code, research and run workflows on their own. What AI agents are, how they work, and how small businesses can use them.",
+  "how-to-get-first-customers-uk-small-business": "How to get your first customers as a UK small business: free local tactics, referrals, launch offers and follow-up that turn strangers into customers.",
+  "digital-marketing-strategies-small-business-uk": "Practical digital marketing for UK small business owners: local SEO, Google Business Profile, social media, email and reviews — no big budget needed.",
+  "how-to-fund-a-small-business": "How to fund a small business in 2026: SBA 7(a) and microloans, grants, bootstrapping and lines of credit, with honest advice on what each option costs.",
+  "best-business-tools-small-business": "The best business tools for small business in 2026: accounting, CRM, email and design tools with real prices, free plans and a simple way to choose.",
+  "ncsc-cyber-security-advice-small-business": "NCSC cyber security advice for small business in plain English: the Cyber Action Toolkit, strong passwords, 2SV, backups and spotting scam emails.",
+  "best-ai-productivity-tools-uk": "The best AI productivity tools UK freelancers and small teams use in 2026, compared in pounds with free tiers, USD-billing notes and honest limits.",
+  "best-ai-tools-uk-small-business-2026": "The best AI tools for UK small businesses in 2026: GBP pricing, VAT, UK GDPR and Making Tax Digital, compared by the job you need done."
+};
+
+// Item 29: tags for the 6 posts stored without any.
+const TAG_OVERRIDES = {
+  "make-money-online-statistics-2026": [
+    "make money online",
+    "online income statistics",
+    "online income",
+    "2026",
+    "freelance income"
+  ],
+  "how-to-make-money-from-home": [
+    "make money online",
+    "work from home",
+    "remote work",
+    "freelance",
+    "online income"
+  ],
+  "ai-in-business": [
+    "artificial intelligence",
+    "AI",
+    "business",
+    "AI adoption",
+    "technology"
+  ],
+  "ai-and-finance": [
+    "artificial intelligence",
+    "AI",
+    "finance",
+    "fintech",
+    "AI tools"
+  ],
+  "ai-in-finance": [
+    "artificial intelligence",
+    "AI",
+    "finance",
+    "banking",
+    "wealth management"
+  ],
+  "llc-in-the-uk-equivalent": [
+    "LLC",
+    "limited company",
+    "business structure",
+    "UK business",
+    "sole trader"
+  ]
+};
+
+// Item 29: descriptive alt text for in-body images that had none.
+// "match" is a distinctive substring of the image src (Pexels id).
+const IMAGE_ALT_OVERRIDES = {
+  "medicare-advantage-plans-us-guide": [
+    {
+      "match": "7477698",
+      "alt": "Senior couple reviewing documents and managing finances together at home"
+    },
+    {
+      "match": "8441775",
+      "alt": "Senior couple reviewing documents with a consultant at an office desk with a laptop"
+    }
+  ],
+  "make-money-from-your-phone-guia-espana": [
+    {
+      "match": "7252206",
+      "alt": "Hombre con café y teléfono móvil en un tren, con auriculares y gorro"
+    },
+    {
+      "match": "5902810",
+      "alt": "Mujer adulta usando el teléfono móvil para comprar en línea, rodeada de plantas en un ambiente acogedor"
+    }
+  ]
+};
+
+// Item 24: the 3 paragraphs ways-for-females-to-make-money-online shared
+// verbatim with how-to-earn-extra-money-at-home, rewritten in the females
+// post's own voice. Exact stored HTML on the left (verified present on
+// 23 Nov 2026); a missing string is logged, never fatal.
+const FEMALES_PARAGRAPH_REPLACEMENTS = [
+  [
+    '<p>2. Days 8 to 14: do the first paid job or make the first sale. Price slightly below the market rate for the first two clients, then raise it. The goal is proof, not profit.</p>',
+    '<p>2. Days 8 to 14: land the first paid job or make the first sale. Offer a lower rate to your first two clients while you build proof, then raise your prices. What matters now is evidence, not profit.</p>',
+  ],
+  [
+    '<p>3. Days 15 to 21: ask the first client for a review and a referral. Add a second client or a second sales channel. Track your hours and your real hourly rate after fees.</p>',
+    '<p>3. Days 15 to 21: ask that first client for a review and a referral. Bring in a second client or a second way to sell. Keep track of your hours and work out your real hourly rate once fees are taken off.</p>',
+  ],
+  [
+    '<p><strong>Do I need to tell HMRC about extra money?</strong><br>If your total trading income is under £1,000 in a tax year, the trading allowance covers it. Above that you must register for Self Assessment, even if the work is only a side income.</p>',
+    '<p><strong>Do I need to tell HMRC about extra money I earn?</strong><br>It depends on how much you earn. Trading income up to £1,000 in a tax year is covered by the trading allowance, so there is nothing to declare. Earn more than that and you need to register for Self Assessment, even when the income is a side hustle.</p>',
+  ],
+];
+
+// Item 25: 3 related clean-URL links for each of the 71 posts whose
+// stored content has no internal links. Link text is the target post
+// title (the Phase 4 rewrite where the target has one), so the box
+// always agrees with the page it points to.
+const INTERNAL_LINKS_BY_SLUG = {
+  "bedroom-decorating-ideas": [{ slug: "minimalist-home-interior-design", text: "Minimalist Home Interior Design: A Calm, Clutter-Free Home" }, { slug: "budget-friendly-home-decor-ideas", text: "Budget-Friendly Home Decor Ideas That Look Expensive" }, { slug: "modern-home-decor-ideas", text: "Modern Home Decor Ideas for a Stylish, Liveable Home" }],
+  "best-accounting-software-small-business-uk": [{ slug: "how-to-fund-a-small-business", text: "How to Fund a Small Business: SBA Loans, Grants and Bootstrapping" }, { slug: "best-business-tools-small-business", text: "Best Business Tools for Small Business" }, { slug: "vat-registration-threshold-uk-small-business", text: "VAT Registration Threshold UK Small Business" }],
+  "best-ai-tools-uk-small-business-2026": [{ slug: "best-ai-tools-small-business-2026", text: "Best AI Tools for Small Business in 2026: Top Picks" }, { slug: "microsoft-copilot-vs-chatgpt-uk-small-business", text: "Microsoft Copilot vs ChatGPT for Small Business UK" }, { slug: "free-ai-tools-uk-small-business", text: "Free AI Tools for UK Small Business" }],
+  "best-business-tools-small-business": [{ slug: "best-crm-software-small-business", text: "Best CRM Software for Small Business" }, { slug: "best-accounting-software-small-business-uk", text: "Best Accounting Software for Small Business UK" }, { slug: "best-ai-tools-uk-small-business-2026", text: "Best AI Tools for UK Small Businesses in 2026: Top Picks" }],
+  "best-crm-software-small-business": [{ slug: "best-business-tools-small-business", text: "Best Business Tools for Small Business" }, { slug: "digital-marketing-strategies-small-business", text: "Digital Marketing Strategies for Small Business" }, { slug: "how-to-get-first-customers-uk-small-business", text: "How to Get Your First Customers (UK Small Business)" }],
+  "budget-friendly-home-decor-ideas": [{ slug: "bedroom-decorating-ideas", text: "Bedroom Decorating Ideas for a Calm, Cosy Retreat" }, { slug: "small-living-room-decorating-ideas", text: "Small Living Room Decorating Ideas That Make a Big Difference" }, { slug: "modern-home-decor-ideas", text: "Modern Home Decor Ideas for a Stylish, Liveable Home" }],
+  "business-bank-account-compte-pro-france": [{ slug: "business-bank-account-cuenta-empresa-espana", text: "Business bank account: abrir una cuenta de empresa en España" }, { slug: "incorporation-guide-entrepreneurs-francais", text: "Incorporation : ce qu’un entrepreneur français doit comprendre" }, { slug: "business-line-of-credit-ligne-credit-france", text: "Business line of credit : la ligne de crédit pro en France" }],
+  "business-bank-account-cuenta-empresa-espana": [{ slug: "business-bank-account-compte-pro-france", text: "Business bank account : ouvrir un compte pro en France" }, { slug: "incorporation-guia-emprendedores-espana", text: "Incorporation: lo que un emprendedor en España debe entender" }, { slug: "business-line-of-credit-poliza-credito-espana", text: "Business line of credit: la póliza de crédito en España" }],
+  "business-bank-account-uk-guide": [{ slug: "business-bank-account-us-guide", text: "Business Bank Account: How to Choose One for Your LLC" }, { slug: "business-line-of-credit-uk-guide", text: "Business Line of Credit: How Revolving Credit Works in the UK" }, { slug: "incorporation-uk-register-a-company", text: "Incorporation in the UK: How to Register a Company Properly" }],
+  "business-bank-account-us-guide": [{ slug: "business-bank-account-uk-guide", text: "Business Bank Account: How to Choose One in the UK" }, { slug: "business-line-of-credit-us-guide", text: "Business Line of Credit: How It Works and What It Costs" }, { slug: "incorporation-register-a-company-us", text: "Incorporation: How to Register a Company in the US, Step by Step" }],
+  "business-for-sale-comprar-negocio-espana": [{ slug: "business-for-sale-reprendre-entreprise-france", text: "Business for sale : reprendre une entreprise en France sans surpayer" }, { slug: "franchise-guia-emprendedores-espana", text: "Franchise: qué implica de verdad abrir una en España" }, { slug: "business-bank-account-cuenta-empresa-espana", text: "Business bank account: abrir una cuenta de empresa en España" }],
+  "business-for-sale-reprendre-entreprise-france": [{ slug: "business-for-sale-comprar-negocio-espana", text: "Business for sale: comprar un negocio en España sin pagar de más" }, { slug: "franchise-guide-entrepreneurs-france", text: "Franchise : ce qu'ouvrir une enseigne implique vraiment" }, { slug: "business-bank-account-compte-pro-france", text: "Business bank account : ouvrir un compte pro en France" }],
+  "business-for-sale-uk-buying-guide": [{ slug: "business-for-sale-us-buying-guide", text: "Business for Sale: How to Buy One in the US Without Overpaying" }, { slug: "franchise-buying-guide-uk", text: "Franchise: What Buying One Really Involves in the UK" }, { slug: "how-to-fund-a-small-business", text: "How to Fund a Small Business: SBA Loans, Grants and Bootstrapping" }],
+  "business-for-sale-us-buying-guide": [{ slug: "business-for-sale-uk-buying-guide", text: "Business for Sale: How to Buy One in the UK Without Overpaying" }, { slug: "franchise-buying-guide-us", text: "Franchise: How Buying One Works in the US, FDD and All" }, { slug: "how-to-fund-a-small-business", text: "How to Fund a Small Business: SBA Loans, Grants and Bootstrapping" }],
+  "business-line-of-credit-ligne-credit-france": [{ slug: "business-line-of-credit-poliza-credito-espana", text: "Business line of credit: la póliza de crédito en España" }, { slug: "business-bank-account-compte-pro-france", text: "Business bank account : ouvrir un compte pro en France" }, { slug: "how-to-fund-a-small-business", text: "How to Fund a Small Business: SBA Loans, Grants and Bootstrapping" }],
+  "business-line-of-credit-poliza-credito-espana": [{ slug: "business-line-of-credit-ligne-credit-france", text: "Business line of credit : la ligne de crédit pro en France" }, { slug: "business-bank-account-cuenta-empresa-espana", text: "Business bank account: abrir una cuenta de empresa en España" }, { slug: "how-to-fund-a-small-business", text: "How to Fund a Small Business: SBA Loans, Grants and Bootstrapping" }],
+  "business-line-of-credit-uk-guide": [{ slug: "business-line-of-credit-us-guide", text: "Business Line of Credit: How It Works and What It Costs" }, { slug: "how-to-fund-a-small-business", text: "How to Fund a Small Business: SBA Loans, Grants and Bootstrapping" }, { slug: "business-bank-account-uk-guide", text: "Business Bank Account: How to Choose One in the UK" }],
+  "business-line-of-credit-us-guide": [{ slug: "business-line-of-credit-uk-guide", text: "Business Line of Credit: How Revolving Credit Works in the UK" }, { slug: "how-to-fund-a-small-business", text: "How to Fund a Small Business: SBA Loans, Grants and Bootstrapping" }, { slug: "business-bank-account-us-guide", text: "Business Bank Account: How to Choose One for Your LLC" }],
+  "digital-marketing-strategies-small-business": [{ slug: "digital-marketing-strategies-small-business-uk", text: "Digital Marketing Strategies for Small Business UK" }, { slug: "best-crm-software-small-business", text: "Best CRM Software for Small Business" }, { slug: "how-to-get-first-customers-uk-small-business", text: "How to Get Your First Customers (UK Small Business)" }],
+  "digital-marketing-strategies-small-business-uk": [{ slug: "digital-marketing-strategies-small-business", text: "Digital Marketing Strategies for Small Business" }, { slug: "how-to-get-first-customers-uk-small-business", text: "How to Get Your First Customers (UK Small Business)" }, { slug: "best-crm-software-small-business", text: "Best CRM Software for Small Business" }],
+  "franchise-buying-guide-uk": [{ slug: "franchise-buying-guide-us", text: "Franchise: How Buying One Works in the US, FDD and All" }, { slug: "business-for-sale-uk-buying-guide", text: "Business for Sale: How to Buy One in the UK Without Overpaying" }, { slug: "how-to-start-a-small-business-uk", text: "How to Start a Small Business in the UK" }],
+  "franchise-buying-guide-us": [{ slug: "franchise-buying-guide-uk", text: "Franchise: What Buying One Really Involves in the UK" }, { slug: "business-for-sale-us-buying-guide", text: "Business for Sale: How to Buy One in the US Without Overpaying" }, { slug: "how-to-start-a-small-business-usa", text: "How to Start a Small Business in the USA" }],
+  "franchise-guia-emprendedores-espana": [{ slug: "franchise-guide-entrepreneurs-france", text: "Franchise : ce qu'ouvrir une enseigne implique vraiment" }, { slug: "business-for-sale-comprar-negocio-espana", text: "Business for sale: comprar un negocio en España sin pagar de más" }, { slug: "franchise-buying-guide-uk", text: "Franchise: What Buying One Really Involves in the UK" }],
+  "franchise-guide-entrepreneurs-france": [{ slug: "franchise-guia-emprendedores-espana", text: "Franchise: qué implica de verdad abrir una en España" }, { slug: "business-for-sale-reprendre-entreprise-france", text: "Business for sale : reprendre une entreprise en France sans surpayer" }, { slug: "franchise-buying-guide-uk", text: "Franchise: What Buying One Really Involves in the UK" }],
+  "gta-6-platforms-guia-espana": [{ slug: "gta-6-release-date-guia-espana", text: "GTA 6 release date: el 19 de noviembre de 2026, confirmado" }, { slug: "gta-6-ps5-frame-rate-guia-espana", text: "GTA 6 PS5 frame rate: 30 FPS confirmados, sin modo rendimiento" }, { slug: "gta-6-platforms-uk-guide", text: "GTA 6 Platforms: PS5 and Xbox Series X|S, and Nothing Else Yet" }],
+  "gta-6-platforms-uk-guide": [{ slug: "gta-6-release-date-uk-guide", text: "GTA 6 Release Date: 19 November 2026, Confirmed at Last" }, { slug: "gta-6-ps5-frame-rate-guide", text: "GTA 6 PS5 Frame Rate: 30 FPS Confirmed, No Performance Mode" }, { slug: "gta-6-platforms-us-guide", text: "GTA 6 Platforms: PS5 and Xbox Series X|S Are the Whole List" }],
+  "gta-6-platforms-us-guide": [{ slug: "gta-6-release-date-us-guide", text: "GTA 6 Release Date: November 19, 2026 Is the Day" }, { slug: "gta-6-ps5-frame-rate-us-guide", text: "GTA 6 PS5 Frame Rate: 30 FPS Is the Target, No 60 FPS Mode" }, { slug: "gta-6-platforms-uk-guide", text: "GTA 6 Platforms: PS5 and Xbox Series X|S, and Nothing Else Yet" }],
+  "gta-6-ps5-frame-rate-guia-espana": [{ slug: "gta-6-release-date-guia-espana", text: "GTA 6 release date: el 19 de noviembre de 2026, confirmado" }, { slug: "gta-6-platforms-guia-espana", text: "GTA 6 platforms: PS5 y Xbox Series X|S, y nada más por ahora" }, { slug: "gta-6-ps5-frame-rate-guide-france", text: "GTA 6 PS5 frame rate : 30 FPS confirmés, aucun mode performance" }],
+  "gta-6-ps5-frame-rate-guide": [{ slug: "gta-6-release-date-uk-guide", text: "GTA 6 Release Date: 19 November 2026, Confirmed at Last" }, { slug: "gta-6-platforms-uk-guide", text: "GTA 6 Platforms: PS5 and Xbox Series X|S, and Nothing Else Yet" }, { slug: "gta-6-ps5-frame-rate-us-guide", text: "GTA 6 PS5 Frame Rate: 30 FPS Is the Target, No 60 FPS Mode" }],
+  "gta-6-ps5-frame-rate-guide-france": [{ slug: "gta-6-release-date-guide-france", text: "GTA 6 release date : le 19 novembre 2026, enfin confirmé" }, { slug: "gta-6-platforms-guia-espana", text: "GTA 6 platforms: PS5 y Xbox Series X|S, y nada más por ahora" }, { slug: "gta-6-ps5-frame-rate-guia-espana", text: "GTA 6 PS5 frame rate: 30 FPS confirmados, sin modo rendimiento" }],
+  "gta-6-ps5-frame-rate-us-guide": [{ slug: "gta-6-release-date-us-guide", text: "GTA 6 Release Date: November 19, 2026 Is the Day" }, { slug: "gta-6-platforms-us-guide", text: "GTA 6 Platforms: PS5 and Xbox Series X|S Are the Whole List" }, { slug: "gta-6-ps5-frame-rate-guide", text: "GTA 6 PS5 Frame Rate: 30 FPS Confirmed, No Performance Mode" }],
+  "gta-6-release-date-guia-espana": [{ slug: "gta-6-platforms-guia-espana", text: "GTA 6 platforms: PS5 y Xbox Series X|S, y nada más por ahora" }, { slug: "gta-6-ps5-frame-rate-guia-espana", text: "GTA 6 PS5 frame rate: 30 FPS confirmados, sin modo rendimiento" }, { slug: "gta-6-release-date-guide-france", text: "GTA 6 release date : le 19 novembre 2026, enfin confirmé" }],
+  "gta-6-release-date-guide-france": [{ slug: "gta-6-platforms-guia-espana", text: "GTA 6 platforms: PS5 y Xbox Series X|S, y nada más por ahora" }, { slug: "gta-6-ps5-frame-rate-guide-france", text: "GTA 6 PS5 frame rate : 30 FPS confirmés, aucun mode performance" }, { slug: "gta-6-release-date-guia-espana", text: "GTA 6 release date: el 19 de noviembre de 2026, confirmado" }],
+  "gta-6-release-date-uk-guide": [{ slug: "gta-6-platforms-uk-guide", text: "GTA 6 Platforms: PS5 and Xbox Series X|S, and Nothing Else Yet" }, { slug: "gta-6-ps5-frame-rate-guide", text: "GTA 6 PS5 Frame Rate: 30 FPS Confirmed, No Performance Mode" }, { slug: "gta-6-release-date-us-guide", text: "GTA 6 Release Date: November 19, 2026 Is the Day" }],
+  "gta-6-release-date-us-guide": [{ slug: "gta-6-platforms-us-guide", text: "GTA 6 Platforms: PS5 and Xbox Series X|S Are the Whole List" }, { slug: "gta-6-ps5-frame-rate-us-guide", text: "GTA 6 PS5 Frame Rate: 30 FPS Is the Target, No 60 FPS Mode" }, { slug: "gta-6-release-date-uk-guide", text: "GTA 6 Release Date: 19 November 2026, Confirmed at Last" }],
+  "health-insurance-uk-guide": [{ slug: "health-insurance-us-guide", text: "Health Insurance in the US: Plans, Networks and Costs" }, { slug: "private-medical-insurance-us-guide", text: "Private Medical Insurance in the US: Costs and Choices" }, { slug: "medicare-supplement-plans-us-guide", text: "Medicare Supplement Plans: How Medigap Fills the Gaps" }],
+  "health-insurance-us-guide": [{ slug: "health-insurance-uk-guide", text: "Health Insurance in the UK: What Private Cover Pays For" }, { slug: "private-medical-insurance-us-guide", text: "Private Medical Insurance in the US: Costs and Choices" }, { slug: "medicare-advantage-plans-us-guide", text: "Medicare Advantage Plans: How Part C Works and What It Costs" }],
+  "how-to-fund-a-small-business": [{ slug: "business-line-of-credit-uk-guide", text: "Business Line of Credit: How Revolving Credit Works in the UK" }, { slug: "how-to-get-an-ein-small-business", text: "How to Get an EIN for a Small Business" }, { slug: "best-accounting-software-small-business-uk", text: "Best Accounting Software for Small Business UK" }],
+  "how-to-get-an-ein-small-business": [{ slug: "llc-what-it-is-and-how-to-form-one", text: "LLC: What a Limited Liability Company Is and How It Works" }, { slug: "incorporation-register-a-company-us", text: "Incorporation: How to Register a Company in the US, Step by Step" }, { slug: "how-to-start-a-small-business-usa", text: "How to Start a Small Business in the USA" }],
+  "how-to-get-first-customers-uk-small-business": [{ slug: "digital-marketing-strategies-small-business-uk", text: "Digital Marketing Strategies for Small Business UK" }, { slug: "how-to-start-a-small-business-uk", text: "How to Start a Small Business in the UK" }, { slug: "best-business-tools-small-business", text: "Best Business Tools for Small Business" }],
+  "how-to-hire-first-employee-uk": [{ slug: "how-to-get-first-customers-uk-small-business", text: "How to Get Your First Customers (UK Small Business)" }, { slug: "how-to-start-a-small-business-uk", text: "How to Start a Small Business in the UK" }, { slug: "how-to-register-as-sole-trader-uk", text: "How to Register as a Sole Trader UK (HMRC)" }],
+  "how-to-price-product-service-small-business": [{ slug: "best-business-tools-small-business", text: "Best Business Tools for Small Business" }, { slug: "how-to-get-first-customers-uk-small-business", text: "How to Get Your First Customers (UK Small Business)" }, { slug: "how-to-fund-a-small-business", text: "How to Fund a Small Business: SBA Loans, Grants and Bootstrapping" }],
+  "how-to-register-as-sole-trader-uk": [{ slug: "sole-trader-vs-limited-company-uk", text: "Sole Trader vs Limited Company UK" }, { slug: "how-to-start-a-small-business-uk", text: "How to Start a Small Business in the UK" }, { slug: "vat-registration-threshold-uk-small-business", text: "VAT Registration Threshold UK Small Business" }],
+  "how-to-start-a-small-business-uk": [{ slug: "how-to-start-a-small-business-usa", text: "How to Start a Small Business in the USA" }, { slug: "how-to-write-a-business-plan-small-business", text: "How to Write a Business Plan for a Small Business" }, { slug: "how-to-fund-a-small-business", text: "How to Fund a Small Business: SBA Loans, Grants and Bootstrapping" }],
+  "how-to-start-a-small-business-usa": [{ slug: "how-to-start-a-small-business-uk", text: "How to Start a Small Business in the UK" }, { slug: "how-to-write-a-business-plan-small-business", text: "How to Write a Business Plan for a Small Business" }, { slug: "how-to-get-an-ein-small-business", text: "How to Get an EIN for a Small Business" }],
+  "how-to-write-a-business-plan-small-business": [{ slug: "how-to-start-a-small-business-uk", text: "How to Start a Small Business in the UK" }, { slug: "how-to-fund-a-small-business", text: "How to Fund a Small Business: SBA Loans, Grants and Bootstrapping" }, { slug: "how-to-start-a-small-business-usa", text: "How to Start a Small Business in the USA" }],
+  "incorporation-guia-emprendedores-espana": [{ slug: "incorporation-guide-entrepreneurs-francais", text: "Incorporation : ce qu’un entrepreneur français doit comprendre" }, { slug: "llc-guia-emprendedores-espana", text: "LLC: lo que un emprendedor en España debe saber antes de crearla" }, { slug: "business-bank-account-cuenta-empresa-espana", text: "Business bank account: abrir una cuenta de empresa en España" }],
+  "incorporation-guide-entrepreneurs-francais": [{ slug: "incorporation-guia-emprendedores-espana", text: "Incorporation: lo que un emprendedor en España debe entender" }, { slug: "llc-guide-entrepreneurs-francais", text: "LLC : ce que les entrepreneurs français doivent vraiment savoir" }, { slug: "business-bank-account-compte-pro-france", text: "Business bank account : ouvrir un compte pro en France" }],
+  "incorporation-register-a-company-us": [{ slug: "incorporation-uk-register-a-company", text: "Incorporation in the UK: How to Register a Company Properly" }, { slug: "llc-what-it-is-and-how-to-form-one", text: "LLC: What a Limited Liability Company Is and How It Works" }, { slug: "business-bank-account-us-guide", text: "Business Bank Account: How to Choose One for Your LLC" }],
+  "incorporation-uk-register-a-company": [{ slug: "incorporation-register-a-company-us", text: "Incorporation: How to Register a Company in the US, Step by Step" }, { slug: "llc-in-the-uk-equivalent", text: "LLC in the UK: What It Means and What to Set Up Instead" }, { slug: "business-bank-account-uk-guide", text: "Business Bank Account: How to Choose One in the UK" }],
+  "jensen-huang-affair-nvidia-investigation": [{ slug: "anthropic-ipo-2026-valuation-explained", text: "Anthropic IPO 2026: What the $1.4 Trillion Valuation Means for AI and Investors" }, { slug: "ai-in-business", text: "AI in Business: How Companies Are Using AI in 2026" }, { slug: "best-ai-tools-uk-small-business-2026", text: "Best AI Tools for UK Small Businesses in 2026: Top Picks" }],
+  "llc-guia-emprendedores-espana": [{ slug: "llc-guide-entrepreneurs-francais", text: "LLC : ce que les entrepreneurs français doivent vraiment savoir" }, { slug: "llc-what-it-is-and-how-to-form-one", text: "LLC: What a Limited Liability Company Is and How It Works" }, { slug: "incorporation-guia-emprendedores-espana", text: "Incorporation: lo que un emprendedor en España debe entender" }],
+  "llc-guide-entrepreneurs-francais": [{ slug: "llc-guia-emprendedores-espana", text: "LLC: lo que un emprendedor en España debe saber antes de crearla" }, { slug: "llc-what-it-is-and-how-to-form-one", text: "LLC: What a Limited Liability Company Is and How It Works" }, { slug: "incorporation-guide-entrepreneurs-francais", text: "Incorporation : ce qu’un entrepreneur français doit comprendre" }],
+  "llc-vs-sole-proprietorship-usa": [{ slug: "llc-what-it-is-and-how-to-form-one", text: "LLC: What a Limited Liability Company Is and How It Works" }, { slug: "sole-trader-vs-limited-company-uk", text: "Sole Trader vs Limited Company UK" }, { slug: "incorporation-register-a-company-us", text: "Incorporation: How to Register a Company in the US, Step by Step" }],
+  "llc-what-it-is-and-how-to-form-one": [{ slug: "llc-guide-entrepreneurs-francais", text: "LLC : ce que les entrepreneurs français doivent vraiment savoir" }, { slug: "llc-guia-emprendedores-espana", text: "LLC: lo que un emprendedor en España debe saber antes de crearla" }, { slug: "llc-vs-sole-proprietorship-usa", text: "LLC vs Sole Proprietorship USA" }],
+  "make-money-from-your-phone-guia-espana": [{ slug: "make-money-from-your-phone-guide-france", text: "Gagner de l'argent avec son mobile en France" }, { slug: "make-money-from-your-phone-uk-guide", text: "Make Money From Your Phone: What a UK Phone Can Really Earn" }, { slug: "how-to-make-money-from-home", text: "How to Make Money From Home in 2026" }],
+  "make-money-from-your-phone-guide-france": [{ slug: "make-money-from-your-phone-guia-espana", text: "Make Money From Your Phone: ganar dinero en España" }, { slug: "make-money-from-your-phone-uk-guide", text: "Make Money From Your Phone: What a UK Phone Can Really Earn" }, { slug: "how-to-make-money-from-home", text: "How to Make Money From Home in 2026" }],
+  "make-money-from-your-phone-uk-guide": [{ slug: "make-money-from-your-phone-us-guide", text: "Make Money From Your Phone: Honest US Apps and Methods" }, { slug: "how-to-make-money-from-home", text: "How to Make Money From Home in 2026" }, { slug: "make-money-online-fast-uk-guide", text: "Make Money Online Fast: What Actually Pays in the UK" }],
+  "make-money-from-your-phone-us-guide": [{ slug: "make-money-from-your-phone-uk-guide", text: "Make Money From Your Phone: What a UK Phone Can Really Earn" }, { slug: "how-to-make-money-from-home", text: "How to Make Money From Home in 2026" }, { slug: "real-ways-to-make-money-from-home-for-free", text: "Real Ways to Make Money From Home for Free in the UK" }],
+  "make-money-online-fast-uk-guide": [{ slug: "how-to-make-money-from-home", text: "How to Make Money From Home in 2026" }, { slug: "how-to-earn-extra-money-at-home", text: "How to Earn Extra Money at Home in the UK in 2026" }, { slug: "make-money-from-your-phone-uk-guide", text: "Make Money From Your Phone: What a UK Phone Can Really Earn" }],
+  "microsoft-copilot-vs-chatgpt-uk-small-business": [{ slug: "best-ai-tools-uk-small-business-2026", text: "Best AI Tools for UK Small Businesses in 2026: Top Picks" }, { slug: "chatgpt-vs-claude-uk-small-business", text: "ChatGPT vs Claude for UK Small Business" }, { slug: "free-ai-tools-uk-small-business", text: "Free AI Tools for UK Small Business" }],
+  "minimalist-home-interior-design": [{ slug: "small-living-room-decorating-ideas", text: "Small Living Room Decorating Ideas That Make a Big Difference" }, { slug: "modern-home-decor-ideas", text: "Modern Home Decor Ideas for a Stylish, Liveable Home" }, { slug: "bedroom-decorating-ideas", text: "Bedroom Decorating Ideas for a Calm, Cosy Retreat" }],
+  "modern-home-decor-ideas": [{ slug: "minimalist-home-interior-design", text: "Minimalist Home Interior Design: A Calm, Clutter-Free Home" }, { slug: "bedroom-decorating-ideas", text: "Bedroom Decorating Ideas for a Calm, Cosy Retreat" }, { slug: "small-living-room-decorating-ideas", text: "Small Living Room Decorating Ideas That Make a Big Difference" }],
+  "private-medical-insurance-us-guide": [{ slug: "health-insurance-us-guide", text: "Health Insurance in the US: Plans, Networks and Costs" }, { slug: "short-term-disability-insurance-us-guide", text: "Short Term Disability Insurance: Protect Your Paycheck" }, { slug: "medicare-advantage-plans-us-guide", text: "Medicare Advantage Plans: How Part C Works and What It Costs" }],
+  "short-term-disability-insurance-us-guide": [{ slug: "health-insurance-us-guide", text: "Health Insurance in the US: Plans, Networks and Costs" }, { slug: "private-medical-insurance-us-guide", text: "Private Medical Insurance in the US: Costs and Choices" }, { slug: "medicare-advantage-plans-us-guide", text: "Medicare Advantage Plans: How Part C Works and What It Costs" }],
+  "small-business-ideas-2026-usa": [{ slug: "small-business-ideas-uk-2026", text: "Small Business Ideas UK 2026" }, { slug: "how-to-start-a-small-business-usa", text: "How to Start a Small Business in the USA" }, { slug: "how-to-fund-a-small-business", text: "How to Fund a Small Business: SBA Loans, Grants and Bootstrapping" }],
+  "small-business-ideas-uk-2026": [{ slug: "small-business-ideas-uk-under-1000", text: "Small Business Ideas UK with £1,000 or Less" }, { slug: "small-business-ideas-2026-usa", text: "Small Business Ideas 2026 USA" }, { slug: "how-to-start-a-small-business-uk", text: "How to Start a Small Business in the UK" }],
+  "small-business-ideas-uk-under-1000": [{ slug: "small-business-ideas-uk-2026", text: "Small Business Ideas UK 2026" }, { slug: "how-to-start-a-small-business-uk", text: "How to Start a Small Business in the UK" }, { slug: "how-to-fund-a-small-business", text: "How to Fund a Small Business: SBA Loans, Grants and Bootstrapping" }],
+  "small-living-room-decorating-ideas": [{ slug: "minimalist-home-interior-design", text: "Minimalist Home Interior Design: A Calm, Clutter-Free Home" }, { slug: "modern-home-decor-ideas", text: "Modern Home Decor Ideas for a Stylish, Liveable Home" }, { slug: "budget-friendly-home-decor-ideas", text: "Budget-Friendly Home Decor Ideas That Look Expensive" }],
+  "sole-trader-vs-limited-company-uk": [{ slug: "llc-vs-sole-proprietorship-usa", text: "LLC vs Sole Proprietorship USA" }, { slug: "how-to-register-as-sole-trader-uk", text: "How to Register as a Sole Trader UK (HMRC)" }, { slug: "incorporation-uk-register-a-company", text: "Incorporation in the UK: How to Register a Company Properly" }],
+  "vat-registration-threshold-uk-small-business": [{ slug: "how-to-register-as-sole-trader-uk", text: "How to Register as a Sole Trader UK (HMRC)" }, { slug: "sole-trader-vs-limited-company-uk", text: "Sole Trader vs Limited Company UK" }, { slug: "best-accounting-software-small-business-uk", text: "Best Accounting Software for Small Business UK" }],
+};
+
+// Item 28: translation groups. Each group maps hreflang -> slug.
+// "xDefault" is the page shown when no language matches (the UK English
+// version where one exists, else the generic English version, else French).
+// Groups were verified as true translations: same heading count and
+// parallel headings across languages (see phase4_duplicate_families.md).
+// The UK LLC-equivalent post is NOT in the LLC group: it is a different,
+// UK-specific article, not a translation of the US LLC post.
+const TRANSLATION_GROUPS = [
+  { langs: { en: 'llc-what-it-is-and-how-to-form-one', fr: 'llc-guide-entrepreneurs-francais', es: 'llc-guia-emprendedores-espana' }, xDefault: 'llc-what-it-is-and-how-to-form-one' },
+  { langs: { 'en-GB': 'incorporation-uk-register-a-company', 'en-US': 'incorporation-register-a-company-us', fr: 'incorporation-guide-entrepreneurs-francais', es: 'incorporation-guia-emprendedores-espana' }, xDefault: 'incorporation-uk-register-a-company' },
+  { langs: { 'en-GB': 'business-bank-account-uk-guide', 'en-US': 'business-bank-account-us-guide', fr: 'business-bank-account-compte-pro-france', es: 'business-bank-account-cuenta-empresa-espana' }, xDefault: 'business-bank-account-uk-guide' },
+  { langs: { 'en-GB': 'business-line-of-credit-uk-guide', 'en-US': 'business-line-of-credit-us-guide', fr: 'business-line-of-credit-ligne-credit-france', es: 'business-line-of-credit-poliza-credito-espana' }, xDefault: 'business-line-of-credit-uk-guide' },
+  { langs: { 'en-GB': 'business-for-sale-uk-buying-guide', 'en-US': 'business-for-sale-us-buying-guide', fr: 'business-for-sale-reprendre-entreprise-france', es: 'business-for-sale-comprar-negocio-espana' }, xDefault: 'business-for-sale-uk-buying-guide' },
+  { langs: { 'en-GB': 'franchise-buying-guide-uk', 'en-US': 'franchise-buying-guide-us', fr: 'franchise-guide-entrepreneurs-france', es: 'franchise-guia-emprendedores-espana' }, xDefault: 'franchise-buying-guide-uk' },
+  { langs: { 'en-GB': 'gta-6-release-date-uk-guide', 'en-US': 'gta-6-release-date-us-guide', fr: 'gta-6-release-date-guide-france', es: 'gta-6-release-date-guia-espana' }, xDefault: 'gta-6-release-date-uk-guide' },
+  { langs: { 'en-GB': 'gta-6-platforms-uk-guide', 'en-US': 'gta-6-platforms-us-guide', es: 'gta-6-platforms-guia-espana' }, xDefault: 'gta-6-platforms-uk-guide' },
+  { langs: { en: 'gta-6-ps5-frame-rate-guide', 'en-US': 'gta-6-ps5-frame-rate-us-guide', fr: 'gta-6-ps5-frame-rate-guide-france', es: 'gta-6-ps5-frame-rate-guia-espana' }, xDefault: 'gta-6-ps5-frame-rate-guide' },
+  { langs: { 'en-GB': 'make-money-from-your-phone-uk-guide', 'en-US': 'make-money-from-your-phone-us-guide', fr: 'make-money-from-your-phone-guide-france', es: 'make-money-from-your-phone-guia-espana' }, xDefault: 'make-money-from-your-phone-uk-guide' },
+  { langs: { 'en-GB': 'christmas-decor-uk', fr: 'decoration-de-noel' }, xDefault: 'christmas-decor-uk' },
+  { langs: { fr: 'sapin-noel-artificiel-france', es: 'arbol-navidad-artificial-espana' }, xDefault: 'sapin-noel-artificiel-france' },
+  { langs: { fr: 'sapin-noel-pre-eclaire-france', es: 'arbol-navidad-preiluminado-espana' }, xDefault: 'sapin-noel-pre-eclaire-france' },
+  { langs: { fr: 'decorations-noel-france', es: 'adornos-navidad-espana' }, xDefault: 'decorations-noel-france' },
+];
+
+const TRANSLATION_GROUP_BY_SLUG = {};
+for (const group of TRANSLATION_GROUPS) {
+  for (const slug of Object.values(group.langs)) {
+    TRANSLATION_GROUP_BY_SLUG[slug] = group;
+  }
+}
+
+// Item 27 + 29: title/description/tag overrides, applied to the loaded
+// posts in buildPages() so homepage, category pages and article page agree.
+// Stored content is never changed.
+function applyPhase4Overrides(posts) {
+  for (const post of posts) {
+    const slug = String(post.slug || '');
+    if (TITLE_OVERRIDES[slug]) {
+      post.title = TITLE_OVERRIDES[slug];
+      post.meta_title = TITLE_OVERRIDES[slug];
+    }
+    if (DESCRIPTION_OVERRIDES[slug]) {
+      post.meta_description = DESCRIPTION_OVERRIDES[slug];
+    }
+    if (TAG_OVERRIDES[slug]) {
+      post.tags = TAG_OVERRIDES[slug];
+    }
+  }
+  return posts;
+}
+
+// Item 29: set descriptive alt text on the in-body images that had none
+// (missing alt, or empty alt=""). Matches on a distinctive src substring.
+function applyImageAltOverrides(post, html) {
+  const overrides = IMAGE_ALT_OVERRIDES[String(post.slug || '')];
+  if (!overrides || !overrides.length) return html;
+  return html.replace(/<img\b[^>]*>/gi, (tag) => {
+    const src = tag.match(/\bsrc\s*=\s*"([^"]*)"/i);
+    if (!src) return tag;
+    const hit = overrides.find((o) => src[1].includes(o.match));
+    if (!hit) return tag;
+    if (/\balt\s*=\s*"[^"]*"/i.test(tag)) {
+      return tag.replace(/\balt\s*=\s*"[^"]*"/i, `alt="${escapeAttr(hit.alt)}"`);
+    }
+    return tag.replace(/<img\b/i, `<img alt="${escapeAttr(hit.alt)}"`);
+  });
+}
+
+// Item 24: rewrite the shared paragraphs in the females post only.
+function applyPhase4Replacements(post, body) {
+  if (String(post.slug || '') !== 'ways-for-females-to-make-money-online') return body;
+  return applyReplacements(body, FEMALES_PARAGRAPH_REPLACEMENTS, 'females-paragraphs');
+}
+
+// Item 25: the "Related guides" box. Heading in the post's own language.
+function relatedLinksBox(post) {
+  const links = INTERNAL_LINKS_BY_SLUG[String(post.slug || '')];
+  if (!links || !links.length) return '';
+  const lang = detectLanguage(post);
+  const heading = lang === 'fr' ? 'Guides connexes' : lang === 'es' ? 'Guías relacionadas' : 'Related guides';
+  const items = links
+    .map((link) => `      <li><a href="/${escapeAttr(link.slug)}/">${escapeHtml(link.text)}</a></li>`)
+    .join('\n');
+  return `\n\n<aside class="article-related" aria-label="${escapeAttr(heading)}">\n  <h3>${escapeHtml(heading)}</h3>\n  <ul>\n${items}\n  </ul>\n</aside>`;
+}
+
+// Item 28: reciprocal hreflang + x-default links for a post that belongs
+// to a translation group; empty string otherwise.
+function hreflangLinksFor(post) {
+  const group = TRANSLATION_GROUP_BY_SLUG[String(post.slug || '')];
+  if (!group) return '';
+  const links = Object.entries(group.langs).map(
+    ([lang, slug]) => `<link rel="alternate" hreflang="${lang}" href="${SITE_ORIGIN}/${slug}/" />`
+  );
+  links.push(`<link rel="alternate" hreflang="x-default" href="${SITE_ORIGIN}/${group.xDefault}/" />`);
+  return links.join('\n    ');
+}
+
+// ---------------------------------------------------------------------------
 // Card builders (mirror script.js buildStoryCard / buildMiniFeature /
 // buildTechArticleCard / buildPopularCard, including their markup and
 // classes, so the static HTML matches what hydration renders). Dates are
@@ -1609,6 +1976,18 @@ function generateArticlePage(template, post, posts, counts) {
     `<link rel="canonical" href="${cleanUrl}" />`,
     'article canonical'
   );
+  // Phase 4 (23 Nov 2026), item 28: reciprocal hreflang + x-default,
+  // only where a true translation exists.
+  const hreflang = hreflangLinksFor(post);
+  if (hreflang) {
+    html = mustReplace(
+      html,
+      `<link rel="canonical" href="${cleanUrl}" />`,
+      `<link rel="canonical" href="${cleanUrl}" />
+    ${hreflang}`,
+      'article hreflang'
+    );
+  }
   html = mustReplace(html, '<title>Article | BlogSphere</title>', `<title>${escapeHtml(title)}</title>`, 'article title');
   html = mustReplace(
     html,
@@ -1871,6 +2250,9 @@ async function buildPages() {
   // Phase 3 (23 Nov 2026), item 15: Anthropic title/meta overrides (final
   // IPO terms) so homepage, category pages and article page all agree.
   applyPhase3TitleOverrides(posts);
+  // Phase 4 (23 Nov 2026), items 27 + 29: title/description/tag overrides
+  // so homepage, category pages and article page all agree.
+  applyPhase4Overrides(posts);
   const counts = categoryCounts(posts);
   const langCounts = { fr: 0, es: 0, en: 0 };
   for (const post of posts) langCounts[detectLanguage(post)] += 1;
