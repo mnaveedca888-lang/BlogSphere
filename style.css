@@ -4282,7 +4282,7 @@ body.theme-dark .feature-card.skeleton {
   user-select: none;
 }
 
-a.page-number:not(.active):hover {
+a.page-number:not(.active):not(.disabled):hover {
   transform: translateY(-1px);
   border-color: var(--blue);
   background: var(--blue-soft);
@@ -4352,7 +4352,7 @@ body.theme-dark .pagination .page-number.active {
     transition: none;
   }
 
-  a.page-number:not(.active):hover {
+  a.page-number:not(.active):not(.disabled):hover {
     transform: none;
   }
 }

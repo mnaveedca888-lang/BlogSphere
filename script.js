@@ -21,10 +21,27 @@ const PAGE_CATEGORY = {
   'Health & Fitness': '/Health-Fitness'
 };
 
+const getCategoryPageInfo = () => {
+  const pathname = window.location.pathname.replace(/\/+$/, '') || '/';
+  for (const [category, basePath] of Object.entries(PAGE_CATEGORY)) {
+    if (pathname.toLowerCase() === basePath.toLowerCase()) {
+      return { category, page: 1 };
+    }
+    const pageMatch = pathname.match(/\/page\/(\d+)$/i);
+    if (pageMatch && pathname.slice(0, pageMatch.index).toLowerCase() === basePath.toLowerCase()) {
+      return { category, page: Number.parseInt(pageMatch[1], 10) };
+    }
+  }
+  return null;
+};
+
 const normalize = (value = '') => value.toLowerCase().trim();
 const normalizeForLookup = (value = '') => value.toLowerCase().replace(/[^a-z0-9\s]/g, '').replace(/\s+/g, ' ').trim();
 
 const getPageName = () => {
+  const categoryPage = getCategoryPageInfo();
+  if (categoryPage) return `${PAGE_CATEGORY[categoryPage.category].slice(1)}.html`;
+
   // Clean article URL /<slug>/ — the static article page is the only page
   // carrying #article-content (about/contact/health-tools share the
   // article-page body class, so the body class alone is not a marker).
@@ -258,7 +275,8 @@ const updateRelativeTimes = () => {
 // Real pagination: 15 articles per page, with working Prev / number / Next
 // links that keep the category and search query in the URL.
 const getCurrentPage = (totalPages) => {
-  const raw = Number.parseInt(getUrlParams().get('page') || '1', 10);
+  const pathPage = getCategoryPageInfo()?.page || 1;
+  const raw = Number.parseInt(getUrlParams().get('page') || String(pathPage), 10);
   if (Number.isNaN(raw) || raw < 1) return 1;
   return Math.min(raw, Math.max(totalPages, 1));
 };
@@ -277,10 +295,8 @@ const renderPagination = (container, currentPage, totalPages, buildPageUrl) => {
     if (className) classes.push(className);
     if (active) classes.push('active');
     if (disabled) classes.push('disabled');
-    const aria = `${ariaLabel ? ` aria-label="${ariaLabel}"` : ''}${active ? ' aria-current="page"' : ''}`;
-    return disabled
-      ? `<span class="${classes.join(' ')}" aria-disabled="true"${aria}>${label}</span>`
-      : `<a class="${classes.join(' ')}" href="${buildPageUrl(page)}"${aria}>${label}</a>`;
+    const aria = `${ariaLabel ? ` aria-label="${ariaLabel}"` : ''}${active ? ' aria-current="page"' : ''}${disabled ? ' aria-disabled="true" tabindex="-1"' : ''}`;
+    return `<a class="${classes.join(' ')}" href="${buildPageUrl(page)}"${aria}>${label}</a>`;
   };
   const pages = [];
   const addPage = (page, edge = false) => {
@@ -319,13 +335,13 @@ const renderPagination = (container, currentPage, totalPages, buildPageUrl) => {
   const previousIcon = '<svg class="pagination-chevron" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><path d="m12 4-6 6 6 6"/></svg>';
   const nextIcon = '<svg class="pagination-chevron" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><path d="m8 4 6 6-6 6"/></svg>';
   container.innerHTML = [
-    pageLink(currentPage - 1, `${previousIcon}<span class="pagination-label">Prev</span>`, {
+    pageLink(Math.max(1, currentPage - 1), `${previousIcon}<span class="pagination-label">Prev</span>`, {
       disabled: currentPage <= 1,
       ariaLabel: 'Previous page',
       className: 'pagination-previous'
     }),
     ...pages,
-    pageLink(currentPage + 1, `<span class="pagination-label">Next</span>${nextIcon}`, {
+    pageLink(Math.min(totalPages, currentPage + 1), `<span class="pagination-label">Next</span>${nextIcon}`, {
       disabled: currentPage >= totalPages,
       ariaLabel: 'Next page',
       className: 'pagination-next'
@@ -537,9 +553,18 @@ const renderCategoryPage = (category) => {
   const pagination = document.querySelector('.pagination');
   renderPagination(pagination, currentPage, totalPages, (page) => {
     const url = new URL(window.location.href);
-    url.searchParams.set('category', category);
-    if (query) url.searchParams.set('q', query); else url.searchParams.delete('q');
-    if (page > 1) url.searchParams.set('page', String(page)); else url.searchParams.delete('page');
+    const categoryPath = PAGE_CATEGORY[category];
+    if (query) {
+      url.pathname = `${categoryPath}/`;
+      url.searchParams.set('category', category);
+      url.searchParams.set('q', query);
+      if (page > 1) url.searchParams.set('page', String(page)); else url.searchParams.delete('page');
+    } else {
+      url.pathname = page === 1 ? `${categoryPath}/` : `${categoryPath}/page/${page}/`;
+      url.searchParams.delete('category');
+      url.searchParams.delete('q');
+      url.searchParams.delete('page');
+    }
     return `${url.pathname}${url.search}`;
   });
 
@@ -1001,6 +1026,7 @@ const bindSearchInputs = () => {
     input.addEventListener('input', () => {
       const query = input.value.trim();
       const currentPage = getPageName();
+      const category = Object.keys(PAGE_CATEGORY).find((name) => `${PAGE_CATEGORY[name].slice(1)}.html` === currentPage);
       const params = getUrlParams();
       if (query) params.set('q', query); else params.delete('q');
 
@@ -1009,11 +1035,12 @@ const bindSearchInputs = () => {
         if (query) url.searchParams.set('q', query); else url.searchParams.delete('q');
         window.history.replaceState({}, '', url);
         renderHomePage();
-      } else if (['Technology.html', 'Business.html', 'Home-Decor.html', 'Make-Money-Online.html'].includes(currentPage)) {
-        const category = currentPage === 'Technology.html' ? 'Technology' : currentPage === 'Business.html' ? 'Business' : currentPage === 'Home-Decor.html' ? 'Home Decor' : 'Make Money Online';
+      } else if (category) {
         const url = new URL(window.location.href);
+        url.pathname = `${PAGE_CATEGORY[category]}/`;
         if (query) url.searchParams.set('q', query); else url.searchParams.delete('q');
         url.searchParams.set('category', category);
+        url.searchParams.delete('page');
         window.history.replaceState({}, '', url);
         renderCategoryPage(category);
       } else if (currentPage === 'article.html') {

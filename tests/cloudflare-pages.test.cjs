@@ -1,8 +1,10 @@
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
+const os = require('node:os');
 const path = require('node:path');
 const test = require('node:test');
 const { buildPages, publicFiles } = require('../scripts/build-pages');
+const { categoryPaginationEntries } = require('../scripts/generate-sitemap');
 const adapter = require('../functions/api/adapter.cjs');
 
 // Static generation (23 Nov 2026) needs post data; the test fixture keeps
@@ -93,6 +95,96 @@ test('static generation renders article pages with full meta and content', async
   assert.ok(techCategory.includes('href="/test-tech-post/"'));
   const businessCategory = fs.readFileSync(path.join(output, 'Business', 'index.html'), 'utf8');
   assert.ok(businessCategory.includes('href="/test-business-post/"'));
+});
+
+test('category pages generate static 15-article pages and pagination sitemap URLs', async () => {
+  const output = path.resolve(__dirname, '..', 'dist');
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'blogsphere-category-pagination-'));
+  const fixturePath = path.join(tempDir, 'posts.json');
+  const originalContentPath = process.env.BLOGSPHERE_CONTENT_JSON;
+  const categoryCounts = {
+    Technology: 31,
+    Business: 16,
+    'Home Decor': 16,
+    'Make Money Online': 14,
+    'Health & Fitness': 15
+  };
+  const posts = [];
+  let id = 1000;
+
+  for (const [category, count] of Object.entries(categoryCounts)) {
+    for (let index = 1; index <= count; index += 1) {
+      const timestamp = new Date(Date.UTC(2026, 10, 23, 0, 0, index)).toISOString();
+      const slugCategory = category.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+      posts.push({
+        id: id++,
+        slug: `${slugCategory}-pagination-${index}`,
+        title: `${category} Pagination Article ${index}`,
+        category,
+        status: 'published',
+        published_at: timestamp,
+        created_at: timestamp,
+        updated_at: timestamp,
+        thumb: 'https://images.pexels.com/photos/123/test.jpeg',
+        summary: `A test summary for ${category} pagination article ${index}.`,
+        excerpt: `A test summary for ${category} pagination article ${index}.`,
+        readTime: '5 min read',
+        author: 'Admin',
+        content: `<p>Test body for ${category} pagination article ${index}.</p>`
+      });
+    }
+  }
+
+  try {
+    fs.writeFileSync(fixturePath, JSON.stringify({ posts }));
+    process.env.BLOGSPHERE_CONTENT_JSON = fixturePath;
+    await buildPages();
+
+    const readPage = (...parts) => fs.readFileSync(path.join(output, ...parts), 'utf8');
+    const articleCount = (html) => (html.match(/<a class="tech-article"/g) || []).length;
+    const techPage1 = readPage('Technology', 'index.html');
+    const techPage2 = readPage('Technology', 'page', '2', 'index.html');
+    const techPage3 = readPage('Technology', 'page', '3', 'index.html');
+    const homeDecorPage2 = readPage('Home-Decor', 'page', '2', 'index.html');
+
+    assert.equal(articleCount(techPage1), 15);
+    assert.equal(articleCount(techPage2), 15);
+    assert.equal(articleCount(techPage3), 1);
+    assert.match(techPage1, /<a class="page-number pagination-next" href="\/Technology\/page\/2\/"/);
+    assert.match(techPage1, /<a class="page-number pagination-previous disabled" href="\/Technology\/"/);
+    assert.match(techPage2, /<link rel="canonical" href="https:\/\/blogsphere\.info\/Technology\/page\/2\/" \/>/);
+    assert.match(techPage2, /<a class="page-number pagination-previous" href="\/Technology\/"/);
+    assert.match(techPage2, /<a class="page-number pagination-next" href="\/Technology\/page\/3\/"/);
+    assert.match(techPage3, /<a class="page-number pagination-next disabled" href="\/Technology\/page\/3\/"/);
+
+    assert.equal(articleCount(readPage('Home-Decor', 'index.html')), 15);
+    assert.equal(articleCount(homeDecorPage2), 1);
+    assert.match(homeDecorPage2, /<link rel="canonical" href="https:\/\/blogsphere\.info\/Home-Decor\/page\/2\/" \/>/);
+    assert.match(homeDecorPage2, /<a class="page-number pagination-previous" href="\/Home-Decor\/"/);
+    assert.match(homeDecorPage2, /<a class="page-number pagination-next disabled" href="\/Home-Decor\/page\/2\/"/);
+
+    for (const category of ['Make-Money-Online', 'Health-Fitness']) {
+      const categoryPage = readPage(category, 'index.html');
+      assert.equal(articleCount(categoryPage), category === 'Make-Money-Online' ? 14 : 15);
+      assert.equal(categoryPage.includes('<nav class="pagination"'), false);
+      assert.equal(fs.existsSync(path.join(output, category, 'page', '2', 'index.html')), false);
+    }
+
+    const newestByCategory = Object.fromEntries(
+      Object.entries(categoryCounts).map(([category]) => [`/${category.replaceAll(' ', '-')}`, '2026-11-23'])
+    );
+    const sitemapEntries = categoryPaginationEntries(posts, newestByCategory).join('\n');
+    assert.ok(sitemapEntries.includes('<loc>https://blogsphere.info/Technology/page/2/</loc>'));
+    assert.ok(sitemapEntries.includes('<loc>https://blogsphere.info/Technology/page/3/</loc>'));
+    assert.ok(sitemapEntries.includes('<loc>https://blogsphere.info/Home-Decor/page/2/</loc>'));
+    assert.equal(sitemapEntries.includes('/Make-Money-Online/page/2/'), false);
+    assert.equal(sitemapEntries.includes('/Health-Fitness/page/2/'), false);
+  } finally {
+    if (originalContentPath === undefined) delete process.env.BLOGSPHERE_CONTENT_JSON;
+    else process.env.BLOGSPHERE_CONTENT_JSON = originalContentPath;
+    fs.rmSync(tempDir, { recursive: true, force: true });
+    await buildPages();
+  }
 });
 
 test('preview builds prevent indexing while the master build keeps production SEO files', async () => {

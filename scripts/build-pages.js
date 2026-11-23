@@ -6,7 +6,8 @@
 //
 // - dist/<slug>/index.html        one static page per published post
 // - dist/index.html               homepage with rendered article cards
-// - dist/<Category>/index.html    one page per category with its posts
+// - dist/<Category>/index.html    page 1 of each category
+// - dist/<Category>/page/<n>/     additional category pages, 15 posts each
 // - dist/<page>/index.html        about, contact, privacy, terms,
 //   disclaimer, editorial-policy, Health-Tools
 // - dist/slugs.json               JSON array of all published slugs
@@ -24,6 +25,12 @@
 // (non-master Cloudflare Pages branches) get a disallow-all robots.txt.
 const fs = require('node:fs');
 const path = require('node:path');
+const {
+  CATEGORY_PAGE_SIZE,
+  getCategoryPageCount,
+  getCategoryPagePath,
+  renderCategoryPagination
+} = require('./category-pagination');
 
 const root = path.resolve(__dirname, '..');
 const output = path.join(root, 'dist');
@@ -35,7 +42,8 @@ const DEFAULT_API_URL = 'https://blogsphere.info/api/public-data';
 // Files copied verbatim into dist/ (CSS is minified, see below). The
 // content templates (index.html, article.html, the five category pages and
 // the static pages) are NOT in this list any more: they are generated into
-// directory form (dist/<slug>/index.html, dist/<Category>/index.html,
+// directory form (dist/<slug>/index.html, dist/<Category>/index.html and
+// dist/<Category>/page/<n>/index.html,
 // dist/<page>/index.html) so the clean URL is the only URL.
 const publicFiles = [
   '404.html',
@@ -2400,10 +2408,15 @@ function generateHomePage(template, posts, counts) {
   return fillCategoryCounts(html, counts);
 }
 
-function generateCategoryPage(template, category, posts, counts) {
+function generateCategoryPage(template, category, posts, counts, pageNumber = 1) {
   const catPosts = posts.filter((p) => p.category === category);
+  const totalPages = getCategoryPageCount(catPosts.length);
+  if (!Number.isInteger(pageNumber) || pageNumber < 1 || pageNumber > totalPages) {
+    throw new RangeError(`Invalid ${category} category page number: ${pageNumber}`);
+  }
   let html = template;
-  const listHtml = catPosts.map(buildTechArticleCard).join('');
+  const pagePosts = catPosts.slice((pageNumber - 1) * CATEGORY_PAGE_SIZE, pageNumber * CATEGORY_PAGE_SIZE);
+  const listHtml = pagePosts.map(buildTechArticleCard).join('');
   // The .article-list is a single line of three skeleton divs; match the
   // whole line (greedy .* stays on that line) and swap in the real cards.
   html = mustReplacePattern(
@@ -2412,8 +2425,54 @@ function generateCategoryPage(template, category, posts, counts) {
     `<div class="article-list">${listHtml}</div>`,
     'category article list'
   );
+  const paginationHtml = renderCategoryPagination(
+    CATEGORY_PAGES[category],
+    category,
+    pageNumber,
+    totalPages
+  );
+  html = mustReplace(
+    html,
+    '<div class="pagination" aria-label="Pagination"></div>',
+    paginationHtml,
+    'category pagination'
+  );
   const popularHtml = catPosts.slice(0, 5).map(buildPopularCard).join('');
   html = mustReplace(html, '<ul class="popular-list"></ul>', `<ul class="popular-list">${popularHtml}</ul>`, 'category popular list');
+  if (pageNumber > 1) {
+    const pageUrl = `${SITE_ORIGIN}${getCategoryPagePath(CATEGORY_PAGES[category], pageNumber)}`;
+    const pageTitle = `${category} | BlogSphere - Page ${pageNumber}`;
+    html = mustReplacePattern(
+      html,
+      /<title>[^<]*<\/title>/,
+      `<title>${escapeHtml(pageTitle)}</title>`,
+      'category page title'
+    );
+    html = mustReplacePattern(
+      html,
+      /<link rel="canonical" href="[^"]+" \/>/,
+      `<link rel="canonical" href="${pageUrl}" />`,
+      'category canonical'
+    );
+    html = mustReplacePattern(
+      html,
+      /<meta property="og:url" content="[^"]+" \/>/,
+      `<meta property="og:url" content="${pageUrl}" />`,
+      'category Open Graph URL'
+    );
+    html = mustReplacePattern(
+      html,
+      /<meta property="og:title" content="[^"]*" \/>/,
+      `<meta property="og:title" content="${escapeAttr(pageTitle)}" />`,
+      'category Open Graph title'
+    );
+    html = mustReplacePattern(
+      html,
+      /<meta name="twitter:title" content="[^"]*" \/>/,
+      `<meta name="twitter:title" content="${escapeAttr(pageTitle)}" />`,
+      'category Twitter title'
+    );
+  }
   return fillCategoryCounts(html, counts);
 }
 
@@ -2473,15 +2532,19 @@ async function buildPages() {
   // Homepage with rendered cards.
   fs.writeFileSync(path.join(output, 'index.html'), generateHomePage(homeTemplate, posts, counts));
 
-  // One page per category: dist/<Category>/index.html.
+  // Category listings are split into static pages of 15 articles each.
   for (const category of CATEGORY_ORDER) {
     const template = fs.readFileSync(path.join(root, CATEGORY_FILES[category]), 'utf8');
     const dir = path.join(output, CATEGORY_PAGES[category].slice(1));
-    fs.mkdirSync(dir, { recursive: true });
-    fs.writeFileSync(
-      path.join(dir, 'index.html'),
-      generateCategoryPage(template, category, posts, counts)
-    );
+    const totalPages = getCategoryPageCount(posts.filter((post) => post.category === category).length);
+    for (let pageNumber = 1; pageNumber <= totalPages; pageNumber += 1) {
+      const pageDir = pageNumber === 1 ? dir : path.join(dir, 'page', String(pageNumber));
+      fs.mkdirSync(pageDir, { recursive: true });
+      fs.writeFileSync(
+        path.join(pageDir, 'index.html'),
+        generateCategoryPage(template, category, posts, counts, pageNumber)
+      );
+    }
   }
 
   // Static pages in directory form: dist/<dir>/index.html.

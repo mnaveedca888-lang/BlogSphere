@@ -9,22 +9,27 @@
 //   BLOGSPHERE_CONTENT_JSON=/path/to/public-data.json  (local testing)
 //
 // Behaviour (replaces the old append-only /article?id= behaviour):
-// - sitemap.xml: the 13 static pages (homepage, 5 categories,
+// - sitemap.xml: the 13 base static pages (homepage, 5 categories,
 //   Health-Tools, about, contact, privacy-policy, terms-and-conditions,
 //   disclaimer, editorial-policy)
+//   plus generated page 2+ URLs for categories with more than 15 articles
 //   plus every published article at its clean URL
 //   https://blogsphere.info/<slug>/ (lastmod = the article's updated /
 //   published date, monthly, priority 0.7).
 // - sitemap-articles.xml: the 134 articles only, same entries.
-// - sitemap-pages.xml: the 13 static pages only. Category lastmod is the
-//   newest post date in that category; the homepage lastmod is the newest
-//   post date overall; the other static pages keep their existing lastmod
-//   (read from the current sitemap-pages.xml).
+// - sitemap-pages.xml: the 13 base static pages plus generated category
+//   page 2+ URLs. Category lastmod is the newest post date in that category;
+//   the homepage lastmod is the newest post date overall; the other static
+//   pages keep their existing lastmod (read from the current sitemap-pages.xml).
 // - No network write happens on failure: each file is only replaced after
 //   the API fetch and the XML build succeed. robots.txt is unchanged (it
 //   already references all three sitemaps).
 const fs = require('node:fs');
 const path = require('node:path');
+const {
+  getCategoryPageCount,
+  getCategoryPagePath
+} = require('./category-pagination');
 
 const root = path.resolve(__dirname, '..');
 const sitemapPath = path.join(root, 'sitemap.xml');
@@ -137,6 +142,19 @@ function buildSitemap(entries) {
   );
 }
 
+function categoryPaginationEntries(posts, newestByCategory) {
+  return CATEGORIES.flatMap((category) => {
+    const categoryPosts = posts.filter((post) => post.category === category.name);
+    const totalPages = getCategoryPageCount(categoryPosts.length);
+    const lastmod = newestByCategory[category.path] || dateOnly(new Date());
+    return Array.from({ length: totalPages - 1 }, (_, index) => {
+      const pageNumber = index + 2;
+      const loc = `${siteOrigin}${getCategoryPagePath(category.path, pageNumber)}`;
+      return urlEntry(loc, lastmod, 'weekly', '0.8');
+    });
+  });
+}
+
 async function main() {
   const posts = await loadPosts();
   if (posts.length === 0) throw new Error('No published posts loaded; refusing to write empty sitemaps.');
@@ -171,6 +189,8 @@ async function main() {
     else lastmod = existingLastmod[page.loc] || dateOnly(new Date());
     return urlEntry(`${siteOrigin}${page.loc}`, lastmod, page.changefreq, page.priority);
   });
+  const paginationEntries = categoryPaginationEntries(posts, newestByCategory);
+  pageEntries.push(...paginationEntries);
 
   const articleEntries = posts.map((post) => {
     const lastmod =
@@ -196,4 +216,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { main };
+module.exports = { main, categoryPaginationEntries };
