@@ -1,30 +1,59 @@
-// Regenerate sitemap.xml from the live public API.
+// Regenerate all three sitemaps from the live public API (full
+// regeneration, 23 Nov 2026, Phase 1).
 //
 // Usage: node scripts/generate-sitemap.js
 //   BLOGSPHERE_API_URL=https://blogsphere.info/api/public-data?lite=1
+//   BLOGSPHERE_CONTENT_JSON=/path/to/public-data.json  (local testing)
 //
-// Behaviour (deliberately conservative so the diff stays reviewable):
-// - Static pages and already-listed articles are kept byte-for-byte
-//   (same order, same <lastmod>), parsed out of the existing sitemap.xml.
-// - Published articles missing from the sitemap are APPENDED, newest
-//   first, as <loc>https://blogsphere.info/article?id=<slug></loc> with
-//   <lastmod> = the article's published date, monthly, priority 0.7 —
-//   the same format the sitemap already uses for articles.
-// - The same missing articles are appended to sitemap-articles.xml too:
-//   the split files are the ones Search Console actually reads, and
-//   they went stale twice (17 Nov) because only sitemap.xml was updated.
-// - No network write happens on failure: the file is only replaced
-//   after the API fetch and parse succeed.
-// - Sitemap structure, robots.txt and canonicals are unchanged.
+// Behaviour (replaces the old append-only /article?id= behaviour):
+// - sitemap.xml: the 11 static pages (homepage, 5 categories,
+//   Health-Tools, about, contact, privacy-policy, terms-and-conditions)
+//   plus every published article at its clean URL
+//   https://blogsphere.info/<slug>/ (lastmod = the article's updated /
+//   published date, monthly, priority 0.7).
+// - sitemap-articles.xml: the 134 articles only, same entries.
+// - sitemap-pages.xml: the 11 static pages only. Category lastmod is the
+//   newest post date in that category; the homepage lastmod is the newest
+//   post date overall; the other static pages keep their existing lastmod
+//   (read from the current sitemap-pages.xml).
+// - No network write happens on failure: each file is only replaced after
+//   the API fetch and the XML build succeed. robots.txt is unchanged (it
+//   already references all three sitemaps).
 const fs = require('node:fs');
 const path = require('node:path');
 
 const root = path.resolve(__dirname, '..');
 const sitemapPath = path.join(root, 'sitemap.xml');
 const articlesSitemapPath = path.join(root, 'sitemap-articles.xml');
+const pagesSitemapPath = path.join(root, 'sitemap-pages.xml');
 const apiUrl =
   process.env.BLOGSPHERE_API_URL || 'https://blogsphere.info/api/public-data?lite=1';
 const siteOrigin = 'https://blogsphere.info';
+
+const CATEGORIES = [
+  { name: 'Technology', path: '/Technology' },
+  { name: 'Business', path: '/Business' },
+  { name: 'Home Decor', path: '/Home-Decor' },
+  { name: 'Make Money Online', path: '/Make-Money-Online' },
+  { name: 'Health & Fitness', path: '/Health-Fitness' }
+];
+
+// Static pages in sitemap-pages.xml order, with the changefreq/priority the
+// file already uses. lastmod is filled in by main(): categories and the
+// homepage from the newest post dates, the rest from the existing file.
+const STATIC_PAGES = [
+  { loc: '/', changefreq: 'daily', priority: '1.0' },
+  { loc: '/Technology', changefreq: 'daily', priority: '0.9' },
+  { loc: '/Business', changefreq: 'daily', priority: '0.9' },
+  { loc: '/Home-Decor', changefreq: 'daily', priority: '0.9' },
+  { loc: '/Make-Money-Online', changefreq: 'daily', priority: '0.9' },
+  { loc: '/Health-Fitness', changefreq: 'daily', priority: '0.9' },
+  { loc: '/Health-Tools', changefreq: 'weekly', priority: '0.8' },
+  { loc: '/about', changefreq: 'yearly', priority: '0.5' },
+  { loc: '/contact', changefreq: 'yearly', priority: '0.5' },
+  { loc: '/privacy-policy', changefreq: 'yearly', priority: '0.5' },
+  { loc: '/terms-and-conditions', changefreq: 'yearly', priority: '0.5' }
+];
 
 function escapeXml(value) {
   return String(value)
@@ -41,16 +70,21 @@ function dateOnly(value) {
   return d.toISOString().slice(0, 10);
 }
 
-async function main() {
-  const existing = fs.readFileSync(sitemapPath, 'utf8');
-  const listed = new Set();
-  for (const m of existing.matchAll(/article\?id=([\w-]+)/g)) listed.add(m[1]);
-
+async function loadPosts() {
+  const contentJson = process.env.BLOGSPHERE_CONTENT_JSON || '';
+  if (contentJson) {
+    const raw = fs.readFileSync(path.resolve(contentJson), 'utf8');
+    const data = JSON.parse(raw);
+    return normalizePosts(data);
+  }
   const res = await fetch(apiUrl);
   if (!res.ok) throw new Error(`API request failed: ${res.status} ${apiUrl}`);
-  const data = await res.json();
+  return normalizePosts(await res.json());
+}
+
+function normalizePosts(data) {
   const posts = Array.isArray(data) ? data : data.posts || data.data || [];
-  const published = posts
+  return posts
     .filter((p) => p && p.slug && p.status === 'published' && !p.deleted_at)
     .sort((a, b) => {
       const da = a.published_at || a.created_at || '';
@@ -58,72 +92,78 @@ async function main() {
       if (da !== db) return db.localeCompare(da);
       return String(b.id || '').localeCompare(String(a.id || ''));
     });
+}
 
-  const missing = published.filter((p) => !listed.has(p.slug));
-  if (missing.length === 0) {
-    console.log(`Sitemap already complete: ${published.length} published articles listed.`);
-  } else {
-    const additions = missing
-      .map((p) => {
-        const lastmod = dateOnly(p.published_at || p.created_at || p.date) || dateOnly(new Date());
-        return [
-          '  <url>',
-          `    <loc>${siteOrigin}/article?id=${escapeXml(p.slug)}</loc>`,
-          `    <lastmod>${lastmod}</lastmod>`,
-          '    <changefreq>monthly</changefreq>',
-          '    <priority>0.7</priority>',
-          '  </url>',
-        ].join('\n');
-      })
-      .join('\n');
+function urlEntry(loc, lastmod, changefreq, priority) {
+  return [
+    '  <url>',
+    `    <loc>${escapeXml(loc)}</loc>`,
+    `    <lastmod>${lastmod}</lastmod>`,
+    `    <changefreq>${changefreq}</changefreq>`,
+    `    <priority>${priority}</priority>`,
+    '  </url>'
+  ].join('\n');
+}
 
-    const updated = existing.replace(/<\/urlset>\s*$/, (match) => `${additions}\n${match}`);
-    if (updated === existing) throw new Error('Could not locate </urlset> in sitemap.xml');
-    fs.writeFileSync(sitemapPath, updated);
-    console.log(
-      `Added ${missing.length} article(s) to sitemap.xml ` +
-        `(${published.length} published total): ${missing.map((p) => p.slug).join(', ')}`
-    );
+function buildSitemap(entries) {
+  return (
+    '<?xml version="1.0" encoding="UTF-8"?>\n' +
+    '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n' +
+    entries.join('\n') +
+    '\n</urlset>\n'
+  );
+}
+
+async function main() {
+  const posts = await loadPosts();
+  if (posts.length === 0) throw new Error('No published posts loaded; refusing to write empty sitemaps.');
+
+  // Newest post date per category (for the category lastmods) and overall
+  // (for the homepage lastmod).
+  const newestByCategory = {};
+  for (const category of CATEGORIES) {
+    const inCategory = posts.filter((p) => p.category === category.name);
+    newestByCategory[category.path] =
+      dateOnly(inCategory[0] && (inCategory[0].published_at || inCategory[0].created_at || inCategory[0].date)) || null;
+  }
+  const newestOverall = dateOnly(posts[0].published_at || posts[0].created_at || posts[0].date);
+
+  // Keep the existing lastmod for the static pages whose content did not
+  // change (Health-Tools, about, contact, privacy-policy,
+  // terms-and-conditions).
+  const existingPages = fs.existsSync(pagesSitemapPath)
+    ? fs.readFileSync(pagesSitemapPath, 'utf8')
+    : '';
+  const existingLastmod = {};
+  for (const m of existingPages.matchAll(
+    /<loc>(https:\/\/blogsphere\.info[^<]*)<\/loc>\s*<lastmod>([^<]*)<\/lastmod>/g
+  )) {
+    existingLastmod[m[1].replace(siteOrigin, '') || '/'] = m[2];
   }
 
-  // Keep the split articles sitemap in step with sitemap.xml (same entries,
-  // same order). Checked independently of sitemap.xml so a stale split file
-  // is fixed even when the main sitemap is already complete.
-  // sitemap-pages.xml needs no update here: it lists static pages only,
-  // and no page was added or removed.
-  const articlesExisting = fs.readFileSync(articlesSitemapPath, 'utf8');
-  const articlesListed = new Set();
-  for (const m of articlesExisting.matchAll(/article\?id=([\w-]+)/g)) articlesListed.add(m[1]);
-  const articlesMissing = published.filter((p) => !articlesListed.has(p.slug));
-  if (articlesMissing.length > 0) {
-    const articlesAdditions = articlesMissing
-      .map((p) => {
-        const lastmod = dateOnly(p.published_at || p.created_at || p.date) || dateOnly(new Date());
-        return [
-          '  <url>',
-          `    <loc>${siteOrigin}/article?id=${escapeXml(p.slug)}</loc>`,
-          `    <lastmod>${lastmod}</lastmod>`,
-          '    <changefreq>monthly</changefreq>',
-          '    <priority>0.7</priority>',
-          '  </url>',
-        ].join('\n');
-      })
-      .join('\n');
-    const articlesUpdated = articlesExisting.replace(
-      /<\/urlset>\s*$/,
-      (match) => `${articlesAdditions}\n${match}`
-    );
-    if (articlesUpdated === articlesExisting)
-      throw new Error('Could not locate </urlset> in sitemap-articles.xml');
-    fs.writeFileSync(articlesSitemapPath, articlesUpdated);
-    console.log(
-      `Added ${articlesMissing.length} article(s) to sitemap-articles.xml: ${articlesMissing
-        .map((p) => p.slug)
-        .join(', ')}`
-    );
-  } else {
-    console.log('sitemap-articles.xml already complete.');
-  }
+  const pageEntries = STATIC_PAGES.map((page) => {
+    let lastmod;
+    if (page.loc === '/') lastmod = newestOverall;
+    else if (newestByCategory[page.loc]) lastmod = newestByCategory[page.loc];
+    else lastmod = existingLastmod[page.loc] || dateOnly(new Date());
+    return urlEntry(`${siteOrigin}${page.loc}`, lastmod, page.changefreq, page.priority);
+  });
+
+  const articleEntries = posts.map((post) => {
+    const lastmod =
+      dateOnly(post.updated_at || post.published_at || post.created_at || post.date) ||
+      dateOnly(new Date());
+    return urlEntry(`${siteOrigin}/${post.slug}/`, lastmod, 'monthly', '0.7');
+  });
+
+  fs.writeFileSync(sitemapPath, buildSitemap([...pageEntries, ...articleEntries]));
+  console.log(`sitemap.xml: ${pageEntries.length} pages + ${articleEntries.length} articles (${pageEntries.length + articleEntries.length} URLs).`);
+
+  fs.writeFileSync(articlesSitemapPath, buildSitemap(articleEntries));
+  console.log(`sitemap-articles.xml: ${articleEntries.length} articles.`);
+
+  fs.writeFileSync(pagesSitemapPath, buildSitemap(pageEntries));
+  console.log(`sitemap-pages.xml: ${pageEntries.length} pages.`);
 }
 
 if (require.main === module) {

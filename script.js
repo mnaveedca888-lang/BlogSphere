@@ -14,17 +14,22 @@ let ARTICLE_POST = null;
 let lastPublicLoadAt = 0;
 
 const PAGE_CATEGORY = {
-  Technology: 'Technology.html',
-  Business: 'Business.html',
-  'Home Decor': 'Home-Decor.html',
-  'Make Money Online': 'Make-Money-Online.html',
-  'Health & Fitness': 'Health-Fitness.html'
+  Technology: '/Technology',
+  Business: '/Business',
+  'Home Decor': '/Home-Decor',
+  'Make Money Online': '/Make-Money-Online',
+  'Health & Fitness': '/Health-Fitness'
 };
 
 const normalize = (value = '') => value.toLowerCase().trim();
 const normalizeForLookup = (value = '') => value.toLowerCase().replace(/[^a-z0-9\s]/g, '').replace(/\s+/g, ' ').trim();
 
 const getPageName = () => {
+  // Clean article URL /<slug>/ — the static article page is the only page
+  // carrying #article-content (about/contact/health-tools share the
+  // article-page body class, so the body class alone is not a marker).
+  const segments = window.location.pathname.split('/').filter(Boolean);
+  if (segments.length === 1 && document.getElementById('article-content')) return 'article.html';
   const pageName = window.location.pathname.split('/').pop() || 'index.html';
   const cleanRoutes = {
     index: 'index.html',
@@ -50,7 +55,13 @@ const getUrlParams = () => new URLSearchParams(window.location.search);
 const getArticleRequestValue = () => {
   const params = getUrlParams();
   const rawValue = params.get('id') ?? params.get('slug') ?? '';
-  return decodeURIComponent(String(rawValue || '')).trim();
+  if (String(rawValue || '').trim()) return decodeURIComponent(String(rawValue)).trim();
+  // Clean article URL: /<slug>/ (no query string).
+  const segments = window.location.pathname.split('/').filter(Boolean);
+  if (segments.length === 1 && document.getElementById('article-content')) {
+    return decodeURIComponent(segments[0]);
+  }
+  return '';
 };
 
 const findArticlePost = (articleId) => {
@@ -73,7 +84,7 @@ const findArticlePost = (articleId) => {
   }) || null;
 };
 
-const getArticleHref = (post) => `article?id=${encodeURIComponent(String(post.slug || post.id))}`;
+const getArticleHref = (post) => `/${String(post.slug || post.id)}/`;
 
 // Perf (17 Nov 2026): card slots display thumbs at ~180px tall / ~350px
 // wide, so request Pexels thumbs at w=800 instead of the desktop
@@ -94,7 +105,7 @@ const buildStoryCard = (post) => {
       <div class="story-image lazy-bg" data-bg="${cardThumbUrl(post.thumb)}"></div>
       <div class="story-body">
         <span class="pill ${categoryClass}">${post.category}</span>
-        <h3>${post.title}</h3>
+        <h3><a href="${getArticleHref(post)}">${post.title}</a></h3>
         <div class="meta-row compact">
           <span class="rel-time" data-ts="${post.published_at || post.created_at || post.date || ''}">${formatPostDate(post)}</span>
           <span class="meta-divider">•</span>
@@ -112,7 +123,7 @@ const buildMiniFeature = (post) => {
       <div class="mini-image lazy-bg" data-bg="${cardThumbUrl(post.thumb)}"></div>
       <div class="mini-copy">
         <span class="pill ${categoryClass}">${post.category}</span>
-        <h3>${post.title}</h3>
+        <h3><a href="${getArticleHref(post)}">${post.title}</a></h3>
         <div class="meta-row compact">
           <span class="rel-time" data-ts="${post.published_at || post.created_at || post.date || ''}">${formatPostDate(post)}</span>
           <span class="meta-divider">•</span>
@@ -341,9 +352,18 @@ const setFeaturedPostContent = (element, post) => {
   element.classList.remove('skeleton');
 
   element.setAttribute('data-post-id', post.id);
+  element.setAttribute('data-post-url', getArticleHref(post));
   element.setAttribute('aria-label', post.title);
   if (label) label.textContent = post.category;
-  if (title) title.textContent = post.title;
+  if (title) {
+    const titleLink = title.querySelector('a');
+    if (titleLink) {
+      titleLink.textContent = post.title;
+      titleLink.href = getArticleHref(post);
+    } else {
+      title.textContent = post.title;
+    }
+  }
   if (summary) summary.textContent = post.summary || post.excerpt || '';
   if (element.classList.contains('feature-card')) {
     const featureImage = element.querySelector('.feature-card-image');
@@ -489,7 +509,7 @@ const renderHomePage = () => {
     const category = link.textContent.replace(/\d+$/, '').trim();
     const page = PAGE_CATEGORY[category];
     if (page) {
-      link.setAttribute('href', `${page}?category=${encodeURIComponent(category)}`);
+      link.setAttribute('href', page);
     }
   });
 
@@ -534,7 +554,7 @@ const renderCategoryPage = (category) => {
   document.querySelectorAll('.category-list a').forEach((link) => {
     const categoryText = link.textContent.replace(/\d+$/, '').trim();
     const page = PAGE_CATEGORY[categoryText];
-    if (page) link.setAttribute('href', `${page}?category=${encodeURIComponent(categoryText)}`);
+    if (page) link.setAttribute('href', page);
   });
 
   updateCategoryCounts();
@@ -542,14 +562,55 @@ const renderCategoryPage = (category) => {
   observeLazyBackgrounds();
 };
 
+// SEO (23 Nov 2026): the same title/description rules the build-time
+// static generator uses, so client-side hydration never undoes them.
+// Titles are capped at 60 chars at a word boundary, with no site suffix;
+// descriptions use the stored meta_description only when it is 120-155
+// chars, otherwise they are derived from the excerpt/summary/content.
+const truncateAtWord = (text, max) => {
+  const clean = String(text || '').replace(/\s+/g, ' ').trim();
+  if (clean.length <= max) return clean;
+  const cut = clean.slice(0, max);
+  const lastSpace = cut.lastIndexOf(' ');
+  return (lastSpace > 0 ? cut.slice(0, lastSpace) : cut).trim();
+};
+
+const plainTextFromHtml = (html) => {
+  const div = document.createElement('div');
+  div.innerHTML = html || '';
+  return (div.textContent || '').replace(/\s+/g, ' ').trim();
+};
+
+const articleDescription = (post) => {
+  const stored = String(post.meta_description || '').trim();
+  if (stored.length >= 120 && stored.length <= 155) return stored;
+  const derived = String(post.excerpt || post.summary || '').trim()
+    || plainTextFromHtml(post.content || '')
+    || stored;
+  return truncateAtWord(derived, 155);
+};
+
+// Rewrite old internal link forms to the clean URL form, mirroring the
+// build-time generator: /article?id=X and /article.html?id=X become /X/,
+// *.html category/static links become their clean paths, index.html -> /.
+// External links and the old Netlify host are left alone except that the
+// Netlify article links are re-pointed at the canonical domain.
+const rewriteInternalLinks = (html) => String(html || '')
+  .replace(/href="https?:\/\/blogggsphere\.netlify\.app\/article(?:\.html)?\?id=([^"&\s]+)/gi, 'href="https://blogsphere.info/$1/"')
+  .replace(/href="https?:\/\/blogsphere\.info\/article(?:\.html)?\?id=([^"&\s]+)/gi, 'href="https://blogsphere.info/$1/"')
+  .replace(/href="\/?article(?:\.html)?\?id=([^"&\s]+)/gi, 'href="/$1/"')
+  .replace(/href="https?:\/\/blogsphere\.info\/(Technology|Business|Home-Decor|Make-Money-Online|Health-Fitness|about|contact|privacy-policy|terms-and-conditions)\.html(\?[^"]*)?"/gi, 'href="https://blogsphere.info/$1"')
+  .replace(/href="\/(Technology|Business|Home-Decor|Make-Money-Online|Health-Fitness|about|contact|privacy-policy|terms-and-conditions)\.html(\?[^"]*)?"/gi, 'href="/$1"')
+  .replace(/href="\/?index\.html(\?[^"]*)?"/gi, (match, query) => `href="/${query || ''}"`);
+
 const buildArticleContent = (post) => {
   if (!post) return '<p>This post is unavailable.</p>';
   if (post.content && /<(?:h[1-6]|p|ul|ol|blockquote|img)\b/i.test(post.content)) {
     // The page template already shows the title as its H1; drop the body's
     // duplicate opening H1 so the page has a single top-level heading.
-    return decorateArticleImages(post.content.replace(/^\s*<h1[^>]*>.*?<\/h1>/is, ''));
+    return rewriteInternalLinks(decorateArticleImages(post.content.replace(/^\s*<h1[^>]*>.*?<\/h1>/is, '')));
   }
-  if (post.content && post.content.trim()) return decorateArticleImages(post.content);
+  if (post.content && post.content.trim()) return rewriteInternalLinks(decorateArticleImages(post.content));
   return '<p>This post is unavailable.</p>';
 };
 
@@ -638,27 +699,27 @@ const renderArticlePage = () => {
       prevPostLink.setAttribute('href', getArticleHref(previous));
       prevPostLink.textContent = `← ${previous.title}`;
     } else {
-      prevPostLink.setAttribute('href', PAGE_CATEGORY[post.category] || 'index.html');
+      prevPostLink.setAttribute('href', PAGE_CATEGORY[post.category] || '/');
       prevPostLink.textContent = `← All ${post.category} Articles`;
     }
   }
   if (breadcrumbs) {
     breadcrumbs.innerHTML = `
-      <a href="index.html">Home</a>
+      <a href="/">Home</a>
       <span>›</span>
-      <a href="${PAGE_CATEGORY[post.category] || 'index.html'}">${post.category}</a>
+      <a href="${PAGE_CATEGORY[post.category] || '/'}">${post.category}</a>
       <span>›</span>
       <span>${post.title}</span>
     `;
   }
   if (tagNode) {
-    tagNode.innerHTML = '<span>Tags:</span> ' + post.tags.map((tag) => `<a href="index.html?q=${encodeURIComponent(tag)}">${tag}</a>`).join(' ');
+    tagNode.innerHTML = '<span>Tags:</span> ' + post.tags.map((tag) => `<a href="/?q=${encodeURIComponent(tag)}">${tag}</a>`).join(' ');
   }
 
   // Sidebar tag card shows this article's own tags, not a fixed Technology list.
   const sidebarTagList = document.querySelector('.article-sidebar-card.tags-card .tag-list');
   if (sidebarTagList && post.tags && post.tags.length) {
-    sidebarTagList.innerHTML = post.tags.map((tag) => `<a class="tag" href="index.html?q=${encodeURIComponent(tag)}">${tag}</a>`).join('');
+    sidebarTagList.innerHTML = post.tags.map((tag) => `<a class="tag" href="/?q=${encodeURIComponent(tag)}">${tag}</a>`).join('');
   }
 
   if (popularList) {
@@ -687,7 +748,7 @@ const renderArticlePage = () => {
   document.querySelectorAll('.article-sidebar .category-list a').forEach((link) => {
     const label = link.textContent.replace(/\d+$/, '').trim();
     const page = PAGE_CATEGORY[label];
-    if (page) link.setAttribute('href', `${page}?category=${encodeURIComponent(label)}`);
+    if (page) link.setAttribute('href', page);
   });
 
   updateCategoryCounts();
@@ -697,11 +758,11 @@ const renderArticlePage = () => {
 };
 
 const updateArticleMeta = (post) => {
-  const title = post.meta_title || post.title;
-  const description = post.meta_description || post.excerpt || post.summary || '';
-  const url = `${window.location.origin}/article?id=${encodeURIComponent(String(post.slug || post.id))}`;
+  const title = truncateAtWord(post.meta_title || post.title, 60);
+  const description = articleDescription(post);
+  const url = `${window.location.origin}/${encodeURIComponent(String(post.slug || post.id))}/`;
   const image = post.image || post.thumb || '';
-  document.title = `${title} | BlogSphere`;
+  document.title = title;
   const setMeta = (selector, value) => {
     const node = document.querySelector(selector);
     if (node && value) node.setAttribute('content', value);
@@ -724,7 +785,7 @@ const updateArticleMeta = (post) => {
 };
 
 const bindArticleShare = (post) => {
-  const url = `${window.location.origin}/article?id=${encodeURIComponent(String(post.slug || post.id))}`;
+  const url = `${window.location.origin}/${encodeURIComponent(String(post.slug || post.id))}/`;
   const text = encodeURIComponent(post.title);
   const encodedUrl = encodeURIComponent(url);
   const links = {
@@ -958,7 +1019,7 @@ const bindSearchInputs = () => {
       } else if (currentPage === 'article.html') {
         const url = new URL(window.location.href);
         if (query) url.searchParams.set('q', query); else url.searchParams.delete('q');
-        url.pathname = 'index.html';
+        url.pathname = '/';
         window.location.href = url.toString();
       }
     });
@@ -971,7 +1032,7 @@ const bindCategoryLinks = () => {
     card.addEventListener('click', () => {
       const text = card.querySelector('h3')?.textContent.trim();
       if (!text || !PAGE_CATEGORY[text]) return;
-      window.location.href = `${PAGE_CATEGORY[text]}?category=${encodeURIComponent(text)}`;
+      window.location.href = PAGE_CATEGORY[text];
     });
   });
 
@@ -979,14 +1040,14 @@ const bindCategoryLinks = () => {
     const label = link.textContent.replace(/\d+$/, '').trim();
     const page = PAGE_CATEGORY[label];
     if (page) {
-      link.setAttribute('href', `${page}?category=${encodeURIComponent(label)}`);
+      link.setAttribute('href', page);
     }
   });
 
   document.querySelectorAll('.view-all').forEach((link) => {
     const relevantCategory = link.closest('.section-block')?.querySelector('h2')?.textContent.trim();
     if (relevantCategory && PAGE_CATEGORY[relevantCategory]) {
-      link.setAttribute('href', `${PAGE_CATEGORY[relevantCategory]}?category=${encodeURIComponent(relevantCategory)}`);
+      link.setAttribute('href', PAGE_CATEGORY[relevantCategory]);
     }
   });
 };
@@ -998,7 +1059,7 @@ const bindPopularLinks = () => {
     const match = POSTS.find((post) => post.title === strongText);
     if (match) link.setAttribute('href', getArticleHref(match));
     else if (href === '#' || href.includes('article.html') && !href.includes('id=')) {
-      link.setAttribute('href', 'index.html');
+      link.setAttribute('href', '/');
     }
   });
 };
@@ -1068,10 +1129,10 @@ const bindFooterLinks = () => {
     if (link.getAttribute('href') === '#') {
       const relevantCategory = link.closest('.section-block')?.querySelector('h2')?.textContent.trim();
       if (relevantCategory && PAGE_CATEGORY[relevantCategory]) {
-        link.setAttribute('href', `${PAGE_CATEGORY[relevantCategory]}?category=${encodeURIComponent(relevantCategory)}`);
+        link.setAttribute('href', PAGE_CATEGORY[relevantCategory]);
         return;
       }
-      link.setAttribute('href', 'index.html');
+      link.setAttribute('href', '/');
     }
   });
 };
@@ -1177,7 +1238,7 @@ const setEarlyArticleCanonical = () => {
   if (getPageName() !== 'article.html') return;
   const slug = getArticleRequestValue();
   if (!slug) return;
-  const url = `${window.location.origin}/article?id=${encodeURIComponent(slug)}`;
+  const url = `${window.location.origin}/${encodeURIComponent(slug)}/`;
   let canonical = document.querySelector('link[rel="canonical"]');
   if (!canonical) {
     canonical = document.createElement('link');

@@ -5,11 +5,37 @@ const test = require('node:test');
 const { buildPages, publicFiles } = require('../scripts/build-pages');
 const adapter = require('../functions/api/adapter.cjs');
 
-test('build publishes only the allowlisted site and Pages metadata', () => {
-  buildPages();
+// Static generation (23 Nov 2026) needs post data; the test fixture keeps
+// the suite offline and deterministic. The build throws on a failed fetch,
+// so tests must not depend on the live API.
+process.env.BLOGSPHERE_CONTENT_JSON = path.resolve(__dirname, 'fixtures', 'public-data.json');
+
+test('build publishes only the allowlisted site and Pages metadata', async () => {
+  await buildPages();
   const output = path.resolve(__dirname, '..', 'dist');
   const files = fs.readdirSync(output).sort();
-  const expected = [...publicFiles, '_headers', '_redirects', '_routes.json'].sort();
+  const expected = [
+    ...publicFiles,
+    '_headers',
+    '_redirects',
+    '_routes.json',
+    'slugs.json',
+    'index.html',
+    // Static article pages (fixture slugs) and category/static directories.
+    'test-tech-post',
+    'test-business-post',
+    'test-guide-france',
+    'Technology',
+    'Business',
+    'Home-Decor',
+    'Make-Money-Online',
+    'Health-Fitness',
+    'about',
+    'contact',
+    'privacy-policy',
+    'terms-and-conditions',
+    'Health-Tools'
+  ].sort();
   assert.deepEqual(files, expected);
 
   for (const blocked of ['server.js', 'netlify', 'functions', 'package.json', 'package-lock.json', '.env.example', '.dev.vars.example', 'phase1-supabase']) {
@@ -21,7 +47,53 @@ test('build publishes only the allowlisted site and Pages metadata', () => {
   );
 });
 
-test('preview builds prevent indexing while the master build keeps production SEO files', () => {
+test('static generation renders article pages with full meta and content', async () => {
+  await buildPages();
+  const output = path.resolve(__dirname, '..', 'dist');
+
+  const business = fs.readFileSync(path.join(output, 'test-business-post', 'index.html'), 'utf8');
+  // Title truncated to 60 chars at a word boundary, with no site suffix.
+  const title = business.match(/<title>([^<]*)<\/title>/)[1];
+  assert.ok(title.length <= 60, `title too long: ${title}`);
+  // Self-referencing canonical and og:url, never the homepage.
+  assert.ok(business.includes('<link rel="canonical" href="https://blogsphere.info/test-business-post/" />'));
+  assert.ok(business.includes('<meta property="og:url" content="https://blogsphere.info/test-business-post/" />'));
+  // Full body text is in the raw HTML, with Article JSON-LD.
+  assert.ok(business.includes('The business post body starts here'));
+  assert.ok(business.includes('"@type": "Article"'));
+  // The over-long stored meta description is derived from the body instead.
+  assert.equal(business.includes('deliberately far too long'), false);
+  // The body's leading H1 is dropped; the page has exactly one H1 (the title).
+  assert.equal((business.match(/<h1/g) || []).length, 1);
+
+  // Internal /article?id= links are rewritten to the clean form.
+  const tech = fs.readFileSync(path.join(output, 'test-tech-post', 'index.html'), 'utf8');
+  assert.ok(tech.includes('href="/test-business-post/"'));
+  assert.equal(tech.includes('/article?id='), false);
+
+  // French content gets lang="fr".
+  const french = fs.readFileSync(path.join(output, 'test-guide-france', 'index.html'), 'utf8');
+  assert.ok(french.includes('<html lang="fr">'));
+
+  // slugs.json lists every published slug, sorted.
+  const slugs = JSON.parse(fs.readFileSync(path.join(output, 'slugs.json'), 'utf8'));
+  assert.deepEqual(slugs, ['test-business-post', 'test-guide-france', 'test-tech-post']);
+
+  // Homepage carries rendered cards, real links and the real post count.
+  const home = fs.readFileSync(path.join(output, 'index.html'), 'utf8');
+  assert.ok(home.includes('<strong id="hero-stat-articles">3</strong>'));
+  assert.ok(home.includes('href="/test-tech-post/"'));
+  assert.ok(home.includes('href="/test-business-post/"'));
+  assert.ok(home.includes('href="/test-guide-france/"'));
+
+  // Category pages carry their posts.
+  const techCategory = fs.readFileSync(path.join(output, 'Technology', 'index.html'), 'utf8');
+  assert.ok(techCategory.includes('href="/test-tech-post/"'));
+  const businessCategory = fs.readFileSync(path.join(output, 'Business', 'index.html'), 'utf8');
+  assert.ok(businessCategory.includes('href="/test-business-post/"'));
+});
+
+test('preview builds prevent indexing while the master build keeps production SEO files', async () => {
   const output = path.resolve(__dirname, '..', 'dist');
   const sourceRobots = fs.readFileSync(path.resolve(__dirname, '..', 'robots.txt'), 'utf8').replace(/\r\n/g, '\n');
   const sourceSitemap = fs.readFileSync(path.resolve(__dirname, '..', 'sitemap.xml'), 'utf8');
@@ -31,12 +103,12 @@ test('preview builds prevent indexing while the master build keeps production SE
   try {
     process.env.CF_PAGES = '1';
     process.env.CF_PAGES_BRANCH = 'master';
-    buildPages();
+    await buildPages();
     assert.equal(fs.readFileSync(path.join(output, 'robots.txt'), 'utf8').replace(/\r\n/g, '\n'), sourceRobots);
     assert.equal(fs.readFileSync(path.join(output, '_headers'), 'utf8').includes('X-Robots-Tag: noindex'), false);
 
     process.env.CF_PAGES_BRANCH = 'cloudflare-migration';
-    buildPages();
+    await buildPages();
     assert.equal(fs.readFileSync(path.join(output, 'robots.txt'), 'utf8'), 'User-agent: *\nDisallow: /\n');
     assert.equal(fs.readFileSync(path.join(output, 'sitemap.xml'), 'utf8'), sourceSitemap);
     assert.equal(fs.readFileSync(path.join(output, '_headers'), 'utf8').includes('X-Robots-Tag: noindex, nofollow'), true);
@@ -45,7 +117,7 @@ test('preview builds prevent indexing while the master build keeps production SE
     else process.env.CF_PAGES = originalPages;
     if (originalBranch === undefined) delete process.env.CF_PAGES_BRANCH;
     else process.env.CF_PAGES_BRANCH = originalBranch;
-    buildPages();
+    await buildPages();
   }
 });
 

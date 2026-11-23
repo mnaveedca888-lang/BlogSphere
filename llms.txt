@@ -11,13 +11,13 @@
 - Health & Fitness: https://blogsphere.info/Health-Fitness
 - Make Money Online: https://blogsphere.info/Make-Money-Online
 - Health Tools (BMI, BMR, TDEE, macros, hydration, ideal weight): https://blogsphere.info/Health-Tools
-- About: https://blogsphere.info/about.html
-- Contact: https://blogsphere.info/contact.html
+- About: https://blogsphere.info/about
+- Contact: https://blogsphere.info/contact
 
 ## Content
 
 - All articles: https://blogsphere.info/sitemap.xml
-- Article pages use the form https://blogsphere.info/article?id=<slug>
+- Article pages use the form https://blogsphere.info/<slug>/
 - The public article feed is available at https://blogsphere.info/api/public-data
 
 ## Notes
