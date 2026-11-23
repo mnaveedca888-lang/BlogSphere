@@ -35,7 +35,9 @@ const CLEAN_REDIRECTS = {
   '/about.html': '/about',
   '/contact.html': '/contact',
   '/privacy-policy.html': '/privacy-policy',
-  '/terms-and-conditions.html': '/terms-and-conditions'
+  '/terms-and-conditions.html': '/terms-and-conditions',
+  '/disclaimer.html': '/disclaimer',
+  '/editorial-policy.html': '/editorial-policy'
 };
 
 let slugSetPromise = null;
@@ -93,6 +95,17 @@ export async function onRequest(context) {
   if (url.hostname === 'www.blogsphere.info') {
     url.hostname = 'blogsphere.info';
     return Response.redirect(url.toString(), 301);
+  }
+
+  // /ads.txt (23 Nov 2026, Phase 2 item 10): no AdSense publisher ID yet,
+  // so return a plain-text 404 instead of the HTML 404 page. When a
+  // publisher ID exists, replace this with the ads.txt content
+  // (google.com, pub-XXXXXXXXXXXXXXXX, DIRECT, f08c47fec0942fa0).
+  if (url.pathname === '/ads.txt') {
+    return new Response('Not found', {
+      status: 404,
+      headers: { 'Content-Type': 'text/plain; charset=utf-8' }
+    });
   }
 
   // Old article URLs: /article?id=<slug> and /article.html?id=<slug>

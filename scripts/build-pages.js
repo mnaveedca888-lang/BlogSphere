@@ -7,7 +7,8 @@
 // - dist/<slug>/index.html        one static page per published post
 // - dist/index.html               homepage with rendered article cards
 // - dist/<Category>/index.html    one page per category with its posts
-// - dist/<page>/index.html        about, contact, privacy, terms, Health-Tools
+// - dist/<page>/index.html        about, contact, privacy, terms,
+//   disclaimer, editorial-policy, Health-Tools
 // - dist/slugs.json               JSON array of all published slugs
 //   (used by functions/[[path]].js to validate /article?id= redirects)
 //
@@ -86,6 +87,8 @@ const STATIC_PAGES = [
   { file: 'contact.html', dir: 'contact' },
   { file: 'privacy-policy.html', dir: 'privacy-policy' },
   { file: 'terms-and-conditions.html', dir: 'terms-and-conditions' },
+  { file: 'disclaimer.html', dir: 'disclaimer' },
+  { file: 'editorial-policy.html', dir: 'editorial-policy' },
   { file: 'Health-Tools.html', dir: 'Health-Tools' }
 ];
 
@@ -118,7 +121,9 @@ const redirects = [
   '/about.html /about 301',
   '/contact.html /contact 301',
   '/privacy-policy.html /privacy-policy 301',
-  '/terms-and-conditions.html /terms-and-conditions 301'
+  '/terms-and-conditions.html /terms-and-conditions 301',
+  '/disclaimer.html /disclaimer 301',
+  '/editorial-policy.html /editorial-policy 301'
 ].join('\n') + '\n';
 
 const baseHeaders = [
@@ -364,11 +369,11 @@ function rewriteInternalLinks(html) {
     )
     .replace(/href="\/?article(?:\.html)?\?id=([^"&\s]+)/gi, 'href="/$1/"')
     .replace(
-      /href="https?:\/\/blogsphere\.info\/(Technology|Business|Home-Decor|Make-Money-Online|Health-Fitness|about|contact|privacy-policy|terms-and-conditions)\.html(\?[^"]*)?"/gi,
+      /href="https?:\/\/blogsphere\.info\/(Technology|Business|Home-Decor|Make-Money-Online|Health-Fitness|about|contact|privacy-policy|terms-and-conditions|disclaimer|editorial-policy)\.html(\?[^"]*)?"/gi,
       'href="https://blogsphere.info/$1"'
     )
     .replace(
-      /href="\/(Technology|Business|Home-Decor|Make-Money-Online|Health-Fitness|about|contact|privacy-policy|terms-and-conditions)\.html(\?[^"]*)?"/gi,
+      /href="\/(Technology|Business|Home-Decor|Make-Money-Online|Health-Fitness|about|contact|privacy-policy|terms-and-conditions|disclaimer|editorial-policy)\.html(\?[^"]*)?"/gi,
       'href="/$1"'
     )
     .replace(/href="\/?index\.html(\?[^"]*)?"/gi, (match, query) => `href="/${query || ''}"`);

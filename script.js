@@ -599,8 +599,8 @@ const rewriteInternalLinks = (html) => String(html || '')
   .replace(/href="https?:\/\/blogggsphere\.netlify\.app\/article(?:\.html)?\?id=([^"&\s]+)/gi, 'href="https://blogsphere.info/$1/"')
   .replace(/href="https?:\/\/blogsphere\.info\/article(?:\.html)?\?id=([^"&\s]+)/gi, 'href="https://blogsphere.info/$1/"')
   .replace(/href="\/?article(?:\.html)?\?id=([^"&\s]+)/gi, 'href="/$1/"')
-  .replace(/href="https?:\/\/blogsphere\.info\/(Technology|Business|Home-Decor|Make-Money-Online|Health-Fitness|about|contact|privacy-policy|terms-and-conditions)\.html(\?[^"]*)?"/gi, 'href="https://blogsphere.info/$1"')
-  .replace(/href="\/(Technology|Business|Home-Decor|Make-Money-Online|Health-Fitness|about|contact|privacy-policy|terms-and-conditions)\.html(\?[^"]*)?"/gi, 'href="/$1"')
+  .replace(/href="https?:\/\/blogsphere\.info\/(Technology|Business|Home-Decor|Make-Money-Online|Health-Fitness|about|contact|privacy-policy|terms-and-conditions|disclaimer|editorial-policy)\.html(\?[^"]*)?"/gi, 'href="https://blogsphere.info/$1"')
+  .replace(/href="\/(Technology|Business|Home-Decor|Make-Money-Online|Health-Fitness|about|contact|privacy-policy|terms-and-conditions|disclaimer|editorial-policy)\.html(\?[^"]*)?"/gi, 'href="/$1"')
   .replace(/href="\/?index\.html(\?[^"]*)?"/gi, (match, query) => `href="/${query || ''}"`);
 
 const buildArticleContent = (post) => {
@@ -1271,3 +1271,167 @@ document.addEventListener('visibilitychange', () => {
 });
 
 window.addEventListener('beforeunload', clearRelativeTimeRefreshTimer);
+
+// ---------------------------------------------------------------------------
+// Cookie consent — Consent Mode v2 (23 Nov 2026, Phase 2 item 9).
+//
+// The <head> snippet sets analytics_storage and ad_storage (plus
+// ad_user_data and ad_personalization) to 'denied' by default. This manager
+// only loads Google Tag Manager (GTM-PRLHQP2K, which carries Google
+// Analytics 4, G-YNTT3H5B9Y) and Ahrefs Analytics after the visitor grants
+// consent, and it stores the choice in localStorage under
+// 'blogsphere-consent-v1'. The banner is shown only when no choice is
+// stored; the "Cookie Settings" link in the footer re-opens it.
+//
+// To replace this custom banner with a Google-certified CMP (required for
+// AdSense in the UK/EEA), keep the default-deny <head> snippet and have the
+// CMP call window.BlogSphereConsent.update({ analytics, advertising })
+// instead of this banner. The CMP script can then remove the banner markup.
+// ---------------------------------------------------------------------------
+(function initCookieConsent() {
+  const STORAGE_KEY = 'blogsphere-consent-v1';
+  const GTM_ID = 'GTM-PRLHQP2K';
+  const AHREFS_KEY = 'z4g0h2To6z0bXQHI2IPnjg';
+  const banner = document.getElementById('cookie-banner');
+  if (!banner) return;
+  const preferences = document.getElementById('cookie-preferences');
+  const manageButtons = document.querySelectorAll('[data-consent-action="manage"]');
+  const loaded = { gtm: false, ahrefs: false };
+
+  function loadScript(src, attrs) {
+    const script = document.createElement('script');
+    script.src = src;
+    script.async = true;
+    if (attrs) {
+      for (const [key, value] of Object.entries(attrs)) script.setAttribute(key, value);
+    }
+    document.head.appendChild(script);
+  }
+
+  function loadTracking(consent) {
+    // Consent updates go first so GTM initialises with the granted state.
+    if (window.gtag) {
+      if (consent.analytics) window.gtag('consent', 'update', { analytics_storage: 'granted' });
+      if (consent.advertising) {
+        window.gtag('consent', 'update', {
+          ad_storage: 'granted',
+          ad_user_data: 'granted',
+          ad_personalization: 'granted'
+        });
+      }
+    }
+    // GTM carries both analytics and advertising tags, so it loads when
+    // either category is granted. Ahrefs is analytics-only.
+    if ((consent.analytics || consent.advertising) && !loaded.gtm) {
+      loaded.gtm = true;
+      loadScript(`https://www.googletagmanager.com/gtm.js?id=${GTM_ID}`);
+    }
+    if (consent.analytics && !loaded.ahrefs) {
+      loaded.ahrefs = true;
+      loadScript('https://analytics.ahrefs.com/analytics.js', { 'data-key': AHREFS_KEY });
+    }
+  }
+
+  function storeConsent(consent) {
+    try {
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(consent));
+    } catch (err) {
+      // Storage unavailable (private mode); the banner will show again.
+    }
+  }
+
+  function readStoredConsent() {
+    try {
+      const raw = window.localStorage.getItem(STORAGE_KEY);
+      if (!raw) return null;
+      const parsed = JSON.parse(raw);
+      if (parsed && typeof parsed.analytics === 'boolean' && typeof parsed.advertising === 'boolean') return parsed;
+      return null;
+    } catch (err) {
+      return null;
+    }
+  }
+
+  function hideBanner() {
+    banner.hidden = true;
+    if (preferences) preferences.hidden = true;
+    manageButtons.forEach((button) => button.setAttribute('aria-expanded', 'false'));
+  }
+
+  function showBanner(openPreferences) {
+    banner.hidden = false;
+    if (openPreferences && preferences) {
+      syncCheckboxes(readStoredConsent());
+      preferences.hidden = false;
+      manageButtons.forEach((button) => button.setAttribute('aria-expanded', 'true'));
+    }
+  }
+
+  function syncCheckboxes(consent) {
+    const analyticsBox = banner.querySelector('[data-consent-category="analytics"]');
+    const advertisingBox = banner.querySelector('[data-consent-category="advertising"]');
+    if (analyticsBox) analyticsBox.checked = Boolean(consent && consent.analytics);
+    if (advertisingBox) advertisingBox.checked = Boolean(consent && consent.advertising);
+  }
+
+  function applyConsent(consent) {
+    storeConsent(consent);
+    loadTracking(consent);
+    hideBanner();
+  }
+
+  function readPreferencesForm() {
+    const analyticsBox = banner.querySelector('[data-consent-category="analytics"]');
+    const advertisingBox = banner.querySelector('[data-consent-category="advertising"]');
+    return {
+      analytics: Boolean(analyticsBox && analyticsBox.checked),
+      advertising: Boolean(advertisingBox && advertisingBox.checked)
+    };
+  }
+
+  // One document-level handler covers the banner buttons and the footer
+  // "Cookie Settings" button (both use data-consent-action).
+  document.addEventListener('click', (event) => {
+    const button = event.target && event.target.closest ? event.target.closest('[data-consent-action]') : null;
+    if (!button) return;
+    const action = button.getAttribute('data-consent-action');
+    if (action === 'accept-all') {
+      applyConsent({ analytics: true, advertising: true });
+    } else if (action === 'reject-all') {
+      applyConsent({ analytics: false, advertising: false });
+    } else if (action === 'manage') {
+      if (banner.hidden) {
+        showBanner(true);
+      } else if (preferences) {
+        const opening = preferences.hidden;
+        if (opening) syncCheckboxes(readStoredConsent());
+        preferences.hidden = !opening;
+        manageButtons.forEach((item) => item.setAttribute('aria-expanded', String(opening)));
+      }
+    } else if (action === 'save') {
+      applyConsent(readPreferencesForm());
+    }
+  });
+
+  // Apply a stored choice silently; otherwise show the banner.
+  const stored = readStoredConsent();
+  if (stored) {
+    loadTracking(stored);
+  } else {
+    showBanner(false);
+  }
+
+  // Hook for a future Google-certified CMP: it can apply consent directly
+  // and hide this banner (see the <head> comment).
+  window.BlogSphereConsent = {
+    update(consent) {
+      applyConsent({
+        analytics: Boolean(consent && consent.analytics),
+        advertising: Boolean(consent && consent.advertising)
+      });
+    },
+    show() {
+      showBanner(true);
+    }
+  };
+})();

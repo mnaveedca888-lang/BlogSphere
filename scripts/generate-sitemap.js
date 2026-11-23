@@ -6,13 +6,14 @@
 //   BLOGSPHERE_CONTENT_JSON=/path/to/public-data.json  (local testing)
 //
 // Behaviour (replaces the old append-only /article?id= behaviour):
-// - sitemap.xml: the 11 static pages (homepage, 5 categories,
-//   Health-Tools, about, contact, privacy-policy, terms-and-conditions)
+// - sitemap.xml: the 13 static pages (homepage, 5 categories,
+//   Health-Tools, about, contact, privacy-policy, terms-and-conditions,
+//   disclaimer, editorial-policy)
 //   plus every published article at its clean URL
 //   https://blogsphere.info/<slug>/ (lastmod = the article's updated /
 //   published date, monthly, priority 0.7).
 // - sitemap-articles.xml: the 134 articles only, same entries.
-// - sitemap-pages.xml: the 11 static pages only. Category lastmod is the
+// - sitemap-pages.xml: the 13 static pages only. Category lastmod is the
 //   newest post date in that category; the homepage lastmod is the newest
 //   post date overall; the other static pages keep their existing lastmod
 //   (read from the current sitemap-pages.xml).
@@ -52,7 +53,9 @@ const STATIC_PAGES = [
   { loc: '/about', changefreq: 'yearly', priority: '0.5' },
   { loc: '/contact', changefreq: 'yearly', priority: '0.5' },
   { loc: '/privacy-policy', changefreq: 'yearly', priority: '0.5' },
-  { loc: '/terms-and-conditions', changefreq: 'yearly', priority: '0.5' }
+  { loc: '/terms-and-conditions', changefreq: 'yearly', priority: '0.5' },
+  { loc: '/disclaimer', changefreq: 'yearly', priority: '0.5' },
+  { loc: '/editorial-policy', changefreq: 'yearly', priority: '0.5' }
 ];
 
 function escapeXml(value) {

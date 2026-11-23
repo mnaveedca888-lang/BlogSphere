@@ -34,6 +34,8 @@ test('build publishes only the allowlisted site and Pages metadata', async () =>
     'contact',
     'privacy-policy',
     'terms-and-conditions',
+    'disclaimer',
+    'editorial-policy',
     'Health-Tools'
   ].sort();
   assert.deepEqual(files, expected);
