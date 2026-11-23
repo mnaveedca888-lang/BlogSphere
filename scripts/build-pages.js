@@ -413,7 +413,947 @@ function buildArticleContent(post) {
     // duplicate opening H1 so the page has a single top-level heading.
     body = body.replace(/^\s*<h1[^>]*>.*?<\/h1>/is, '');
   }
-  return rewriteInternalLinks(decorateArticleImages(body));
+  body = rewriteInternalLinks(decorateArticleImages(body));
+  // Phase 3 (23 Nov 2026): build-time E-E-A-T enhancements (see below).
+  return applyPhase3Enhancements(post, body);
+}
+
+// ---------------------------------------------------------------------------
+// Phase 3 (23 Nov 2026) — E-E-A-T build-time enhancements (items 15, 16, 17).
+//
+// READ THIS BEFORE EDITING. Article body content lives in Supabase (the API)
+// and this repo has NO Supabase write access, so every enhancement below is
+// applied at BUILD time in this file, at static-page generation. The stored
+// content is NEVER modified: it stays the source of truth, and every change
+// here is reversible by removing this section. Slugs are listed explicitly
+// so the behaviour is auditable, and every source URL below was verified
+// reachable (HTTP 200 via curl, or confirmed loading via browser fetch) on
+// 23 Nov 2026. Nothing here invents an author, credential, statistic,
+// source, quote or date. Items 14, 18, 20 and 21 are NOT implemented here:
+// they need the user's answers/approvals and are held.
+//
+// What this section does, by item:
+//   15 — Sources sections for the 3 major posts (Huang, Anthropic, Riemann),
+//        a build-time "Update" box on the Huang post (he resigned 12 Nov),
+//        targeted build-time replacement of the Anthropic post's preliminary
+//        IPO figures with the final verified terms, a $1.4tn -> $1.5tn fix
+//        to the Anthropic link text inside the Riemann post, and a
+//        dateModified override (2026-11-23) for all three in generateArticlePage.
+//   16 — (a) is a template edit (index.html FAQ), not code. (b) Sources
+//        sections for the priority posts (Christmas decor, the two accounting
+//        software guides, the statistics roundup, and the 22 Business posts
+//        dated 11 Nov 2026). Figures were verified against gov.uk / HMRC /
+//        IRS / SBA / vendor pages; ONE wrong set was found and is NOT changed
+//        here — see WRONG_FIGURES_FOUND below and the parent's report.
+//   17 — Disclaimer blocks injected after the intro paragraph: a health
+//        disclaimer on the 9 exercise/weight-loss Health & Fitness posts
+//        (plus an NHS/CDC/WHO Sources box), and a financial disclaimer on
+//        the 14 Make Money Online posts, the 19 Business tax/legal/credit/
+//        incorporation/insurance posts, and — by topic, because they are
+//        about insurance products — the 6 insurance posts that sit in
+//        Health & Fitness pending item 18. No "Reviewed by" line anywhere
+//        (needs the user's answer to question h).
+//   19 — is a template edit (index.html + about.html), not code.
+// ---------------------------------------------------------------------------
+
+const PHASE3_DATE = '2026-11-23';
+
+// Item 15: the three posts whose JSON-LD dateModified is overridden to
+// PHASE3_DATE at build time (stored publish dates are never changed).
+const PHASE3_DATE_MODIFIED_SLUGS = new Set([
+  'jensen-huang-affair-nvidia-investigation',
+  'anthropic-ipo-2026-valuation-explained',
+  'riemann-hypothesis-solved-claude-ai-stanford'
+]);
+
+const ANTHROPIC_SLUG = 'anthropic-ipo-2026-valuation-explained';
+const HUANG_SLUG = 'jensen-huang-affair-nvidia-investigation';
+const RIEMANN_SLUG = 'riemann-hypothesis-solved-claude-ai-stanford';
+
+// Item 15, Anthropic: final verified IPO terms (19 Nov 2026 — Reuters via
+// CNA, Al Jazeera; evidence file anthropic-ipo-pricing-check-2026-11-19.md).
+// The live article still carried the preliminary figures, so the title,
+// meta title, meta description and summary are overridden at build time in
+// buildPages() (see below) and the body figures are replaced here.
+// NOTE: the meta description must stay within 120–155 characters, or
+// articleDescription() falls back to the stored excerpt (which still has
+// the preliminary figures).
+const ANTHROPIC_TITLE_OVERRIDE = {
+  title: 'Anthropic IPO 2026: What the $1.5 Trillion Valuation Means for AI and Investors',
+  meta_title: 'Anthropic IPO 2026: $1.5 Trillion Valuation Explained',
+  meta_description:
+    'Anthropic priced its IPO at $83.00 a share, raising $81.31 billion at a $1.5 trillion fully diluted valuation. What it means for AI and investors.',
+  summary:
+    'Anthropic priced its IPO at $83.00 a share, raising $81.31 billion at a $1.5 trillion fully diluted valuation, and began trading on 19 November 2026 on Nasdaq under the ticker ANT. Here is what the listing means for AI, investors and rivals.'
+};
+
+// Item 15, Anthropic: targeted build-time replacements of the preliminary
+// figures. Specific sentences first (they fix tense as well as figures),
+// then global figure fallbacks for any remaining occurrences (table rows
+// are covered by the specific <td> pairs). Every "from" string was verified
+// present verbatim in the stored HTML on 23 Nov 2026; a missing string is
+// logged, never fatal, so a future content edit cannot break the build.
+const ANTHROPIC_REPLACEMENTS = [
+  // Table rows (specific cells, so labels and "Up to" are fixed too).
+  ['<th>Terms (as reported)</th>', '<th>Final terms</th>'],
+  ['<td>Price range</td>', '<td>Final price</td>'],
+  ['<td>825 million Class A shares</td>', '<td>980 million Class A shares</td>'],
+  ['<td>$70 to $78 per share</td>', '<td>$83.00 per share</td>'],
+  ['<td>Up to $64.4 billion</td>', '<td>$81.31 billion</td>'],
+  ['<td>Up to $90.4 billion</td>', '<td>About $107.3 billion</td>'],
+  ['<td>About $1 trillion at the top of the range</td>', '<td>About $1.1 trillion</td>'],
+  ['<td>About $1.4 trillion at the top of the range</td>', '<td>About $1.5 trillion</td>'],
+  [
+    '<td>Pricing expected 18 November; trading expected to begin 19 November</td>',
+    '<td>Priced 18 November 2026 at $83.00; trading began 19 November 2026</td>'
+  ],
+  // Intro.
+  [
+    'aim to raise up to $64.4 billion by selling 825 million shares at $70 to $78 each',
+    'raised $81.31 billion by selling 980 million shares at $83.00 each'
+  ],
+  [
+    'A separate $26 billion private placement would take the total to as much as $90.4 billion',
+    'A separate $26 billion private placement took the total package to about $107.3 billion'
+  ],
+  [
+    'At the top of the range, Anthropic would be worth about $1.4 trillion fully diluted, counting stock options and restricted shares as well as shares already issued.',
+    'Anthropic was valued at about $1.5 trillion fully diluted, counting stock options and restricted shares as well as shares already issued.'
+  ],
+  [
+    'On outstanding shares alone, the figure is closer to $1 trillion.',
+    'On outstanding shares alone, the figure is about $1.1 trillion.'
+  ],
+  // Deal-table preamble.
+  [
+    'Figures are as reported by Reuters and other outlets; the final price and share count may still change.',
+    'Figures are the final pricing terms, as reported by Reuters and other outlets.'
+  ],
+  // "Two points matter" paragraph.
+  [
+    'the $90.4 billion combines the public sale and the private placement',
+    'the $107.3 billion combines the public sale and the private placement'
+  ],
+  [
+    'the $1.4 trillion figure is fully diluted, including shares issuable under options and restricted stock; on shares actually outstanding, the value is about $1 trillion',
+    'the $1.5 trillion figure is fully diluted, including shares issuable under options and restricted stock; on shares actually outstanding, the value is about $1.1 trillion'
+  ],
+  // Backers.
+  [
+    'will buy $26 billion of shares at the IPO price',
+    'bought $26 billion of shares at the $83.00 IPO price'
+  ],
+  // "Can ordinary investors buy" section (stored HTML uses &quot;).
+  [
+    'Until the shares start trading, ordinary investors cannot buy Anthropic stock: before the IPO it is privately held by founders, employees and large investors such as Amazon and Google. Once trading begins — expected on 19 November on the Nasdaq under &quot;ANT&quot;, according to reports — anyone with a brokerage account offering US shares can buy them on the open market.',
+    'Now that the shares are trading, ordinary investors can buy Anthropic stock: before the IPO it was privately held by founders, employees and large investors such as Amazon and Google. Trading began on 19 November on the Nasdaq under &quot;ANT&quot; — anyone with a brokerage account offering US shares can buy them on the open market.'
+  ],
+  // Risks.
+  [
+    'at roughly $1 trillion, Anthropic is priced for years of exceptional growth',
+    'at roughly $1.5 trillion fully diluted (about $1.1 trillion on shares outstanding), Anthropic is priced for years of exceptional growth'
+  ],
+  // FAQs.
+  [
+    'At the top of its $70 to $78 range, about $1 trillion on shares outstanding and about $1.4 trillion fully diluted.',
+    'At $83.00 a share, about $1.1 trillion on shares outstanding and about $1.5 trillion fully diluted.'
+  ],
+  [
+    'it intends to price the offering on 18 November and start trading on the Nasdaq on 19 November under the ticker',
+    'it priced the offering at $83.00 a share on 18 November and started trading on the Nasdaq on 19 November under the ticker'
+  ],
+  [
+    'These dates are as reported and could change.',
+    'The offering is now complete.'
+  ],
+  [
+    'Not before the IPO. Once trading begins on the Nasdaq, expected 19 November 2026, shares can be bought through a broker offering US-listed shares.',
+    'Yes. Trading began on the Nasdaq on 19 November 2026 under the ticker "ANT", and shares can be bought through a broker offering US-listed shares.'
+  ],
+  // Conclusion.
+  [
+    'A company founded in 2021 is asking to be valued at around $1 trillion, or $1.4 trillion fully diluted',
+    'A company founded in 2021 is now valued at around $1.1 trillion on shares outstanding, or $1.5 trillion fully diluted'
+  ],
+  // Closing note.
+  [
+    'Figures in this article are as reported in the sources above as of 11 November 2026. IPO terms, dates and valuations are preliminary and may change before the offering is completed.',
+    'IPO terms in this article were updated on 23 November 2026 to the final pricing terms (see Sources below). Other figures are as reported in the sources above as of 11 November 2026.'
+  ]
+];
+
+// Global fallbacks for any preliminary figure the specific pairs missed.
+const ANTHROPIC_GLOBAL_REPLACEMENTS = [
+  ['$1.4 trillion', '$1.5 trillion'],
+  ['$1 trillion', '$1.1 trillion'],
+  ['$90.4 billion', '$107.3 billion'],
+  ['$64.4 billion', '$81.31 billion'],
+  ['825 million', '980 million'],
+  ['$70 to $78', '$83.00']
+];
+
+// Item 15, Riemann: the intro links to the Anthropic article with its old
+// "$1.4 trillion" title text; the Anthropic title is now $1.5tn, so the
+// link text is fixed at build time to match.
+const RIEMANN_REPLACEMENTS = [
+  ['what its $1.4 trillion valuation means for AI', 'what its $1.5 trillion valuation means for AI']
+];
+
+// Item 15, Huang: the stored article (11 Nov 2026) says "Huang remains
+// chief executive while the probe runs". On 12 Nov 2026 Nvidia announced
+// he had resigned as President, CEO and board member, with CFO Colette
+// Kress as interim CEO and Harvey C. Jones as the board's first-ever Chair
+// (NVIDIA press release + CNN, both verified 23 Nov 2026). This dated
+// update box is prepended at build time so the page is not misleading; the
+// stored conclusion is left untouched.
+const HUANG_UPDATE_HTML = `<aside class="article-update" aria-label="Update">
+<p><strong>Update — 23 November 2026:</strong> On 12 November 2026, Nvidia announced that Jensen Huang had resigned as President, Chief Executive Officer and a member of the Board, effective immediately. Chief Financial Officer Colette Kress was appointed interim CEO, and Harvey C. Jones was appointed the Board&#x27;s first-ever Chair. The board is searching for a permanent CEO. The article below was written on 11 November 2026, before the resignation, and is kept as published. Sources: <a href="https://investor.nvidia.com/news/press-release-details/2026/NVIDIA-Announces-CEO-Transition/default.aspx" target="_blank" rel="noopener">NVIDIA press release, 12 Nov 2026</a> and <a href="https://www.cnn.com/2026/11/12/tech/jensen-huang-nvidia-resigns" target="_blank" rel="noopener">CNN, 12 Nov 2026</a>.</p>
+</aside>`;
+
+// ---------------------------------------------------------------------------
+// Sources sections (items 15 and 16b). Each entry: { label, url, note }.
+// All URLs were verified reachable on 23 Nov 2026 (HTTP 200 via curl, or
+// confirmed loading via browser fetch where the host blocks curl).
+// ---------------------------------------------------------------------------
+
+const SOURCES_BY_SLUG = {
+  // Item 15 — Huang. Confirmed: the affair admission, the board probe, the
+  // resignation. Alleged (not proven): the espionage/intelligence claims.
+  'jensen-huang-affair-nvidia-investigation': {
+    note: '<strong>What is confirmed, and what is not.</strong> <strong>Confirmed:</strong> Huang admitted infidelity on 8 November 2026; Nvidia&#x27;s board opened an independent investigation; Huang resigned as President, CEO and board member on 12 November 2026, with CFO Colette Kress appointed interim CEO and Harvey C. Jones appointed the board&#x27;s first-ever Chair. <strong>Alleged, not proven:</strong> that Alice Huang is a Chinese intelligence asset, that she passed information to Beijing, that Nvidia chips were diverted to China, and that any Nvidia or US secrets were compromised. Those claims are attributed to US officials and news reporting (notably The New York Times and The Wall Street Journal); they have not been independently verified, no charges have been publicly reported, and the FBI itself has not confirmed them — President Trump said the FBI was "looking into it". China&#x27;s Foreign Ministry calls the claims groundless; Megaspeed denies wrongdoing; Nvidia says it has found no evidence of chip smuggling.',
+    links: [
+      {
+        label: 'NVIDIA — "NVIDIA Announces CEO Transition" (press release, 12 Nov 2026)',
+        url: 'https://investor.nvidia.com/news/press-release-details/2026/NVIDIA-Announces-CEO-Transition/default.aspx',
+        note: 'Huang resigned as President, CEO and board member; Colette Kress appointed interim CEO; Harvey C. Jones appointed first-ever Chair of the Board.'
+      },
+      {
+        label: 'CNN — "CFO Colette Kress to serve as interim leader after Nvidia CEO Jensen Huang resignation" (12 Nov 2026)',
+        url: 'https://www.cnn.com/2026/11/12/tech/jensen-huang-nvidia-resigns',
+        note: 'Resignation after 33 years; Kress interim CEO while the board considers internal and external candidates.'
+      },
+      {
+        label: 'The Motley Fool — "Jensen Huang Is Out as Nvidia Names Colette Kress Interim CEO" (12 Nov 2026)',
+        url: 'https://www.fool.com/investing/2026/11/12/jensen-huang-is-out-as-nvidia-names-collette-kress-interim-ceo/',
+        note: 'Board accepted the resignation; Kress interim CEO; Harvey Jones the board&#x27;s first Chair.'
+      }
+    ]
+  },
+  // Item 15 — Anthropic. Final IPO terms, 19 Nov 2026.
+  'anthropic-ipo-2026-valuation-explained': {
+    note: '<strong>Final terms (19 November 2026).</strong> Anthropic priced at <strong>$83.00 a share</strong>, selling <strong>980 million shares</strong> to raise <strong>about $81.31 billion</strong>; with the $26 billion private placement the total package was <strong>about $107.3 billion</strong>. Valuation: <strong>about $1.5 trillion fully diluted</strong> and <strong>about $1.1 trillion on shares outstanding</strong>. Trading began on 19 November 2026 on Nasdaq under the ticker <strong>ANT</strong>. The figures in this article were updated to these final terms on 23 November 2026.',
+    links: [
+      {
+        label: 'Reuters (via CNA) — "Anthropic clinches biggest IPO ever with US$81 billion offering" (19 Nov 2026)',
+        url: 'https://www.channelnewsasia.com/business/anthropic-share-price-ipo-6563856',
+        note: '980 million shares at $83.00; about $81.31 billion raised; largest IPO on record.'
+      },
+      {
+        label: 'Al Jazeera — "Anthropic raises $81.3bn in biggest IPO of all time" (19 Nov 2026)',
+        url: 'https://www.aljazeera.com/economy/2026/11/19/anthropic-raises-81-3bn-in-biggest-ipo-of-all-time',
+        note: '$81.3 billion raised; about $1.5 trillion fully diluted valuation.'
+      },
+      {
+        label: 'Al Jazeera — "Anthropic starts trading in the US after blockbuster IPO" (19 Nov 2026)',
+        url: 'https://www.aljazeera.com/economy/2026/11/19/anthropic-starts-trading-in-the-us-after-blockbuster-ipo',
+        note: 'Trading began 19 November 2026 on Nasdaq (ANT).'
+      }
+    ]
+  },
+  // Item 15 — Riemann. The claim is UNVERIFIED with competing claims.
+  'riemann-hypothesis-solved-claude-ai-stanford': {
+    note: '<strong>Status: not yet confirmed.</strong> Two claims were made on 20 November 2026 — Levent Alpöge with Claude AI (a Lean formalisation, about 17 million lines) and Stanford&#x27;s Alessandro Masullo (a human-written draft, about 940 pages). The Lean code compiles and passed independent machine checks, but no expert has yet verified the proof in the human sense, and Masullo&#x27;s draft already needs major revisions after problems were found. The Clay Mathematics Institute still lists the Riemann Hypothesis as <strong>unsolved</strong>, and the $1 million prize requires publication in a peer-reviewed journal plus a two-year wait.',
+    links: [
+      {
+        label: 'Nature — "Mathematicians astounded by AI and human-written proofs of iconic Riemann hypothesis" (21 Nov 2026)',
+        url: 'https://www.nature.com/articles/d41586-026-03812-7',
+        note: 'Both claims reported; neither verified as a proof yet.'
+      },
+      {
+        label: 'The Decoder — "Hours after Anthropic claims a Claude proof of the Riemann hypothesis, Stanford releases an all-human competing draft" (20 Nov 2026)',
+        url: 'https://the-decoder.com/hours-after-anthropic-claims-a-claude-proof-of-the-riemann-hypothesis-stanford-releases-an-all-human-competing-draft/',
+        note: 'Alpöge + Claude Lean proof and Masullo human draft on the same day.'
+      },
+      {
+        label: 'DataCamp — "AI solved Riemann Hypothesis" (20 Nov 2026)',
+        url: 'https://www.datacamp.com/blog/ai-solved-riemann-hypothesis',
+        note: 'Summary of the Alpöge + Claude claim and the Lean verification.'
+      },
+      {
+        label: 'Clay Mathematics Institute — Riemann Hypothesis (Millennium Prize Problems)',
+        url: 'https://www.claymath.org/millennium/riemann-hypothesis/',
+        note: 'Still listed as unsolved; prize needs peer-reviewed publication and a two-year wait.'
+      }
+    ]
+  },
+  // Item 16b — Christmas decor. Prices in the article are planning ranges
+  // checked in autumn 2026, not live quotes (the article says so); these
+  // are the authoritative safety/environmental sources it relies on.
+  'christmas-decor-uk': {
+    note: 'Prices in this article are planning ranges checked in autumn 2026, not live quotes — check the retailer before you buy. Safety and environmental claims are from the official sources below.',
+    links: [
+      {
+        label: 'GOV.UK — "Find a new home for your Christmas tree" (Carbon Trust)',
+        url: 'https://www.gov.uk/government/news/find-a-new-home-for-your-christmas-tree',
+        note: 'An artificial tree may need up to ten uses before its environmental impact falls below that of a real tree bought each year.'
+      },
+      {
+        label: 'London Fire Brigade — "Christmas trees: avoid a festive fire hazard"',
+        url: 'https://www.london-fire.gov.uk/safety/christmas-fire-safety/christmas-trees/',
+        note: 'Real trees can drink up to two pints of water a day; a real tree is only relatively safe for about two weeks indoors; never burn branches or needles in a fireplace.'
+      }
+    ]
+  },
+  // Item 16b — UK accounting software. Xero prices are the current
+  // post-1-Sept-2026 prices. QuickBooks UK prices in the article are the
+  // pre-2-Nov-2026 prices — see WRONG_FIGURES_FOUND in the Phase 3 report;
+  // the official pricing page below shows the current figures.
+  'best-accounting-software-small-business-uk': {
+    note: 'Prices are monthly list prices before introductory offers, as checked on 8 November 2026 in the article. Vendor prices change — confirm the current price on the official pricing page before you buy.',
+    links: [
+      {
+        label: 'Xero UK — Pricing plans',
+        url: 'https://www.xero.com/uk/pricing-plans/',
+        note: 'Simple £7, Ignite £18, Grow £39, Comprehensive £55, Ultimate £70 a month, excluding VAT (from 1 September 2026).'
+      },
+      {
+        label: 'QuickBooks UK — Pricing & Costs (Intuit)',
+        url: 'https://quickbooks.intuit.com/uk/pricing/',
+        note: 'Official UK pricing page. Intuit raised four of the five UK prices on 2 November 2026 — check the current figures here.'
+      },
+      {
+        label: 'GOV.UK — "Sole traders and landlords earning more than £30,000 urged to act now" (Making Tax Digital for Income Tax)',
+        url: 'https://www.gov.uk/government/news/sole-traders-and-landlords-earning-more-than-30000-urged-to-act-now',
+        note: 'MTD for Income Tax: over £50,000 from 6 April 2026, over £30,000 from 6 April 2027, over £20,000 from April 2028.'
+      },
+      {
+        label: 'GOV.UK — VAT registration thresholds',
+        url: 'https://www.gov.uk/vat-registration-thresholds',
+        note: 'Registration threshold £90,000 of taxable turnover in a rolling 12 months; deregistration £88,000.'
+      }
+    ]
+  },
+  // Item 16b — US accounting software. QuickBooks US prices verified
+  // against Intuit's own pricing page; SBA count from the Feb 2026 FAQ.
+  'best-accounting-software-small-business-usa-2026': {
+    note: 'QuickBooks US prices are the November 2026 list prices from Intuit&#x27;s own pricing page. Vendor prices change — confirm the current price before you buy.',
+    links: [
+      {
+        label: 'QuickBooks (Intuit) — Online Pricing & Free Trial (US)',
+        url: 'https://quickbooks.intuit.com/pricing/',
+        note: 'Simple Start $38, Essentials $85, Plus $140, Advanced $340 a month.'
+      },
+      {
+        label: 'SBA Office of Advocacy — "Frequently Asked Questions About Small Business" (February 2026)',
+        url: 'https://advocacy.sba.gov/wp-content/uploads/2026/02/FINAL_FAQsAboutSmallBusiness_2026_012826.pdf',
+        note: '36,207,130 small businesses in the US (2022 Census data), 99.9% of all US firms.'
+      },
+      {
+        label: 'IRS — Small Business and Self-Employed Tax Center',
+        url: 'https://www.irs.gov/businesses/small-businesses-self-employed',
+        note: 'IRS guidance for small businesses and the self-employed.'
+      }
+    ]
+  },
+  // Item 16b — Statistics roundup. Figures are attributed in-text to the
+  // named survey or agency; these are the primary sources for the headline
+  // numbers (all other figures in the article name their source and year).
+  'make-money-online-statistics-2026': {
+    note: 'Every figure in this article names its source and year in the text. The links below are the primary sources for the headline numbers; surveys measure different things, so figures from different sources are not directly comparable.',
+    links: [
+      {
+        label: 'US Census Bureau — Quarterly Retail E-Commerce Sales (Q4 2025, released 10 Mar 2026)',
+        url: 'https://www2.census.gov/retail/releases/historical/ecomm/25q4.pdf',
+        note: 'US retail e-commerce $1,233.7 billion in 2025, up 5.4% on 2024, 16.4% of all retail sales.'
+      },
+      {
+        label: 'MBO Partners — "15 Years, One Movement: The Return on Independence" (State of Independence, 2025)',
+        url: 'https://info.mbopartners.com/rs/mbo/images/MBO_2025_State_of_Independence_Research_Report.pdf',
+        note: '72.9 million US independent workers in 2025 (27.6 million full time); a record 5.6 million earned over $100,000.'
+      },
+      {
+        label: 'SBA Office of Advocacy — "Frequently Asked Questions About Small Business" (February 2026)',
+        url: 'https://advocacy.sba.gov/wp-content/uploads/2026/02/FINAL_FAQsAboutSmallBusiness_2026_012826.pdf',
+        note: '36,207,130 small businesses in the US, 99.9% of all US firms.'
+      },
+      {
+        label: 'FTC — "Paying to get paid: gamified job scams drive record losses" (Data Spotlight, December 2024)',
+        url: 'https://www.ftc.gov/system/files/ftc_gov/pdf/task-scams-spotlight-2024.pdf',
+        note: 'Reported losses to job scams: $90 million (2020), $286 million (2023), $223 million in the first half of 2024 alone; about 20,000 task-scam reports in H1 2024 vs about 5,000 in all of 2023.'
+      }
+    ]
+  }
+};
+
+// Item 16b — the 22 Business posts dated 11 Nov 2026. Each gets the
+// official gov.uk / HMRC / IRS / SBA pages for the figures it uses. Posts
+// that are general advice (marketing, pricing, CRM, tools) link to the
+// relevant official business-startup guidance instead — there is no single
+// official source for "how to get customers".
+const BUSINESS_SOURCES = {
+  'uk-budget-2026-small-business': [
+    {
+      label: 'HM Treasury — Budget 2026 (HC 726, 28 October 2026)',
+      url: 'https://assets.publishing.service.gov.uk/media/6ae1ec57bdb574cf1c9b3f12/E03668986_HMT_Budget_2026_ELAY__2_.pdf',
+      note: 'Official Budget 2026 document: trading allowance £1,000 to £3,000 from 6 April 2027; Small Business Rates Relief threshold £12,000 to £18,000 (tapered to £21,000) for retail, hospitality and leisure from April 2027.'
+    },
+    {
+      label: 'GOV.UK — "Sole traders and landlords earning more than £30,000 urged to act now" (Making Tax Digital)',
+      url: 'https://www.gov.uk/government/news/sole-traders-and-landlords-earning-more-than-30000-urged-to-act-now',
+      note: 'MTD for Income Tax thresholds: £50,000 from 6 April 2026, £30,000 from 6 April 2027, £20,000 from April 2028.'
+    },
+    {
+      label: 'GOV.UK — National Living Wage increases to £12.71 per hour',
+      url: 'https://www.gov.uk/government/news/national-living-wage-increases-to-1271-per-hour',
+      note: 'National Living Wage £12.71 (21+), £10.85 (18–20), £8.00 (under 18 / apprentice) from 1 April 2026.'
+    },
+    {
+      label: 'GOV.UK — Corporation Tax',
+      url: 'https://www.gov.uk/corporation-tax',
+      note: 'Corporation Tax 19% on profits up to £50,000, 25% over £250,000, with marginal relief between.'
+    }
+  ],
+  'how-to-hire-first-employee-uk': [
+    {
+      label: 'GOV.UK — Employing staff',
+      url: 'https://www.gov.uk/employing-staff',
+      note: 'Official guidance on taking on your first employee, PAYE and employer duties.'
+    },
+    {
+      label: 'GOV.UK — National Living Wage increases to £12.71 per hour',
+      url: 'https://www.gov.uk/government/news/national-living-wage-increases-to-1271-per-hour',
+      note: 'National Living Wage £12.71 (21+), £10.85 (18–20), £8.00 (under 18 / apprentice) from 1 April 2026.'
+    },
+    {
+      label: 'GOV.UK — Statutory Payments Manual (HMRC)',
+      url: 'https://www.gov.uk/hmrc-internal-manuals/statutory-payments-manual/spm220400',
+      note: 'Statutory Sick Pay £123.25 a week and Statutory Maternity Pay £194.32 a week for 2026/27.'
+    },
+    {
+      label: 'GOV.UK — Self-employed and employed National Insurance rates',
+      url: 'https://www.gov.uk/self-employed-national-insurance-rates',
+      note: 'Class 4 National Insurance 6% on profits £12,570–£50,270 and 2% above; voluntary Class 2 £3.65 a week; small profits threshold £7,105 (2026/27).'
+    }
+  ],
+  'how-to-get-first-customers-uk-small-business': [
+    {
+      label: 'GOV.UK — Set up as a sole trader',
+      url: 'https://www.gov.uk/set-up-as-sole-trader',
+      note: 'Official starting point for a UK sole trader: registering with HMRC and the rules that apply.'
+    },
+    {
+      label: 'SBA — "10 steps to start your business"',
+      url: 'https://www.sba.gov/business-guide/10-steps-start-your-business',
+      note: 'The SBA&#x27;s step-by-step guide to starting a business, including market research and finding customers.'
+    }
+  ],
+  'digital-marketing-strategies-small-business-uk': [
+    {
+      label: 'GOV.UK — Set up as a sole trader',
+      url: 'https://www.gov.uk/set-up-as-sole-trader',
+      note: 'Official starting point for a UK sole trader.'
+    },
+    {
+      label: 'SBA — "10 steps to start your business"',
+      url: 'https://www.sba.gov/business-guide/10-steps-start-your-business',
+      note: 'The SBA&#x27;s step-by-step guide, including market research and marketing a new business.'
+    }
+  ],
+  'vat-registration-threshold-uk-small-business': [
+    {
+      label: 'GOV.UK — VAT registration thresholds',
+      url: 'https://www.gov.uk/vat-registration-thresholds',
+      note: 'Registration threshold £90,000 of taxable turnover in a rolling 12 months; deregistration £88,000.'
+    },
+    {
+      label: 'GOV.UK — "Sole traders and landlords earning more than £30,000 urged to act now" (Making Tax Digital)',
+      url: 'https://www.gov.uk/government/news/sole-traders-and-landlords-earning-more-than-30000-urged-to-act-now',
+      note: 'MTD for Income Tax thresholds and dates.'
+    },
+    {
+      label: 'GOV.UK — Corporation Tax',
+      url: 'https://www.gov.uk/corporation-tax',
+      note: 'Corporation Tax rates and marginal relief.'
+    }
+  ],
+  'how-to-register-as-sole-trader-uk': [
+    {
+      label: 'GOV.UK — Set up as a sole trader',
+      url: 'https://www.gov.uk/set-up-as-sole-trader',
+      note: 'Registering as a sole trader is free; you tell HMRC you are self-employed and get a Unique Taxpayer Reference.'
+    },
+    {
+      label: 'GOV.UK — Register for Self Assessment (self-employed)',
+      url: 'https://www.gov.uk/register-for-self-assessment/self-employed',
+      note: 'How and when to register for Self Assessment as a self-employed person.'
+    },
+    {
+      label: 'GOV.UK — Self-employed National Insurance rates',
+      url: 'https://www.gov.uk/self-employed-national-insurance-rates',
+      note: 'Class 4 6% on profits £12,570–£50,270 and 2% above; voluntary Class 2 £3.65 a week (2026/27).'
+    },
+    {
+      label: 'GOV.UK — VAT registration thresholds',
+      url: 'https://www.gov.uk/vat-registration-thresholds',
+      note: 'VAT registration threshold £90,000 in a rolling 12 months.'
+    }
+  ],
+  'sole-trader-vs-limited-company-uk': [
+    {
+      label: 'GOV.UK — Set up as a sole trader',
+      url: 'https://www.gov.uk/set-up-as-sole-trader',
+      note: 'Sole trader: you register with HMRC, there is no fee, and you keep the profit after tax.'
+    },
+    {
+      label: 'GOV.UK — Set up a limited company',
+      url: 'https://www.gov.uk/limited-company-formation',
+      note: 'Registering a limited company with Companies House; incorporation costs £100 online.'
+    },
+    {
+      label: 'GOV.UK — Companies House fees',
+      url: 'https://www.gov.uk/government/publications/companies-house-fees/companies-house-fees',
+      note: 'Incorporation £100 online or via software, £124 on paper, £156 same-day via software.'
+    },
+    {
+      label: 'GOV.UK — Corporation Tax',
+      url: 'https://www.gov.uk/corporation-tax',
+      note: 'A limited company pays Corporation Tax on its profits; you pay tax on salary and dividends.'
+    }
+  ],
+  'small-business-ideas-uk-under-1000': [
+    {
+      label: 'GOV.UK — Set up as a sole trader',
+      url: 'https://www.gov.uk/set-up-as-sole-trader',
+      note: 'Starting as a sole trader is free.'
+    },
+    {
+      label: 'GOV.UK — Register for Self Assessment (self-employed)',
+      url: 'https://www.gov.uk/register-for-self-assessment/self-employed',
+      note: 'You must register for Self Assessment if you earn more than £1,000 from self-employment in a tax year (the trading allowance).'
+    },
+    {
+      label: 'British Business Bank — Start Up Loans',
+      url: 'https://www.british-business-bank.co.uk/business-guidance/guidance-articles/finance/start-up-loan',
+      note: 'Borrow £500 to £25,000 over one to five years at a fixed 7.5% a year; unsecured, with 12 months of free mentoring.'
+    }
+  ],
+  'small-business-ideas-uk-2026': [
+    {
+      label: 'GOV.UK — Set up as a sole trader',
+      url: 'https://www.gov.uk/set-up-as-sole-trader',
+      note: 'Starting as a sole trader is free.'
+    },
+    {
+      label: 'GOV.UK — Register for Self Assessment (self-employed)',
+      url: 'https://www.gov.uk/register-for-self-assessment/self-employed',
+      note: 'Register for Self Assessment if you earn more than £1,000 from self-employment in a tax year.'
+    },
+    {
+      label: 'British Business Bank — Start Up Loans',
+      url: 'https://www.british-business-bank.co.uk/business-guidance/guidance-articles/finance/start-up-loan',
+      note: 'Borrow £500 to £25,000 over one to five years at a fixed 7.5% a year.'
+    }
+  ],
+  'how-to-start-a-small-business-uk': [
+    {
+      label: 'GOV.UK — Set up as a sole trader',
+      url: 'https://www.gov.uk/set-up-as-sole-trader',
+      note: 'Registering as a sole trader is free.'
+    },
+    {
+      label: 'GOV.UK — Set up a limited company',
+      url: 'https://www.gov.uk/limited-company-formation',
+      note: 'Registering a limited company; incorporation costs £100 online.'
+    },
+    {
+      label: 'GOV.UK — VAT registration thresholds',
+      url: 'https://www.gov.uk/vat-registration-thresholds',
+      note: 'You must register for VAT if taxable turnover goes over £90,000 in the last 12 months.'
+    },
+    {
+      label: 'GOV.UK — Corporation Tax',
+      url: 'https://www.gov.uk/corporation-tax',
+      note: 'Corporation Tax 19% up to £50,000, 25% over £250,000, with marginal relief between.'
+    }
+  ],
+  'how-to-price-product-service-small-business': [
+    {
+      label: 'SBA — "10 steps to start your business"',
+      url: 'https://www.sba.gov/business-guide/10-steps-start-your-business',
+      note: 'The SBA&#x27;s step-by-step guide, including pricing and financial planning.'
+    },
+    {
+      label: 'GOV.UK — Set up as a sole trader',
+      url: 'https://www.gov.uk/set-up-as-sole-trader',
+      note: 'Official starting point for a UK sole trader.'
+    }
+  ],
+  'how-to-fund-a-small-business': [
+    {
+      label: 'SBA — 7(a) Loans',
+      url: 'https://www.sba.gov/funding-programs/loans/7a-loans',
+      note: 'SBA 7(a) loans: up to $5 million; SBA guarantee 85% on loans up to $150,000 and 75% above.'
+    },
+    {
+      label: 'British Business Bank — Start Up Loans',
+      url: 'https://www.british-business-bank.co.uk/business-guidance/guidance-articles/finance/start-up-loan',
+      note: 'Borrow £500 to £25,000 over one to five years at a fixed 7.5% a year; unsecured.'
+    },
+    {
+      label: 'SBA Office of Advocacy — "Frequently Asked Questions About Small Business" (February 2026)',
+      url: 'https://advocacy.sba.gov/wp-content/uploads/2026/02/FINAL_FAQsAboutSmallBusiness_2026_012826.pdf',
+      note: '36,207,130 small businesses in the US, 99.9% of all US firms.'
+    }
+  ],
+  'digital-marketing-strategies-small-business': [
+    {
+      label: 'SBA — "10 steps to start your business"',
+      url: 'https://www.sba.gov/business-guide/10-steps-start-your-business',
+      note: 'The SBA&#x27;s step-by-step guide, including market research and marketing.'
+    },
+    {
+      label: 'IRS — Small Business and Self-Employed Tax Center',
+      url: 'https://www.irs.gov/businesses/small-businesses-self-employed',
+      note: 'IRS guidance for small businesses and the self-employed.'
+    }
+  ],
+  'best-crm-software-small-business': [
+    {
+      label: 'SBA — "10 steps to start your business"',
+      url: 'https://www.sba.gov/business-guide/10-steps-start-your-business',
+      note: 'The SBA&#x27;s step-by-step guide to starting and running a small business.'
+    },
+    {
+      label: 'IRS — Small Business and Self-Employed Tax Center',
+      url: 'https://www.irs.gov/businesses/small-businesses-self-employed',
+      note: 'IRS guidance for small businesses and the self-employed.'
+    }
+  ],
+  'best-business-tools-small-business': [
+    {
+      label: 'SBA — "10 steps to start your business"',
+      url: 'https://www.sba.gov/business-guide/10-steps-start-your-business',
+      note: 'The SBA&#x27;s step-by-step guide to starting and running a small business.'
+    },
+    {
+      label: 'IRS — Small Business and Self-Employed Tax Center',
+      url: 'https://www.irs.gov/businesses/small-businesses-self-employed',
+      note: 'IRS guidance for small businesses and the self-employed.'
+    }
+  ],
+  'how-to-get-an-ein-small-business': [
+    {
+      label: 'IRS — Apply for an Employer Identification Number (EIN) Online',
+      url: 'https://www.irs.gov/businesses/small-businesses-self-employed/apply-for-an-employer-identification-number-ein-online',
+      note: 'An EIN is free from the IRS — never pay a fee for one. Apply online and get it immediately.'
+    },
+    {
+      label: 'IRS — Small Business and Self-Employed Tax Center',
+      url: 'https://www.irs.gov/businesses/small-businesses-self-employed',
+      note: 'IRS guidance for small businesses and the self-employed.'
+    },
+    {
+      label: 'SBA — "10 steps to start your business"',
+      url: 'https://www.sba.gov/business-guide/10-steps-start-your-business',
+      note: 'The SBA&#x27;s step-by-step guide, including getting an EIN and registering the business.'
+    }
+  ],
+  'llc-vs-sole-proprietorship-usa': [
+    {
+      label: 'SBA — Choose a business structure',
+      url: 'https://www.sba.gov/business-guide/launch-your-business/choose-business-structure',
+      note: 'Sole proprietorship: you are automatically one if you do business but do not register another structure. LLC: a separate legal entity.'
+    },
+    {
+      label: 'IRS — Small Business and Self-Employed Tax Center',
+      url: 'https://www.irs.gov/businesses/small-businesses-self-employed',
+      note: 'IRS guidance on business structures and tax.'
+    },
+    {
+      label: 'SBA — "10 steps to start your business"',
+      url: 'https://www.sba.gov/business-guide/10-steps-start-your-business',
+      note: 'The SBA&#x27;s step-by-step guide to starting a business.'
+    }
+  ],
+  'how-to-write-a-business-plan-small-business': [
+    {
+      label: 'SBA — Write your business plan',
+      url: 'https://www.sba.gov/business-guide/plan-your-business/write-your-business-plan',
+      note: 'The SBA says there is no single right way to write a plan; what matters is that it meets your needs. Covers traditional and lean startup formats.'
+    },
+    {
+      label: 'SBA — "10 steps to start your business"',
+      url: 'https://www.sba.gov/business-guide/10-steps-start-your-business',
+      note: 'The SBA&#x27;s step-by-step guide to starting a business.'
+    }
+  ],
+  'small-business-ideas-2026-usa': [
+    {
+      label: 'SBA — "10 steps to start your business"',
+      url: 'https://www.sba.gov/business-guide/10-steps-start-your-business',
+      note: 'The SBA&#x27;s step-by-step guide to starting a business.'
+    },
+    {
+      label: 'SBA Office of Advocacy — "Frequently Asked Questions About Small Business" (February 2026)',
+      url: 'https://advocacy.sba.gov/wp-content/uploads/2026/02/FINAL_FAQsAboutSmallBusiness_2026_012826.pdf',
+      note: '36,207,130 small businesses in the US, 99.9% of all US firms.'
+    },
+    {
+      label: 'IRS — Small Business and Self-Employed Tax Center',
+      url: 'https://www.irs.gov/businesses/small-businesses-self-employed',
+      note: 'IRS guidance for small businesses and the self-employed.'
+    }
+  ],
+  'how-to-start-a-small-business-usa': [
+    {
+      label: 'SBA — "10 steps to start your business"',
+      url: 'https://www.sba.gov/business-guide/10-steps-start-your-business',
+      note: 'Research, plan, fund, choose a structure, pick a name, register, get tax numbers and licences, then open for business.'
+    },
+    {
+      label: 'SBA — Choose a business structure',
+      url: 'https://www.sba.gov/business-guide/launch-your-business/choose-business-structure',
+      note: 'Sole proprietorship, LLC, corporation and other structures compared.'
+    },
+    {
+      label: 'IRS — Apply for an Employer Identification Number (EIN) Online',
+      url: 'https://www.irs.gov/businesses/small-businesses-self-employed/apply-for-an-employer-identification-number-ein-online',
+      note: 'An EIN is free from the IRS.'
+    },
+    {
+      label: 'IRS — Small Business and Self-Employed Tax Center',
+      url: 'https://www.irs.gov/businesses/small-businesses-self-employed',
+      note: 'IRS guidance for small businesses and the self-employed.'
+    }
+  ]
+};
+
+// Item 17 — Health & Fitness Sources boxes (NHS / CDC / WHO only).
+// Two sets: exercise-focused and weight-loss-focused. All URLs verified
+// reachable on 23 Nov 2026.
+const HEALTH_SOURCE_SETS = {
+  exercise: [
+    {
+      label: 'NHS — Physical activity guidelines for adults aged 19 to 64',
+      url: 'https://www.nhs.uk/live-well/exercise/physical-activity-guidelines-for-adults-aged-19-to-64/',
+      note: 'At least 150 minutes of moderate activity or 75 minutes of vigorous activity a week, plus muscle-strengthening on at least 2 days a week.'
+    },
+    {
+      label: 'WHO — Physical activity (fact sheet)',
+      url: 'https://www.who.int/news-room/fact-sheets/detail/physical-activity',
+      note: 'WHO recommendations on physical activity for health.'
+    },
+    {
+      label: 'CDC — Health Benefits of Physical Activity for Adults',
+      url: 'https://www.cdc.gov/physical-activity-basics/health-benefits/adults.html',
+      note: 'Immediate and long-term benefits of regular physical activity.'
+    }
+  ],
+  weightLoss: [
+    {
+      label: 'NHS — 12 tips to help you lose weight',
+      url: 'https://www.nhs.uk/live-well/healthy-weight/managing-your-weight/12-tips-to-help-you-lose-weight/',
+      note: 'The NHS weight-loss plan: regular meals, more activity, plenty of fruit and veg, and planning meals.'
+    },
+    {
+      label: 'NHS — Physical activity guidelines for adults aged 19 to 64',
+      url: 'https://www.nhs.uk/live-well/exercise/physical-activity-guidelines-for-adults-aged-19-to-64/',
+      note: 'At least 150 minutes of moderate activity or 75 minutes of vigorous activity a week, plus muscle-strengthening on at least 2 days a week.'
+    },
+    {
+      label: 'WHO — Physical activity (fact sheet)',
+      url: 'https://www.who.int/news-room/fact-sheets/detail/physical-activity',
+      note: 'WHO recommendations on physical activity for health.'
+    },
+    {
+      label: 'CDC — Health Benefits of Physical Activity for Adults',
+      url: 'https://www.cdc.gov/physical-activity-basics/health-benefits/adults.html',
+      note: 'Immediate and long-term benefits of regular physical activity.'
+    }
+  ]
+};
+
+// Item 17 — which Health & Fitness exercise/weight-loss post gets which set.
+const HEALTH_SOURCES_BY_SLUG = {
+  'strength-training-on-glp-1': 'weightLoss',
+  'nuffield-health-gym-near-me': 'exercise',
+  '30-30-30-rule': 'weightLoss',
+  'hyrox-workout': 'exercise',
+  'benefits-of-working-out-in-the-morning': 'exercise',
+  'stomach-fat-workout': 'weightLoss',
+  'workouts-to-lose-belly-fat': 'weightLoss',
+  'best-cardio-for-weight-loss': 'weightLoss',
+  'best-weight-loss-exercises-small-uk-flat': 'weightLoss'
+};
+
+// Item 17 — health disclaimer (9 exercise/weight-loss Health & Fitness posts).
+const HEALTH_DISCLAIMER_SLUGS = new Set(Object.keys(HEALTH_SOURCES_BY_SLUG));
+
+const HEALTH_DISCLAIMER_HTML = `<aside class="article-disclaimer" aria-label="Health disclaimer">
+<p><strong>Health disclaimer:</strong> This article is for general information only and is not medical advice. It does not replace advice from a qualified health professional. If you have a medical condition, are pregnant, take medication, or are starting a new exercise or weight-loss programme, speak to your GP or another qualified health professional first. Stop exercising and seek medical help if you feel chest pain, severe breathlessness, dizziness or faintness.</p>
+</aside>`;
+
+// Item 17 — financial disclaimer. Applied to the 14 Make Money Online posts,
+// the 19 Business posts about tax/legal/credit/incorporation/insurance, and
+// — by topic, because they are about insurance products — the 6 insurance
+// posts that sit in Health & Fitness pending item 18 (which would move them
+// to Business). No "Reviewed by" line anywhere (needs the user's answer).
+const FINANCIAL_DISCLAIMER_SLUGS = new Set([
+  // Make Money Online (14).
+  'how-to-make-money-on-youtube-uk',
+  'real-ways-to-make-money-from-home-for-free',
+  'ways-for-females-to-make-money-online',
+  'how-to-make-passive-income-online',
+  'how-to-earn-extra-money-at-home',
+  'make-money-online-statistics-2026',
+  'how-to-make-money-from-home',
+  'make-money-from-your-phone-guia-espana',
+  'make-money-from-your-phone-us-guide',
+  'make-money-from-your-phone-uk-guide',
+  'make-money-from-your-phone-guide-france',
+  'make-money-online-fast-uk-guide',
+  'remote-side-hustles-2026',
+  'best-freelance-jobs-2026',
+  // Business: tax / legal / credit / incorporation / insurance (19).
+  'business-line-of-credit-ligne-credit-france',
+  'business-line-of-credit-us-guide',
+  'business-line-of-credit-uk-guide',
+  'incorporation-guia-emprendedores-espana',
+  'incorporation-guide-entrepreneurs-francais',
+  'incorporation-register-a-company-us',
+  'incorporation-uk-register-a-company',
+  'llc-guia-emprendedores-espana',
+  'llc-guide-entrepreneurs-francais',
+  'llc-what-it-is-and-how-to-form-one',
+  'business-line-of-credit-poliza-credito-espana',
+  'llc-in-the-uk-equivalent',
+  'uk-budget-2026-small-business',
+  'vat-registration-threshold-uk-small-business',
+  'how-to-register-as-sole-trader-uk',
+  'sole-trader-vs-limited-company-uk',
+  'how-to-fund-a-small-business',
+  'how-to-get-an-ein-small-business',
+  'llc-vs-sole-proprietorship-usa',
+  // Health & Fitness insurance posts (about insurance products, so the
+  // financial disclaimer fits their topic; item 18, held, would move them).
+  'short-term-disability-insurance-us-guide',
+  'medicare-supplement-plans-us-guide',
+  'medicare-advantage-plans-us-guide',
+  'private-medical-insurance-us-guide',
+  'health-insurance-us-guide',
+  'health-insurance-uk-guide'
+]);
+
+const FINANCIAL_DISCLAIMER_HTML = `<aside class="article-disclaimer" aria-label="Financial disclaimer">
+<p><strong>Disclaimer:</strong> This article is for general information only and is not financial, tax or legal advice. Tax rules, rates, thresholds and product prices change, and what applies to you depends on your own circumstances. Check the current rules with the official source linked below, and speak to a qualified accountant, financial adviser or solicitor before you act on anything here.</p>
+</aside>`;
+
+// ---------------------------------------------------------------------------
+// Phase 3 helpers
+// ---------------------------------------------------------------------------
+
+function buildSourcesSection(entry, heading) {
+  const items = entry.links
+    .map(
+      (link) =>
+        `<li><a href="${escapeAttr(link.url)}" target="_blank" rel="noopener">${escapeHtml(link.label)}</a>${link.note ? ` — ${link.note}` : ''}</li>`
+    )
+    .join('');
+  return `<section class="article-sources" aria-label="Sources">
+<h2>${escapeHtml(heading || 'Sources')}</h2>
+${entry.note ? `<p>${entry.note}</p>` : ''}
+<ul>${items}</ul>
+<p>Sources checked 23 November 2026. If a link has moved since then, search the publisher&#x27;s site for the title above.</p>
+</section>`;
+}
+
+function applyReplacements(body, replacements, label) {
+  let out = body;
+  for (const [from, to] of replacements) {
+    if (!out.includes(from)) {
+      console.warn(`Phase 3 (${label}): replacement source not found, skipped: ${JSON.stringify(from.slice(0, 90))}`);
+      continue;
+    }
+    out = out.split(from).join(to);
+  }
+  return out;
+}
+
+// Inject a block after the intro paragraph (the first </p>), so it sits
+// before the first heading. Falls back to before the first heading, then
+// to the top of the body.
+function injectAfterIntro(body, html) {
+  const closeP = body.indexOf('</p>');
+  if (closeP !== -1) {
+    const at = closeP + '</p>'.length;
+    return body.slice(0, at) + '\n\n' + html + body.slice(at);
+  }
+  const heading = body.search(/<h[2-6]\b/i);
+  if (heading !== -1) return body.slice(0, heading) + html + '\n\n' + body.slice(heading);
+  return html + '\n\n' + body;
+}
+
+function applyPhase3Enhancements(post, body) {
+  const slug = String(post.slug || '');
+  let out = body;
+
+  // Item 15 — Anthropic: replace preliminary IPO figures with final terms.
+  if (slug === ANTHROPIC_SLUG) {
+    out = applyReplacements(out, ANTHROPIC_REPLACEMENTS, 'anthropic');
+    out = applyReplacements(out, ANTHROPIC_GLOBAL_REPLACEMENTS, 'anthropic-global');
+  }
+  // Item 15 — Riemann: fix the Anthropic link text ($1.4tn -> $1.5tn).
+  if (slug === RIEMANN_SLUG) {
+    out = applyReplacements(out, RIEMANN_REPLACEMENTS, 'riemann');
+  }
+  // Item 15 — Huang: prepend the dated resignation update box.
+  if (slug === HUANG_SLUG) {
+    out = `${HUANG_UPDATE_HTML}\n\n${out}`;
+  }
+
+  // Item 17 — disclaimer after the intro.
+  if (HEALTH_DISCLAIMER_SLUGS.has(slug)) {
+    out = injectAfterIntro(out, HEALTH_DISCLAIMER_HTML);
+  } else if (FINANCIAL_DISCLAIMER_SLUGS.has(slug)) {
+    out = injectAfterIntro(out, FINANCIAL_DISCLAIMER_HTML);
+  }
+
+  // Items 15 + 16b — Sources section(s) appended at the end of the body.
+  const sources = [];
+  if (SOURCES_BY_SLUG[slug]) sources.push(SOURCES_BY_SLUG[slug]);
+  if (BUSINESS_SOURCES[slug]) sources.push({ links: BUSINESS_SOURCES[slug] });
+  for (const entry of sources) {
+    out += `\n\n${buildSourcesSection(entry, 'Sources')}`;
+  }
+  // Item 17 — Health & Fitness NHS/CDC/WHO Sources box.
+  if (HEALTH_SOURCES_BY_SLUG[slug]) {
+    out += `\n\n${buildSourcesSection(
+      { links: HEALTH_SOURCE_SETS[HEALTH_SOURCES_BY_SLUG[slug]] },
+      'Sources: health guidance'
+    )}`;
+  }
+
+  return out;
+}
+
+// Item 15, Anthropic: build-time title/meta overrides (final IPO terms).
+// Applied to the loaded posts in buildPages() so the homepage, category
+// pages and article page all show the same title. Stored content is never
+// changed.
+function applyPhase3TitleOverrides(posts) {
+  for (const post of posts) {
+    if (String(post.slug) === ANTHROPIC_SLUG) {
+      post.title = ANTHROPIC_TITLE_OVERRIDE.title;
+      post.meta_title = ANTHROPIC_TITLE_OVERRIDE.meta_title;
+      post.meta_description = ANTHROPIC_TITLE_OVERRIDE.meta_description;
+      // The article page's standfirst (#article-summary) is built from
+      // post.summary / post.excerpt, so override those too — the stored
+      // summary still carries the preliminary figures.
+      post.summary = ANTHROPIC_TITLE_OVERRIDE.summary;
+      post.excerpt = ANTHROPIC_TITLE_OVERRIDE.summary;
+    }
+  }
+  return posts;
 }
 
 // ---------------------------------------------------------------------------
@@ -575,7 +1515,13 @@ function generateArticlePage(template, post, posts, counts) {
   const cleanUrl = `${SITE_ORIGIN}/${post.slug}/`;
   const image = post.image || post.thumb || '';
   const dateVal = post.published_at || post.created_at || post.date || '';
-  const dateModified = post.updated_at || post.published_at || post.created_at || post.date || '';
+  // Phase 3 (23 Nov 2026), item 15: the three major posts were updated at
+  // build time (Huang resignation update, Anthropic final IPO terms, Riemann
+  // status note), so their dateModified is the build date. The stored
+  // publish dates are never changed.
+  const dateModified = PHASE3_DATE_MODIFIED_SLUGS.has(String(post.slug))
+    ? `${PHASE3_DATE}T00:00:00.000Z`
+    : (post.updated_at || post.published_at || post.created_at || post.date || '');
   const author = post.author || 'Admin';
   const category = post.category || 'BlogSphere';
   const categoryPage = CATEGORY_PAGES[category] || '/';
@@ -922,6 +1868,9 @@ async function buildPages() {
 
   const posts = await loadPosts();
   if (posts.length === 0) throw new Error('No published posts loaded; refusing to build an empty site.');
+  // Phase 3 (23 Nov 2026), item 15: Anthropic title/meta overrides (final
+  // IPO terms) so homepage, category pages and article page all agree.
+  applyPhase3TitleOverrides(posts);
   const counts = categoryCounts(posts);
   const langCounts = { fr: 0, es: 0, en: 0 };
   for (const post of posts) langCounts[detectLanguage(post)] += 1;

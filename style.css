@@ -2377,6 +2377,80 @@ body.home-page .site-footer {
   border-radius: 8px;
 }
 
+/* Phase 3 (23 Nov 2026) — E-E-A-T build-time boxes. These are injected by
+   scripts/build-pages.js at static generation (stored article content is
+   never modified). Uses the site's existing theme variables so the boxes
+   work in light and dark mode. */
+.article-content .article-disclaimer,
+.article-content .article-sources,
+.article-content .article-update {
+  margin: 20px 0 22px;
+  padding: 18px 20px;
+  border: 1px solid var(--line);
+  background: var(--panel-soft);
+  font-size: 0.95rem;
+  line-height: 1.7;
+  color: var(--text);
+}
+
+.article-content .article-disclaimer {
+  border-left: 4px solid var(--orange);
+}
+
+.article-content .article-sources {
+  border-left: 4px solid var(--blue);
+}
+
+.article-content .article-update {
+  border-left: 4px solid var(--green);
+}
+
+.article-content .article-disclaimer strong,
+.article-content .article-sources strong,
+.article-content .article-update strong {
+  color: var(--text);
+}
+
+.article-content .article-disclaimer p,
+.article-content .article-sources p,
+.article-content .article-update p {
+  margin: 0 0 8px;
+  font-size: 0.95rem;
+  line-height: 1.7;
+  color: var(--text);
+}
+
+.article-content .article-disclaimer p:last-child,
+.article-content .article-sources p:last-child,
+.article-content .article-update p:last-child {
+  margin-bottom: 0;
+}
+
+.article-content .article-sources h2,
+.article-content .article-sources h3 {
+  margin: 0 0 10px;
+  padding-bottom: 0;
+  border-bottom: none;
+  font-size: 1.15rem;
+  color: var(--text);
+}
+
+.article-content .article-sources ul {
+  margin: 8px 0 4px 20px;
+}
+
+.article-content .article-sources li {
+  margin-bottom: 6px;
+  font-size: 0.95rem;
+  line-height: 1.6;
+  color: var(--text);
+}
+
+.article-content .article-sources a {
+  color: var(--blue);
+  text-decoration: underline;
+}
+
 /* In-article images: same fixed 3/2 container as the featured image,
    so portrait and landscape photos render at one uniform size with the
    whole image visible — no crop, no stretch. */
